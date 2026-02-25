@@ -9,7 +9,7 @@ const loginSchema = z.object({
   password: z.string().min(1),
 });
 
-export async function login(req, res) {
+export async function login(req, res, next) {
   try {
     const body = loginSchema.parse(req.body);
     const user = await prisma.user.findUnique({ where: { email: body.email } });
@@ -26,6 +26,6 @@ export async function login(req, res) {
     if (e.name === 'ZodError') {
       return res.status(400).json({ error: 'Validation error', details: e.errors });
     }
-    throw e;
+    next(e);
   }
 }

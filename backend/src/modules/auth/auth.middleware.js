@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { config } from '../config/index.js';
-import { prisma } from '../config/prisma.js';
+import { config } from '../../config/index.js';
 
 export function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;

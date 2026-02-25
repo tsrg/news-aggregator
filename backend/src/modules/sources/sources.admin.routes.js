@@ -79,7 +79,9 @@ router.post('/:id/fetch', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await prisma.source.delete({ where: { id: req.params.id } }).catch(() => null);
+    const existing = await prisma.source.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    await prisma.source.delete({ where: { id: req.params.id } });
     return res.status(204).send();
   } catch (e) {
     console.error(e);

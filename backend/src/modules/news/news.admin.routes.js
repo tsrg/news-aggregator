@@ -153,7 +153,9 @@ router.patch('/:id/status', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await prisma.newsItem.delete({ where: { id: req.params.id } }).catch(() => null);
+    const existing = await prisma.newsItem.findUnique({ where: { id: req.params.id } });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+    await prisma.newsItem.delete({ where: { id: req.params.id } });
     return res.status(204).send();
   } catch (e) {
     console.error(e);
