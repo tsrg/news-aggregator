@@ -1,0 +1,48 @@
+# Dev override: монтируем исходники, запускаем dev-серверы
+# Запуск: docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./backend/src:/app/src
+      - ./backend/prisma:/app/prisma
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://app:appsecret@postgres:5432/news_aggregator?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: dev-secret-change-in-production
+      CORS_ORIGINS: ""
+    command: node --watch src/server.js
+    ports:
+      - "3000:3000"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    environment:
+      NUXT_PUBLIC_API_BASE: http://localhost:3000
+      NUXT_API_BASE_SERVER: http://backend:3000
+    command: npx nuxi dev --host 0.0.0.0
+    ports:
+      - "3001:3000"
+
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./admin:/app
+      - /app/node_modules
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000
+    command: npx vite --host 0.0.0.0
+    # Порт на хосте назначается автоматически. Узнать: docker compose port admin 5174
+    ports:
+      - "5174"

@@ -42,7 +42,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { api } from '../api';
+import { api } from '../../api';
 
 const statusFilter = ref('');
 const items = ref<{ id: string; title?: string; source?: { name: string }; status: string; createdAt: string }[]>([]);

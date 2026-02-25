@@ -20,8 +20,7 @@
 </template>
 
 <script setup lang="ts">
-const config = useRuntimeConfig();
-const apiBase = config.public.apiBase as string;
+const apiBase = useApiBase();
 
 const region = ref('');
 const { data, pending, error } = await useFetch<{ items: { id: string; title: string; summary?: string; publishedAt?: string; source?: { name: string } }[]; total: number }>(

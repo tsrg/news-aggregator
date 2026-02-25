@@ -1,0 +1,11 @@
+# Dev: только установка зависимостей, код монтируется volume. Debian slim — для Prisma (OpenSSL).
+FROM node:20-slim
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY package.json ./
+RUN npm install
+COPY prisma ./prisma
+RUN npx prisma generate
+COPY . .
+# Миграции и seed — вручную после первого up: docker compose exec backend npx prisma migrate deploy && npx prisma db seed
+EXPOSE 3000

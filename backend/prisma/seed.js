@@ -34,6 +34,17 @@ async function main() {
       },
     });
   }
+  const lenta = await prisma.source.findFirst({ where: { url: 'http://lenta.ru/rss/news' } });
+  if (!lenta) {
+    await prisma.source.create({
+      data: {
+        type: 'rss',
+        url: 'http://lenta.ru/rss/news',
+        name: 'Lenta.ru — Новости',
+        isActive: true,
+      },
+    });
+  }
   console.log('Seed done');
 }
 

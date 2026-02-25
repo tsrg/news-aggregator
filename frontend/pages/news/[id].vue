@@ -15,8 +15,7 @@
 
 <script setup lang="ts">
 const route = useRoute();
-const config = useRuntimeConfig();
-const apiBase = config.public.apiBase as string;
+const apiBase = useApiBase();
 
 const { data, pending, error } = await useFetch<{
   id: string;

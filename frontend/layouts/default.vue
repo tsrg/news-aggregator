@@ -30,8 +30,7 @@
 </template>
 
 <script setup lang="ts">
-const config = useRuntimeConfig();
-const apiBase = config.public.apiBase as string;
+const apiBase = useApiBase();
 
 const { data: sections } = await useFetch<{ id: string; slug: string }[]>(`${apiBase}/api/sections`);
 const sectionsMap = computed(() => new Map((sections.value || []).map((s) => [s.id, s])));

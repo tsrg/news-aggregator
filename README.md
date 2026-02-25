@@ -54,6 +54,47 @@ npm run dev
 - Frontend: `npm run build` затем `npm run preview` или раздача `output/public` (SSG).
 - Admin: `npm run build`, раздача `dist/` по пути `/admin` или поддомену.
 
+## Docker (dev и production)
+
+Требования: Docker и Docker Compose.
+
+### Production
+
+```bash
+# Из корня проекта
+export JWT_SECRET=your-secret   # обязательно в проде
+docker compose up -d --build
+```
+
+- API: http://localhost:3000  
+- Сайт: http://localhost:3001  
+- Админка: порт назначается автоматически. После `up` выполните:
+  `docker compose port admin 80` (prod) или `docker compose -f docker-compose.yml -f docker-compose.dev.yml port admin 5174` (dev) — в выводе будет хост:порт, откройте http://localhost:ПОРТ  
+
+Первый запуск: применить миграции и seed (пока backend уже поднят):
+
+```bash
+docker compose exec backend npx prisma migrate deploy
+docker compose exec backend npx prisma db seed
+```
+
+Переменные окружения (можно задать в `.env` в корне или передать в `docker compose`): `JWT_SECRET`, `CORS_ORIGINS`, `NUXT_PUBLIC_API_BASE`, `VITE_API_BASE_URL`, `AI_PROVIDER`, `OPENAI_API_KEY`, `ZAI_API_KEY`. Пример: `.env.docker.example`.
+
+### Dev-окружение (с hot-reload)
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+После первого запуска один раз выполните миграции и seed в контейнере backend:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec backend npx prisma migrate deploy
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec backend npx prisma db seed
+```
+
+Порты: API 3000, сайт 3001. Админка — случайный порт, см. выше.
+
 ## Инициализация репозитория и публикация
 
 Из корня проекта в терминале:

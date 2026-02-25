@@ -21,9 +21,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 
 const auth = useAuthStore();
+const router = useRouter();
 const user = computed(() => auth.user);
 const isAdmin = computed(() => auth.user?.role === 'ADMIN');
 
@@ -31,8 +33,6 @@ function logout() {
   auth.logout();
   router.push('/login');
 }
-import { useRouter } from 'vue-router';
-const router = useRouter();
 </script>
 
 <style scoped>

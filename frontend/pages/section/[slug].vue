@@ -22,8 +22,7 @@
 <script setup lang="ts">
 const route = useRoute();
 const slug = route.params.slug as string;
-const config = useRuntimeConfig();
-const apiBase = config.public.apiBase as string;
+const apiBase = useApiBase();
 
 const { data: sections } = await useFetch<{ id: string; slug: string; title: string }[]>(`${apiBase}/api/sections`);
 const section = computed(() => sections.value?.find((s) => s.slug === slug));

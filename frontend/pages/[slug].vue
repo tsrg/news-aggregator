@@ -12,8 +12,7 @@
 <script setup lang="ts">
 const route = useRoute();
 const slug = route.params.slug as string;
-const config = useRuntimeConfig();
-const apiBase = config.public.apiBase as string;
+const apiBase = useApiBase();
 
 const { data: page, pending, error } = await useFetch<{ title: string; body: string }>(
   () => `${apiBase}/api/pages/${slug}`,
