@@ -1,0 +1,21 @@
+{
+  "name": "news-aggregator-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview"
+  },
+  "dependencies": {
+    "nuxt": "^3.14.0",
+    "vue": "^3.5.12",
+    "vue-router": "^4.4.5",
+    "dompurify": "^3.1.6"
+  },
+  "devDependencies": {
+    "@nuxt/devtools": "^1.6.0",
+    "typescript": "^5.6.3"
+  }
+}

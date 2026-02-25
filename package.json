@@ -1,0 +1,6 @@
+{
+  "name": "news-aggregator",
+  "private": true,
+  "description": "News aggregator monorepo",
+  "workspaces": ["backend", "frontend", "admin"]
+}
