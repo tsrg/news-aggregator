@@ -88,17 +88,26 @@
 </template>
 
 <script setup lang="ts">
+/// <reference path="../global.d.ts" />
 import { ref, computed } from 'vue';
+
+type Section = { id: string; slug: string; title: string };
 
 const apiBase = useApiBase();
 const menuOpen = ref(false);
 
-const { data: sections } = await useFetch<{ id: string; slug: string }[]>(`${apiBase}/api/sections`);
-const sectionsMap = computed(() => new Map((sections.value || []).map((s) => [s.id, s])));
+// @ts-ignore - top-level await is supported by Nuxt (module/target set in .nuxt/tsconfig)
+const { data: sections } = await useFetch<Section[]>(`${apiBase}/api/sections`);
+const sectionsMap = computed(() => {
+  const list = sections.value ?? [];
+  return new Map<string, Section>(list.map((s: Section) => [s.id, s]));
+});
 
+// @ts-ignore - top-level await is supported by Nuxt (module/target set in .nuxt/tsconfig)
 const { data: headerData } = await useFetch<{ items?: { id: string; label: string; url?: string; sectionId?: string }[] }>(
   `${apiBase}/api/menus/header`
 );
+// @ts-ignore - top-level await is supported by Nuxt (module/target set in .nuxt/tsconfig)
 const { data: footerData } = await useFetch<{ items?: { id: string; label: string; url?: string; sectionId?: string }[] }>(
   `${apiBase}/api/menus/footer`
 );
@@ -117,7 +126,7 @@ const menuItems = computed(() => {
   const items = flattenItems(headerData.value?.items);
   if (items.length > 0) return items;
   // Fallback: use sections if no menu is configured
-  return (sections.value || []).slice(0, 5).map(s => ({
+  return (sections.value || []).slice(0, 5).map((s: Section) => ({
     id: s.id,
     label: s.title,
     sectionId: s.id,
@@ -129,7 +138,7 @@ const footerItems = computed(() => {
   const items = flattenItems(footerData.value?.items);
   if (items.length > 0) return items;
   // Fallback: use sections if no menu is configured
-  return (sections.value || []).map(s => ({
+  return (sections.value || []).map((s: Section) => ({
     id: s.id,
     label: s.title,
     sectionId: s.id,
