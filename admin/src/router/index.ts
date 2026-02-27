@@ -12,7 +12,11 @@ const router = createRouter({
     { path: '/sources', name: 'Sources', component: () => import('../views/Sources.vue'), meta: { admin: true } },
     { path: '/sections', name: 'Sections', component: () => import('../views/Sections.vue'), meta: { admin: true } },
     { path: '/menus', name: 'Menus', component: () => import('../views/Menus.vue'), meta: { admin: true } },
+    { path: '/menus/new', name: 'MenuNew', component: () => import('../views/MenuEdit.vue'), meta: { admin: true } },
+    { path: '/menus/:id', name: 'MenuEdit', component: () => import('../views/MenuEdit.vue'), props: true, meta: { admin: true } },
     { path: '/pages', name: 'Pages', component: () => import('../views/Pages.vue'), meta: { admin: true } },
+    { path: '/pages/new', name: 'PageNew', component: () => import('../views/PageEdit.vue'), meta: { admin: true } },
+    { path: '/pages/:id', name: 'PageEdit', component: () => import('../views/PageEdit.vue'), props: true, meta: { admin: true } },
   ],
 });
 

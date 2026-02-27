@@ -1,19 +1,30 @@
 <template>
-  <div class="min-h-screen flex flex-col bg-canvas text-ink font-sans selection:bg-primary selection:text-white">
-    <header v-if="user" class="flex items-center justify-between border-b-2 border-borderline px-6 py-4 bg-surface shadow-sm sticky top-0 z-50">
-      <router-link to="/" class="font-bold text-xl uppercase tracking-widest text-primary hover:text-ink transition-colors">Админ</router-link>
-      <nav class="flex items-center gap-6">
-        <router-link to="/news" class="text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 border-b-2 border-transparent" active-class="border-primary text-primary">Новости</router-link>
-        <template v-if="isAdmin">
-          <router-link to="/sources" class="text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 border-b-2 border-transparent" active-class="border-primary text-primary">Источники</router-link>
-          <router-link to="/sections" class="text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 border-b-2 border-transparent" active-class="border-primary text-primary">Разделы</router-link>
-          <router-link to="/menus" class="text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 border-b-2 border-transparent" active-class="border-primary text-primary">Меню</router-link>
-          <router-link to="/pages" class="text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 border-b-2 border-transparent" active-class="border-primary text-primary">Страницы</router-link>
-        </template>
-        <button class="ml-4 px-4 py-1.5 border-2 border-ink text-ink font-bold text-xs uppercase tracking-wider hover:bg-ink hover:text-surface transition-colors focus:outline-none" @click="logout">Выход</button>
-      </nav>
+  <div class="min-h-screen flex flex-col bg-gray-50 text-gray-900 font-sans selection:bg-blue-100 selection:text-blue-900">
+    <header v-if="user" class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <router-link to="/" class="font-bold text-xl tracking-tight text-gray-900 hover:text-blue-600 transition-colors flex items-center gap-2">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span class="text-white font-bold text-lg leading-none">A</span>
+            </div>
+            <span>Admin<span class="text-blue-600">Panel</span></span>
+          </router-link>
+          
+          <nav class="hidden md:flex items-center gap-2">
+            <router-link to="/news" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Новости</router-link>
+            <template v-if="isAdmin">
+              <router-link to="/sources" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Источники</router-link>
+              <router-link to="/sections" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Разделы</router-link>
+              <router-link to="/menus" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Меню</router-link>
+              <router-link to="/pages" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Страницы</router-link>
+            </template>
+            <div class="w-px h-6 bg-gray-200 mx-2"></div>
+            <button class="px-3 py-2 text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none" @click="logout">Выход</button>
+          </nav>
+        </div>
+      </div>
     </header>
-    <main class="flex-1 w-full max-w-7xl mx-auto p-6 md:p-8">
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <router-view />
     </main>
   </div>

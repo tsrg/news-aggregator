@@ -43,7 +43,7 @@
           </h2>
           <NuxtLink v-if="regionSectionId" :to="'/section/region'" class="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 group">
             Все новости
-            <span class="group-hover:translate-x-1 transition-transform">→</span>
+            <span class="transform-gpu group-hover:translate-x-1 transition-transform">→</span>
           </NuxtLink>
         </div>
         <div v-if="regionPending" class="animate-pulse space-y-6">
@@ -133,7 +133,7 @@
           
           <NuxtLink :to="`/section/${sec.slug}`" class="mt-6 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors group">
             Перейти в раздел 
-            <span class="ml-1 group-hover:translate-x-1 transition-transform">→</span>
+            <span class="ml-1 transform-gpu group-hover:translate-x-1 transition-transform">→</span>
           </NuxtLink>
         </div>
       </div>

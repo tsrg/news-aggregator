@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen flex flex-col bg-gray-50 text-gray-900 font-sans selection:bg-blue-100 selection:text-blue-900">
-    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200">
+    <header class="bg-white/95 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-200 shadow-sm transform-gpu">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <NuxtLink to="/" class="font-bold text-xl tracking-tight text-gray-900 hover:text-blue-600 transition-colors flex items-center gap-2">
@@ -113,6 +113,27 @@ function flattenItems(items: { id: string; label: string; url?: string; sectionI
   return out;
 }
 
-const menuItems = computed(() => flattenItems(headerData.value?.items));
-const footerItems = computed(() => flattenItems(footerData.value?.items));
+const menuItems = computed(() => {
+  const items = flattenItems(headerData.value?.items);
+  if (items.length > 0) return items;
+  // Fallback: use sections if no menu is configured
+  return (sections.value || []).slice(0, 5).map(s => ({
+    id: s.id,
+    label: s.title,
+    sectionId: s.id,
+    url: ''
+  }));
+});
+
+const footerItems = computed(() => {
+  const items = flattenItems(footerData.value?.items);
+  if (items.length > 0) return items;
+  // Fallback: use sections if no menu is configured
+  return (sections.value || []).map(s => ({
+    id: s.id,
+    label: s.title,
+    sectionId: s.id,
+    url: ''
+  }));
+});
 </script>

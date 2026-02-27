@@ -1,46 +1,53 @@
 <template>
-  <div class="bg-surface border-2 border-borderline p-6 shadow-sm">
-    <div class="flex items-center justify-between mb-8 border-b-2 border-borderline pb-4">
-      <h1 class="font-bold text-2xl uppercase tracking-wider text-ink">Источники RSS</h1>
-      <router-link to="/sources/new" class="px-4 py-2 bg-primary text-surface font-bold text-xs uppercase tracking-wider hover:bg-blue-700 transition-colors">Добавить</router-link>
+  <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      <div>
+        <h1 class="font-bold text-2xl text-gray-900 tracking-tight">Источники RSS</h1>
+        <p class="text-sm text-gray-500 mt-1">Управление парсингом новостей</p>
+      </div>
+      <router-link to="/sources/new" class="px-4 py-2.5 bg-blue-600 text-white font-medium text-sm rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 inline-flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+        Добавить
+      </router-link>
     </div>
     
-    <div v-if="loading" class="animate-pulse flex space-x-4">
-      <div class="flex-1 space-y-4 py-1">
-        <div class="h-4 bg-canvas rounded w-3/4"></div>
-        <div class="space-y-2">
-          <div class="h-4 bg-canvas rounded"></div>
-          <div class="h-4 bg-canvas rounded w-5/6"></div>
-        </div>
-      </div>
+    <div v-if="loading" class="animate-pulse space-y-4">
+      <div v-for="i in 5" :key="i" class="h-16 bg-gray-50 rounded-2xl w-full"></div>
     </div>
     <div class="overflow-x-auto" v-else>
-      <table class="w-full text-left font-mono text-sm border-collapse">
+      <table class="w-full text-left text-sm whitespace-nowrap">
         <thead>
-          <tr class="bg-canvas border-b-2 border-borderline uppercase text-xs tracking-wider text-ink font-bold">
-            <th class="p-3">Название</th>
-            <th class="p-3">URL</th>
-            <th class="p-3">Активен</th>
-            <th class="p-3">Последний сбор</th>
-            <th class="p-3">Действия</th>
+          <tr class="text-gray-500 border-b border-gray-100">
+            <th class="pb-3 px-4 font-medium">Название</th>
+            <th class="pb-3 px-4 font-medium">URL</th>
+            <th class="pb-3 px-4 font-medium">Статус</th>
+            <th class="pb-3 px-4 font-medium">Последний сбор</th>
+            <th class="pb-3 px-4 font-medium text-right">Действия</th>
           </tr>
         </thead>
-        <tbody>
-          <tr v-for="s in list" :key="s.id" class="border-b border-borderline hover:bg-canvas/50 transition-colors">
-            <td class="p-3 font-sans font-semibold">{{ s.name }}</td>
-            <td class="p-3 text-muted truncate max-w-xs" :title="s.url">{{ s.url }}</td>
-            <td class="p-3">
-              <span :class="s.isActive ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'" class="px-2 py-1 font-bold text-xs uppercase">
-                {{ s.isActive ? 'Да' : 'Нет' }}
+        <tbody class="divide-y divide-gray-50">
+          <tr v-for="s in list" :key="s.id" class="hover:bg-gray-50/50 transition-colors group">
+            <td class="py-4 px-4 font-medium text-gray-900">{{ s.name }}</td>
+            <td class="py-4 px-4 text-gray-500 truncate max-w-[200px]" :title="s.url">{{ s.url }}</td>
+            <td class="py-4 px-4">
+              <span :class="s.isActive ? 'text-green-700 bg-green-50 border-green-100' : 'text-red-700 bg-red-50 border-red-100'" class="px-2.5 py-1 text-xs font-medium rounded-full border">
+                {{ s.isActive ? 'Активен' : 'Отключен' }}
               </span>
             </td>
-            <td class="p-3 text-muted">{{ s.lastFetchedAt ? formatDate(s.lastFetchedAt) : '—' }}</td>
-            <td class="p-3">
-              <button class="px-3 py-1 bg-ink text-surface font-bold text-xs uppercase tracking-wider hover:bg-opacity-80 transition-colors" @click="fetchOne(s.id)">Собрать</button>
+            <td class="py-4 px-4 text-gray-500">{{ s.lastFetchedAt ? formatDate(s.lastFetchedAt) : '—' }}</td>
+            <td class="py-4 px-4 text-right">
+              <button class="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors" @click="fetchOne(s.id)">Собрать</button>
             </td>
           </tr>
         </tbody>
       </table>
+    </div>
+    <div v-if="list.length === 0 && !loading" class="text-center py-12">
+      <div class="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gray-50 mb-4">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+      </div>
+      <h3 class="text-sm font-medium text-gray-900 mb-1">Нет источников</h3>
+      <p class="text-sm text-gray-500">Добавьте первый RSS источник для сбора новостей.</p>
     </div>
   </div>
 </template>
@@ -54,7 +61,7 @@ const loading = ref(true);
 
 onMounted(async () => {
   try {
-    list.value = await api().get('/api/admin/sources');
+    list.value = await api().get<typeof list.value[0][]>('/api/admin/sources');
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Ошибка');
   } finally {
@@ -63,13 +70,14 @@ onMounted(async () => {
 });
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleString('ru-RU');
+  const date = new Date(d);
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
 async function fetchOne(id: string) {
   try {
     await api().post(`/api/admin/sources/${id}/fetch`, {});
-    const s = await api().get(`/api/admin/sources/${id}`);
+    const s = await api().get<typeof list.value[0]>(`/api/admin/sources/${id}`);
     const i = list.value.findIndex((x) => x.id === id);
     if (i >= 0) list.value[i] = s;
   } catch (e) {

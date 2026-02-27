@@ -6,12 +6,9 @@ export default {
   ],
   theme: {
     extend: {
-      colors: {
-        surface: '#FFFFFF',
-        canvas: '#F3F4F6',
-        primary: '#2563EB',
-        ink: '#1F2937',
-        borderline: '#D1D5DB'
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace'],
       }
     },
   },
