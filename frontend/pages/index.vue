@@ -161,11 +161,11 @@ type Section = { id: string; slug: string; title: string };
 function formatDateShort(d: string | undefined | null): string {
   if (!d) return '';
   const date = new Date(d);
-  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', timeZone: 'UTC' }).replace('.', '');
 }
 
 // Sections (for links and section blocks)
-const { data: sections, pending: sectionsPending } = await useFetch<Section[]>(`${apiBase}/api/sections`);
+const { data: sections, pending: sectionsPending } = await useFetch<Section[]>(`${apiBase}/api/sections`, { key: 'index-sections' });
 const sectionSlugs = computed(() => {
   const list = sections.value ?? [];
   return list.filter((s) => ['top', 'main', 'region', 'general'].indexOf(s.slug) === -1);
@@ -178,11 +178,12 @@ const topQuery = computed(() => {
   const r = region ? `&region=${encodeURIComponent(region)}` : '';
   return `${apiBase}/api/news?limit=4${r}`;
 });
-const { data: topData, pending: topPending } = await useFetch<NewsResponse>(() => topQuery.value);
+const { data: topData, pending: topPending } = await useFetch<NewsResponse>(() => topQuery.value, { key: 'index-top' });
 
 // Region block
 const regionQuery = computed(() => (region ? `${apiBase}/api/news?region=${encodeURIComponent(region)}&limit=6` : ''));
 const { data: regionData, pending: regionPending } = await useFetch<NewsResponse>(() => regionQuery.value, {
+  key: 'index-region',
   watch: [regionQuery],
   immediate: !!region,
 });
@@ -194,6 +195,7 @@ const generalQuery = computed(() => {
   return id ? `${apiBase}/api/news?section=${id}&limit=5` : '';
 });
 const { data: generalData, pending: generalPending } = await useFetch<NewsResponse>(() => generalQuery.value, {
+  key: 'index-general',
   watch: [generalQuery],
   immediate: true,
 });

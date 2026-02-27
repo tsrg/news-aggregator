@@ -38,10 +38,11 @@ function formatDate(d: string | undefined | null): string {
   const date = new Date(d);
   const now = new Date();
   const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-  if (diffDays === 1 && now.getDate() === date.getDate()) {
-      return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const opts: Intl.DateTimeFormatOptions = { timeZone: 'UTC' };
+  if (diffDays === 1 && now.getUTCDate() === date.getUTCDate()) {
+    return date.toLocaleTimeString('ru-RU', { ...opts, hour: '2-digit', minute: '2-digit' });
   }
-  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+  return date.toLocaleDateString('ru-RU', { ...opts, day: 'numeric', month: 'short' });
 }
 </script>

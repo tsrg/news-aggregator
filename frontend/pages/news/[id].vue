@@ -89,7 +89,7 @@ const sanitizedBody = computed(() => {
 
 function formatDate(d: string) {
   const date = new Date(d);
-  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
 }
 </script>
 

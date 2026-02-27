@@ -23,7 +23,6 @@
           </button>
 
           <nav
-            v-if="menuItems.length"
             class="hidden md:flex items-center gap-6"
           >
             <NuxtLink
@@ -97,7 +96,7 @@ const apiBase = useApiBase();
 const menuOpen = ref(false);
 
 // @ts-ignore - top-level await is supported by Nuxt (module/target set in .nuxt/tsconfig)
-const { data: sections } = await useFetch<Section[]>(`${apiBase}/api/sections`);
+const { data: sections } = await useFetch<Section[]>(`${apiBase}/api/sections`, { key: 'layout-sections' });
 const sectionsMap = computed(() => {
   const list = sections.value ?? [];
   return new Map<string, Section>(list.map((s: Section) => [s.id, s]));
@@ -105,11 +104,13 @@ const sectionsMap = computed(() => {
 
 // @ts-ignore - top-level await is supported by Nuxt (module/target set in .nuxt/tsconfig)
 const { data: headerData } = await useFetch<{ items?: { id: string; label: string; url?: string; sectionId?: string }[] }>(
-  `${apiBase}/api/menus/header`
+  `${apiBase}/api/menus/header`,
+  { key: 'layout-header' }
 );
 // @ts-ignore - top-level await is supported by Nuxt (module/target set in .nuxt/tsconfig)
 const { data: footerData } = await useFetch<{ items?: { id: string; label: string; url?: string; sectionId?: string }[] }>(
-  `${apiBase}/api/menus/footer`
+  `${apiBase}/api/menus/footer`,
+  { key: 'layout-footer' }
 );
 
 function flattenItems(items: { id: string; label: string; url?: string; sectionId?: string; children?: { id: string; label: string; url?: string; sectionId?: string }[] }[] | undefined): { id: string; label: string; url?: string; sectionId?: string }[] {
