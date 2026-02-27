@@ -42,8 +42,14 @@
         <p v-if="data.summary" class="text-lg md:text-xl text-gray-500 leading-relaxed font-medium">{{ data.summary }}</p>
       </div>
 
-      <div v-if="data.imageUrl" class="mb-10 rounded-2xl overflow-hidden shadow-sm">
-        <img :src="data.imageUrl" :alt="data.title" class="w-full h-auto object-cover max-h-[500px]" />
+      <div v-if="data.imageUrl" class="mb-10 rounded-2xl overflow-hidden shadow-sm aspect-video bg-gray-100">
+        <img
+          :src="data.imageUrl"
+          :alt="data.title"
+          class="w-full h-full object-cover"
+          fetchpriority="high"
+          decoding="async"
+        />
       </div>
 
       <div v-if="data.body" class="prose prose-lg prose-blue max-w-none text-gray-700 leading-relaxed marker:text-blue-600" v-html="sanitizedBody"></div>
@@ -52,7 +58,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watchEffect } from 'vue';
 import { useRoute, useNuxtApp } from '#app';
 
 const route = useRoute();
@@ -80,11 +86,19 @@ const breadcrumbItems = computed(() => {
   return items;
 });
 
-const sanitizedBody = computed(() => {
+const sanitizedBody = ref('');
+const nuxt = useNuxtApp();
+watchEffect(async () => {
   const raw = data.value?.body ?? '';
-  const nuxt = useNuxtApp();
-  if (nuxt.$sanitize) return nuxt.$sanitize(raw);
-  return raw.replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  if (!raw) {
+    sanitizedBody.value = '';
+    return;
+  }
+  try {
+    sanitizedBody.value = await (nuxt.$sanitize as (html: string) => Promise<string>)(raw);
+  } catch {
+    sanitizedBody.value = raw.replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  }
 });
 
 function formatDate(d: string) {

@@ -19,7 +19,7 @@
       </div>
       <div v-else-if="topData?.items?.length" class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
         <div class="lg:col-span-8">
-          <NewsCard :item="topData.items[0]" :featured="true" imagePosition="top" />
+          <NewsCard :item="topData.items[0]" :featured="true" imagePosition="top" :priority="true" />
         </div>
         <div class="lg:col-span-4 flex flex-col gap-6">
           <NewsCard

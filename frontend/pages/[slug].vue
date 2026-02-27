@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { ref, watchEffect } from 'vue';
 import { useRoute, useNuxtApp } from '#app';
 
 const route = useRoute();
@@ -35,18 +35,26 @@ const { data: page, pending, error } = await useFetch<{ title: string; body: str
   { key: `page-${slug}` }
 );
 
-const sanitizedBody = computed(() => {
+const sanitizedBody = ref('');
+const nuxt = useNuxtApp();
+watchEffect(async () => {
   const raw = page.value?.body ?? '';
-  const nuxt = useNuxtApp();
-  if (nuxt.$sanitize) return nuxt.$sanitize(raw);
-  return raw.replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  if (!raw) {
+    sanitizedBody.value = '';
+    return;
+  }
+  try {
+    sanitizedBody.value = await (nuxt.$sanitize as (html: string) => Promise<string>)(raw);
+  } catch {
+    sanitizedBody.value = raw.replace(/<script\b[\s\S]*?<\/script>/gi, '');
+  }
 });
 </script>
 
 <style>
 /* Base typography styling for the article body since we don't have typography plugin */
 .prose p { margin-bottom: 1.5em; }
-.prose h2 { font-size: 1.875rem; font-weight: 700; color: #111827; margin-top: 2em; margin-bottom: 1em; line-height: 1.3; tracking: -0.025em; }
+.prose h2 { font-size: 1.875rem; font-weight: 700; color: #111827; margin-top: 2em; margin-bottom: 1em; line-height: 1.3; letter-spacing: -0.025em; }
 .prose h3 { font-size: 1.5rem; font-weight: 700; color: #111827; margin-top: 1.6em; margin-bottom: 0.8em; line-height: 1.4; }
 .prose a { color: #2563EB; text-decoration: none; font-weight: 500; }
 .prose a:hover { text-decoration: underline; }

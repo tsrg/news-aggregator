@@ -1,8 +1,22 @@
 <template>
   <NuxtLink :to="`/news/${item.id}`" class="group block bg-white rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-[transform,box-shadow] duration-300 border border-gray-100 h-full flex flex-col will-change-transform">
     <div :class="['flex flex-col gap-0 h-full', imagePosition === 'left' ? 'md:flex-row' : '']">
-      <div v-if="item.imageUrl" :class="['overflow-hidden w-full relative bg-gray-100', imagePosition === 'left' ? 'md:w-2/5 shrink-0' : '']">
-        <img :src="item.imageUrl" alt="" class="w-full h-full object-cover transform-gpu group-hover:scale-105 transition-transform duration-700 ease-out will-change-transform" :class="[featured ? 'h-64 md:h-[400px]' : 'h-48 md:h-full min-h-[12rem]']" loading="lazy" />
+      <div
+        v-if="item.imageUrl"
+        :class="[
+          'overflow-hidden w-full relative bg-gray-100',
+          imagePosition === 'left' ? 'md:w-2/5 shrink-0' : '',
+          featured ? 'aspect-video md:aspect-video' : 'aspect-[4/3] md:aspect-[4/3]'
+        ]"
+      >
+        <img
+          :src="item.imageUrl"
+          :alt="item.title || ''"
+          class="w-full h-full object-cover transform-gpu group-hover:scale-105 transition-transform duration-700 ease-out will-change-transform"
+          :loading="priority ? undefined : 'lazy'"
+          :fetchpriority="priority ? 'high' : undefined"
+          :decoding="priority ? 'async' : undefined"
+        />
         <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
       </div>
       <div class="flex flex-col justify-between flex-1 p-5 md:p-6 bg-white">
@@ -36,6 +50,8 @@ defineProps<{
   };
   featured?: boolean;
   imagePosition?: 'top' | 'left';
+  /** Set true for LCP candidate (e.g. first card above the fold) to avoid lazy load and use fetchpriority="high" */
+  priority?: boolean;
 }>();
 
 function formatDate(d: string | undefined | null): string {

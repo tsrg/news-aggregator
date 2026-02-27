@@ -8,9 +8,11 @@ export default defineNuxtConfig({
   app: {
     head: {
       link: [
+        // Preconnect only; font stylesheet loaded asynchronously in plugin to avoid blocking FCP
         { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
         { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: '' },
-        { rel: 'stylesheet', href: 'https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap' }
+        // Preconnect to API origin for faster first request when front and API are on different hosts
+        ...(getApiOriginLink()),
       ]
     }
   },
@@ -22,3 +24,13 @@ export default defineNuxtConfig({
     },
   },
 });
+
+function getApiOriginLink(): { rel: string; href: string; crossorigin?: string }[] {
+  const apiBase = process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3000';
+  try {
+    const origin = new URL(apiBase).origin;
+    return [{ rel: 'preconnect', href: origin, crossorigin: '' }];
+  } catch {
+    return [];
+  }
+}

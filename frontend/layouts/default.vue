@@ -28,7 +28,7 @@
             <NuxtLink
               v-for="item in menuItems"
               :key="item.id"
-              :to="item.url || (item.sectionId ? `/section/${sectionsMap.get(item.sectionId)?.slug}` : '#')"
+              :to="item.url || (item.sectionId ? `/section/${sectionsMap.get(item.sectionId)?.slug}` : '/')"
               class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors px-2 py-1 rounded-md hover:bg-blue-50"
               active-class="text-blue-600 bg-blue-50"
             >
@@ -43,7 +43,7 @@
       <NuxtLink
         v-for="item in menuItems"
         :key="item.id"
-        :to="item.url || (item.sectionId ? `/section/${sectionsMap.get(item.sectionId)?.slug}` : '#')"
+        :to="item.url || (item.sectionId ? `/section/${sectionsMap.get(item.sectionId)?.slug}` : '/')"
         class="text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-4 py-3 rounded-xl transition-colors"
         active-class="text-blue-600 bg-blue-50"
         @click="menuOpen = false"
@@ -88,6 +88,7 @@
 
 <script setup lang="ts">
 /// <reference path="../global.d.ts" />
+import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
 
 type Section = { id: string; slug: string; title: string };
@@ -95,23 +96,25 @@ type Section = { id: string; slug: string; title: string };
 const apiBase = useApiBase();
 const menuOpen = ref(false);
 
-// @ts-ignore - top-level await is supported by Nuxt (module/target set in .nuxt/tsconfig)
-const { data: sections } = await useFetch<Section[]>(`${apiBase}/api/sections`, { key: 'layout-sections' });
+// Non-blocking: lazy so layout renders immediately; menu/footer fill in when data arrives
+type FetchResult<T> = { data: Ref<T | null>; pending: Ref<boolean>; error: Ref<Error | null>; refresh: () => Promise<void> };
+const { data: sections } = useFetch<Section[]>(`${apiBase}/api/sections`, { key: 'layout-sections', lazy: true }) as FetchResult<Section[]>;
 const sectionsMap = computed(() => {
   const list = sections.value ?? [];
   return new Map<string, Section>(list.map((s: Section) => [s.id, s]));
 });
 
-// @ts-ignore - top-level await is supported by Nuxt (module/target set in .nuxt/tsconfig)
-const { data: headerData } = await useFetch<{ items?: { id: string; label: string; url?: string; sectionId?: string }[] }>(
+const headerPayload = useFetch<{ items?: { id: string; label: string; url?: string; sectionId?: string }[] }>(
   `${apiBase}/api/menus/header`,
-  { key: 'layout-header' }
-);
-// @ts-ignore - top-level await is supported by Nuxt (module/target set in .nuxt/tsconfig)
-const { data: footerData } = await useFetch<{ items?: { id: string; label: string; url?: string; sectionId?: string }[] }>(
+  { key: 'layout-header', lazy: true }
+) as FetchResult<{ items?: { id: string; label: string; url?: string; sectionId?: string }[] }>;
+const headerData = headerPayload.data;
+
+const footerPayload = useFetch<{ items?: { id: string; label: string; url?: string; sectionId?: string }[] }>(
   `${apiBase}/api/menus/footer`,
-  { key: 'layout-footer' }
-);
+  { key: 'layout-footer', lazy: true }
+) as FetchResult<{ items?: { id: string; label: string; url?: string; sectionId?: string }[] }>;
+const footerData = footerPayload.data;
 
 function flattenItems(items: { id: string; label: string; url?: string; sectionId?: string; children?: { id: string; label: string; url?: string; sectionId?: string }[] }[] | undefined): { id: string; label: string; url?: string; sectionId?: string }[] {
   if (!items) return [];
@@ -126,24 +129,25 @@ function flattenItems(items: { id: string; label: string; url?: string; sectionI
 const menuItems = computed(() => {
   const items = flattenItems(headerData.value?.items);
   if (items.length > 0) return items;
-  // Fallback: use sections if no menu is configured
-  return (sections.value || []).slice(0, 5).map((s: Section) => ({
+  const fromSections = (sections.value || []).slice(0, 5).map((s: Section) => ({
     id: s.id,
     label: s.title,
     sectionId: s.id,
     url: ''
   }));
+  if (fromSections.length > 0) return fromSections;
+  return [{ id: 'home', label: 'Главная', url: '/' }];
 });
 
 const footerItems = computed(() => {
   const items = flattenItems(footerData.value?.items);
   if (items.length > 0) return items;
-  // Fallback: use sections if no menu is configured
-  return (sections.value || []).map((s: Section) => ({
+  const fromSections = (sections.value || []).map((s: Section) => ({
     id: s.id,
     label: s.title,
     sectionId: s.id,
     url: ''
   }));
+  return fromSections;
 });
 </script>
