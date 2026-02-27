@@ -36,9 +36,38 @@
             </div>
           </div>
           
-          <div class="pt-4 mt-2 border-t border-gray-100 flex items-center gap-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Регион</label>
+            <div class="relative">
+              <select v-model="form.region" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all appearance-none pr-10">
+                <option value="">— Без региона —</option>
+                <option value="Иваново">Иваново</option>
+                <option value="Другой">Другой</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                <svg class="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+              </div>
+            </div>
+          </div>
+          
+          <div v-if="id">
+            <label class="block text-sm font-medium text-gray-700 mb-2">Статус</label>
+            <div class="relative">
+              <select v-model="form.status" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all appearance-none pr-10">
+                <option value="PENDING">На модерации</option>
+                <option value="PUBLISHED">Опубликовано</option>
+                <option value="REJECTED">Отклонено</option>
+              </select>
+              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
+                <svg class="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
+              </div>
+            </div>
+          </div>
+          
+          <div class="pt-4 mt-2 border-t border-gray-100 flex flex-wrap items-center gap-3">
             <button class="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all shadow-sm shadow-blue-200" @click="save">Сохранить новость</button>
             <router-link to="/news" class="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors">Отмена</router-link>
+            <button v-if="id" type="button" class="px-6 py-3 border border-red-200 text-red-700 font-medium rounded-xl hover:bg-red-50 transition-colors" @click="remove">Удалить новость</button>
           </div>
         </div>
       </div>
@@ -111,7 +140,10 @@ const form = ref({
   summary: '',
   body: '',
   sectionId: undefined as string | undefined,
+  region: '' as string,
+  status: 'PENDING' as 'PENDING' | 'PUBLISHED' | 'REJECTED',
 });
+const initialStatus = ref<'PENDING' | 'PUBLISHED' | 'REJECTED' | null>(null);
 
 const sections = ref<{ id: string; title: string }[]>([]);
 const history = ref<{ id: string; createdAt: string }[]>([]);
@@ -127,13 +159,16 @@ onMounted(async () => {
   } catch {}
   if (id.value) {
     try {
-      const item = await api().get<{ title: string; summary?: string; body?: string; sectionId?: string }>(`/api/admin/news/${id.value}`);
+      const item = await api().get<{ title: string; summary?: string; body?: string; sectionId?: string; region?: string; status?: string }>(`/api/admin/news/${id.value}`);
       form.value = {
         title: item.title || '',
         summary: item.summary || '',
         body: item.body || '',
         sectionId: item.sectionId || undefined,
+        region: item.region || '',
+        status: (item.status === 'PUBLISHED' || item.status === 'REJECTED' ? item.status : 'PENDING') as 'PENDING' | 'PUBLISHED' | 'REJECTED',
       };
+      initialStatus.value = form.value.status;
       const hist = await api().get<{ id: string; createdAt: string }[]>(`/api/admin/news/${id.value}/history`);
       history.value = hist;
     } catch (e) {
@@ -145,13 +180,28 @@ onMounted(async () => {
 async function save() {
   try {
     if (id.value) {
-      await api().put(`/api/admin/news/${id.value}`, form.value);
+      await api().put(`/api/admin/news/${id.value}`, { title: form.value.title, summary: form.value.summary, body: form.value.body, sectionId: form.value.sectionId, region: form.value.region });
+      if (initialStatus.value !== null && form.value.status !== initialStatus.value) {
+        await api().patch(`/api/admin/news/${id.value}/status`, { status: form.value.status });
+        initialStatus.value = form.value.status;
+      }
     } else {
-      await api().post('/api/admin/news', form.value);
+      await api().post('/api/admin/news', { title: form.value.title, summary: form.value.summary, body: form.value.body, sectionId: form.value.sectionId, region: form.value.region });
     }
     router.push('/news');
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Ошибка сохранения');
+  }
+}
+
+async function remove() {
+  if (!id.value) return;
+  if (!confirm('Удалить новость?')) return;
+  try {
+    await api().delete(`/api/admin/news/${id.value}`);
+    router.push('/news');
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Ошибка удаления');
   }
 }
 

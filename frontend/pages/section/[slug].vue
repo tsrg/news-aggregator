@@ -62,20 +62,24 @@ const region = useRegion();
 
 const { data: sections, pending: sectionsPending } = await useFetch<{ id: string; slug: string; title: string }[]>(`${apiBase}/api/sections`);
 const section = computed(() => sections.value?.find((s) => s.slug === slug));
-const sectionNotFound = computed(() => !sectionsPending && slug !== 'region' && section.value === undefined);
+const sectionNotFound = computed(() => !sectionsPending && slug !== 'region' && slug !== 'general' && section.value === undefined);
 
 const page = ref(1);
 const limit = 20;
 
 const isRegionSection = computed(() => slug === 'region' && !!region);
+const isGeneralSection = computed(() => slug === 'general');
 
 const newsQuery = computed(() => {
   const base = `${apiBase}/api/news?limit=${limit}&page=${page.value}`;
   if (isRegionSection.value) {
     return `${base}&region=${encodeURIComponent(region)}`;
   }
+  if (isGeneralSection.value) {
+    return `${base}&noRegion=1`;
+  }
   const sectionId = section.value?.id;
-  if (!sectionId) return ''; // no fetch until section loaded or slug is unknown
+  if (!sectionId) return '';
   return `${base}&section=${sectionId}`;
 });
 

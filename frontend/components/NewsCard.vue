@@ -9,7 +9,12 @@
         <div>
           <div class="flex items-center gap-2 text-xs font-medium text-blue-600 mb-3">
             <span v-if="item.source?.name" class="px-2.5 py-1 bg-blue-50 rounded-full">{{ item.source.name }}</span>
-            <span class="text-gray-400">{{ formatDate(item.publishedAt) }}</span>
+            <ClientOnly>
+              <span class="text-gray-400">{{ formatDate(item.publishedAt) }}</span>
+              <template #fallback>
+                <span class="text-gray-400">{{ formatDateUTC(item.publishedAt) }}</span>
+              </template>
+            </ClientOnly>
           </div>
           <h2 class="font-bold text-gray-900 leading-snug group-hover:text-blue-600 transition-colors" :class="featured ? 'text-2xl md:text-4xl mb-4' : 'text-lg md:text-xl mb-3'">{{ item.title }}</h2>
           <p v-if="item.summary" class="text-gray-500 leading-relaxed" :class="featured ? 'text-base md:text-lg mb-6 line-clamp-3' : 'text-sm mb-4 line-clamp-2'">{{ item.summary }}</p>
@@ -37,10 +42,29 @@ function formatDate(d: string | undefined | null): string {
   if (!d) return '';
   const date = new Date(d);
   const now = new Date();
-  const diffTime = Math.abs(now.getTime() - date.getTime());
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  const diffMs = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const isSameLocalDay = now.getDate() === date.getDate() &&
+    now.getMonth() === date.getMonth() &&
+    now.getFullYear() === date.getFullYear();
+  if (diffDays <= 1 && isSameLocalDay) {
+    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+  }
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+}
+
+/** UTC version for SSR fallback so server and ClientOnly fallback match (avoids hydration mismatch). */
+function formatDateUTC(d: string | undefined | null): string {
+  if (!d) return '';
+  const date = new Date(d);
+  const now = new Date();
+  const diffMs = Math.abs(now.getTime() - date.getTime());
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
   const opts: Intl.DateTimeFormatOptions = { timeZone: 'UTC' };
-  if (diffDays === 1 && now.getUTCDate() === date.getUTCDate()) {
+  const isSameUTCDay = now.getUTCDate() === date.getUTCDate() &&
+    now.getUTCMonth() === date.getUTCMonth() &&
+    now.getUTCFullYear() === date.getUTCFullYear();
+  if (diffDays <= 1 && isSameUTCDay) {
     return date.toLocaleTimeString('ru-RU', { ...opts, hour: '2-digit', minute: '2-digit' });
   }
   return date.toLocaleDateString('ru-RU', { ...opts, day: 'numeric', month: 'short' });

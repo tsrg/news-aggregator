@@ -5,10 +5,14 @@ const router = Router();
 
 router.get('/', async (req, res) => {
   try {
-    const { region, section, dateFrom, dateTo, page = '1', limit = '20' } = req.query;
+    const { region, noRegion, section, dateFrom, dateTo, page = '1', limit = '20' } = req.query;
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const where = { status: 'PUBLISHED' };
-    if (region) where.region = region;
+    if (noRegion) {
+      where.OR = [{ region: null }, { region: '' }];
+    } else if (region) {
+      where.region = region;
+    }
     if (section) where.sectionId = section;
     if (dateFrom || dateTo) {
       where.publishedAt = {};

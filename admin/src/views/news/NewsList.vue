@@ -12,6 +12,11 @@
           <option value="PUBLISHED">Опубликовано</option>
           <option value="REJECTED">Отклонено</option>
         </select>
+        <select v-model="regionFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-4 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all">
+          <option value="">Все регионы</option>
+          <option value="Иваново">Иваново</option>
+          <option value="Другой">Другой</option>
+        </select>
         <router-link to="/news/new" class="px-4 py-2.5 bg-blue-600 text-white font-medium text-sm rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 inline-flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
           Добавить
@@ -32,6 +37,7 @@
           <tr class="text-gray-500 border-b border-gray-100">
             <th class="pb-3 px-4 font-medium w-1/2">Заголовок</th>
             <th class="pb-3 px-4 font-medium">Источник</th>
+            <th class="pb-3 px-4 font-medium">Регион</th>
             <th class="pb-3 px-4 font-medium">Статус</th>
             <th class="pb-3 px-4 font-medium">Дата</th>
             <th class="pb-3 px-4 font-medium text-right">Действия</th>
@@ -43,31 +49,30 @@
               <span class="line-clamp-2 leading-snug">{{ item.title }}</span>
             </td>
             <td class="py-4 px-4 text-gray-500">{{ item.source?.name || 'Вручную' }}</td>
+            <td class="py-4 px-4 text-gray-500">{{ item.region || '—' }}</td>
             <td class="py-4 px-4">
-              <span 
-                :class="{
-                  'text-green-700 bg-green-50 border-green-100': item.status === 'PUBLISHED',
-                  'text-amber-700 bg-amber-50 border-amber-100': item.status === 'PENDING',
-                  'text-red-700 bg-red-50 border-red-100': item.status === 'REJECTED'
-                }" 
-                class="px-2.5 py-1 text-xs font-medium rounded-full border inline-flex items-center gap-1.5"
+              <select
+                :value="item.status"
+                class="bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-[140px]"
+                @change="onStatusChange(item, $event)"
               >
-                <span class="w-1.5 h-1.5 rounded-full" 
-                  :class="{
-                    'bg-green-500': item.status === 'PUBLISHED',
-                    'bg-amber-500': item.status === 'PENDING',
-                    'bg-red-500': item.status === 'REJECTED'
-                  }">
-                </span>
-                {{ item.status === 'PUBLISHED' ? 'Опубликовано' : item.status === 'PENDING' ? 'Модерация' : 'Отклонено' }}
-              </span>
+                <option value="PENDING">На модерации</option>
+                <option value="PUBLISHED">Опубликовано</option>
+                <option value="REJECTED">Отклонено</option>
+              </select>
             </td>
             <td class="py-4 px-4 text-gray-500">{{ formatDate(item.createdAt) }}</td>
             <td class="py-4 px-4 text-right">
               <div class="flex items-center justify-end gap-2">
                 <router-link :to="`/news/${item.id}`" class="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors">Ред.</router-link>
-                <button v-if="item.status === 'PENDING'" class="px-3 py-1.5 bg-green-50 text-green-700 border border-green-100 text-xs font-medium rounded-lg hover:bg-green-100 transition-colors" @click="publish(item.id)">Опуб.</button>
-                <button v-if="item.status === 'PENDING'" class="px-3 py-1.5 bg-red-50 text-red-700 border border-red-100 text-xs font-medium rounded-lg hover:bg-red-100 transition-colors" @click="reject(item.id)">Откл.</button>
+                <button
+                  type="button"
+                  class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Удалить"
+                  @click="remove(item)"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
               </div>
             </td>
           </tr>
@@ -82,25 +87,65 @@
       <h3 class="text-sm font-medium text-gray-900 mb-1">Нет новостей</h3>
       <p class="text-sm text-gray-500">По выбранным критериям ничего не найдено.</p>
     </div>
+
+    <!-- Пагинация -->
+    <div v-if="total > limit && !loading" class="mt-6 pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <p class="text-sm text-gray-500">
+        Показано {{ (page - 1) * limit + 1 }}–{{ Math.min(page * limit, total) }} из {{ total }}
+      </p>
+      <div class="flex items-center gap-2">
+        <button
+          :disabled="page <= 1"
+          class="px-3 py-2 text-sm font-medium rounded-xl border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          :class="page <= 1 ? 'border-gray-100 text-gray-400 bg-gray-50' : 'border-gray-200 text-gray-700 hover:bg-gray-50'"
+          @click="page = Math.max(1, page - 1)"
+        >
+          Назад
+        </button>
+        <span class="px-3 py-2 text-sm text-gray-600">
+          Страница {{ page }} из {{ totalPages }}
+        </span>
+        <button
+          :disabled="page >= totalPages"
+          class="px-3 py-2 text-sm font-medium rounded-xl border transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          :class="page >= totalPages ? 'border-gray-100 text-gray-400 bg-gray-50' : 'border-gray-200 text-gray-700 hover:bg-gray-50'"
+          @click="page = Math.min(totalPages, page + 1)"
+        >
+          Вперёд
+        </button>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { api } from '../../api';
 
 const statusFilter = ref('');
-const items = ref<{ id: string; title?: string; source?: { name: string }; status: string; createdAt: string }[]>([]);
+const regionFilter = ref('');
+const page = ref(1);
+const limit = 20;
+const items = ref<{ id: string; title?: string; source?: { name: string }; status: string; createdAt: string; region?: string }[]>([]);
+const total = ref(0);
 const loading = ref(true);
 const error = ref('');
+
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit)));
 
 async function load() {
   loading.value = true;
   error.value = '';
   try {
-    const q = statusFilter.value ? `?status=${statusFilter.value}` : '';
-    const data = await api().get<{ items: typeof items.value }>(`/api/admin/news${q}`);
+    const params = new URLSearchParams();
+    if (statusFilter.value) params.set('status', statusFilter.value);
+    if (regionFilter.value) params.set('region', regionFilter.value);
+    params.set('page', String(page.value));
+    params.set('limit', String(limit));
+    const q = params.toString() ? `?${params.toString()}` : '';
+    const data = await api().get<{ items: typeof items.value; total: number }>(`/api/admin/news${q}`);
     items.value = data.items;
+    total.value = data.total ?? 0;
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Ошибка';
   } finally {
@@ -108,29 +153,33 @@ async function load() {
   }
 }
 
-watch([statusFilter], load);
+watch([statusFilter, regionFilter], () => { page.value = 1; });
+watch([statusFilter, regionFilter, page], load);
 load();
+
+async function onStatusChange(item: { id: string; status: string }, e: Event) {
+  const status = (e.target as HTMLSelectElement).value;
+  if (status === item.status) return;
+  try {
+    await api().patch(`/api/admin/news/${item.id}/status`, { status });
+    item.status = status;
+  } catch (err) {
+    alert(err instanceof Error ? err.message : 'Ошибка');
+  }
+}
+
+async function remove(item: { id: string; title?: string }) {
+  if (!confirm('Удалить новость?')) return;
+  try {
+    await api().delete(`/api/admin/news/${item.id}`);
+    await load();
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Ошибка');
+  }
+}
 
 function formatDate(d: string) {
   const date = new Date(d);
   return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-}
-
-async function publish(id: string) {
-  try {
-    await api().patch(`/api/admin/news/${id}/status`, { status: 'PUBLISHED' });
-    load();
-  } catch (e) {
-    alert(e instanceof Error ? e.message : 'Ошибка');
-  }
-}
-
-async function reject(id: string) {
-  try {
-    await api().patch(`/api/admin/news/${id}/status`, { status: 'REJECTED' });
-    load();
-  } catch (e) {
-    alert(e instanceof Error ? e.message : 'Ошибка');
-  }
 }
 </script>

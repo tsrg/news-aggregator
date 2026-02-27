@@ -84,7 +84,7 @@
               </div>
             </NuxtLink>
             
-            <div v-if="generalSectionId && generalData.total > generalData.items.length" class="pt-6 border-t border-gray-100 text-center mt-2">
+            <div v-if="generalData && generalData.total > generalData.items.length" class="pt-6 border-t border-gray-100 text-center mt-2">
               <NuxtLink to="/section/general" class="inline-flex items-center justify-center w-full py-3 px-4 bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-600 text-sm font-medium rounded-xl transition-colors">
                 Показать больше
               </NuxtLink>
@@ -171,7 +171,6 @@ const sectionSlugs = computed(() => {
   return list.filter((s) => ['top', 'main', 'region', 'general'].indexOf(s.slug) === -1);
 });
 const regionSectionId = computed(() => sections.value?.find((s) => s.slug === 'region')?.id ?? null);
-const generalSectionId = computed(() => sections.value?.find((s) => s.slug === 'general')?.id ?? null);
 
 // Top stories (with region if set)
 const topQuery = computed(() => {
@@ -188,12 +187,8 @@ const { data: regionData, pending: regionPending } = await useFetch<NewsResponse
   immediate: !!region,
 });
 
-// General news (by section)
-const generalSectionIdRef = computed(() => generalSectionId.value ?? '');
-const generalQuery = computed(() => {
-  const id = generalSectionIdRef.value;
-  return id ? `${apiBase}/api/news?section=${id}&limit=5` : '';
-});
+// General news (no region)
+const generalQuery = computed(() => `${apiBase}/api/news?noRegion=1&limit=5`);
 const { data: generalData, pending: generalPending } = await useFetch<NewsResponse>(() => generalQuery.value, {
   key: 'index-general',
   watch: [generalQuery],

@@ -69,7 +69,7 @@
             <NuxtLink
               v-for="item in footerItems"
               :key="item.id"
-              :to="item.url || '#'"
+              :to="item.url || (item.sectionId ? `/section/${sectionsMap.get(item.sectionId)?.slug}` : '#')"
               class="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
             >
               {{ item.label }}
