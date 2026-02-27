@@ -1,30 +1,47 @@
 <template>
-  <div>
-    <h1>Источники RSS</h1>
-    <router-link to="/sources/new" class="btn">Добавить</router-link>
-    <div v-if="loading" class="loading">Загрузка...</div>
-    <table v-else class="table">
-      <thead>
-        <tr>
-          <th>Название</th>
-          <th>URL</th>
-          <th>Активен</th>
-          <th>Последний сбор</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="s in list" :key="s.id">
-          <td>{{ s.name }}</td>
-          <td>{{ s.url }}</td>
-          <td>{{ s.isActive ? 'Да' : 'Нет' }}</td>
-          <td>{{ s.lastFetchedAt ? formatDate(s.lastFetchedAt) : '—' }}</td>
-          <td>
-            <button class="btn-sm" @click="fetchOne(s.id)">Собрать</button>
-          </td>
-        </tr>
-      </tbody>
-    </table>
+  <div class="bg-surface border-2 border-borderline p-6 shadow-sm">
+    <div class="flex items-center justify-between mb-8 border-b-2 border-borderline pb-4">
+      <h1 class="font-bold text-2xl uppercase tracking-wider text-ink">Источники RSS</h1>
+      <router-link to="/sources/new" class="px-4 py-2 bg-primary text-surface font-bold text-xs uppercase tracking-wider hover:bg-blue-700 transition-colors">Добавить</router-link>
+    </div>
+    
+    <div v-if="loading" class="animate-pulse flex space-x-4">
+      <div class="flex-1 space-y-4 py-1">
+        <div class="h-4 bg-canvas rounded w-3/4"></div>
+        <div class="space-y-2">
+          <div class="h-4 bg-canvas rounded"></div>
+          <div class="h-4 bg-canvas rounded w-5/6"></div>
+        </div>
+      </div>
+    </div>
+    <div class="overflow-x-auto" v-else>
+      <table class="w-full text-left font-mono text-sm border-collapse">
+        <thead>
+          <tr class="bg-canvas border-b-2 border-borderline uppercase text-xs tracking-wider text-ink font-bold">
+            <th class="p-3">Название</th>
+            <th class="p-3">URL</th>
+            <th class="p-3">Активен</th>
+            <th class="p-3">Последний сбор</th>
+            <th class="p-3">Действия</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="s in list" :key="s.id" class="border-b border-borderline hover:bg-canvas/50 transition-colors">
+            <td class="p-3 font-sans font-semibold">{{ s.name }}</td>
+            <td class="p-3 text-muted truncate max-w-xs" :title="s.url">{{ s.url }}</td>
+            <td class="p-3">
+              <span :class="s.isActive ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'" class="px-2 py-1 font-bold text-xs uppercase">
+                {{ s.isActive ? 'Да' : 'Нет' }}
+              </span>
+            </td>
+            <td class="p-3 text-muted">{{ s.lastFetchedAt ? formatDate(s.lastFetchedAt) : '—' }}</td>
+            <td class="p-3">
+              <button class="px-3 py-1 bg-ink text-surface font-bold text-xs uppercase tracking-wider hover:bg-opacity-80 transition-colors" @click="fetchOne(s.id)">Собрать</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </template>
 
@@ -60,10 +77,3 @@ async function fetchOne(id: string) {
   }
 }
 </script>
-
-<style scoped>
-.btn { display: inline-block; padding: 0.5rem 1rem; background: #0d6efd; color: #fff; text-decoration: none; border-radius: 4px; margin-bottom: 1rem; }
-.table { width: 100%; border-collapse: collapse; }
-.table th, .table td { padding: 0.5rem; text-align: left; border-bottom: 1px solid #ddd; }
-.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.85rem; cursor: pointer; }
-</style>

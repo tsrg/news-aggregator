@@ -1,12 +1,22 @@
 <template>
-  <div class="login">
-    <h1>Вход</h1>
-    <form @submit.prevent="submit">
-      <input v-model="email" type="email" placeholder="Email" required />
-      <input v-model="password" type="password" placeholder="Пароль" required />
-      <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit" :disabled="loading">Войти</button>
-    </form>
+  <div class="min-h-[80vh] flex items-center justify-center">
+    <div class="bg-surface border-2 border-borderline p-8 shadow-sm w-full max-w-md">
+      <h1 class="font-bold text-2xl uppercase tracking-wider text-ink mb-6 text-center border-b-2 border-borderline pb-4">Вход в систему</h1>
+      <form @submit.prevent="submit" class="flex flex-col gap-4">
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-ink mb-2">Email</label>
+          <input v-model="email" type="email" placeholder="admin@example.com" required class="w-full border-2 border-borderline bg-canvas p-3 text-ink focus:border-primary focus:outline-none transition-colors font-mono text-sm" />
+        </div>
+        <div>
+          <label class="block text-xs font-bold uppercase tracking-wider text-ink mb-2">Пароль</label>
+          <input v-model="password" type="password" placeholder="••••••••" required class="w-full border-2 border-borderline bg-canvas p-3 text-ink focus:border-primary focus:outline-none transition-colors font-mono text-sm" />
+        </div>
+        <p v-if="error" class="text-red-600 font-bold text-sm bg-red-50 p-3 border-l-4 border-red-600">{{ error }}</p>
+        <button type="submit" :disabled="loading" class="mt-4 w-full bg-primary text-surface font-bold uppercase tracking-widest text-sm p-4 hover:bg-blue-700 focus:outline-none disabled:opacity-50 transition-colors">
+          {{ loading ? 'Вход...' : 'Войти' }}
+        </button>
+      </form>
+    </div>
   </div>
 </template>
 
@@ -43,10 +53,3 @@ async function submit() {
   }
 }
 </script>
-
-<style scoped>
-.login { max-width: 320px; margin: 2rem auto; }
-.login input { display: block; width: 100%; margin-bottom: 0.75rem; padding: 0.5rem; }
-.login button { padding: 0.5rem 1rem; cursor: pointer; }
-.error { color: #c00; font-size: 0.9rem; }
-</style>

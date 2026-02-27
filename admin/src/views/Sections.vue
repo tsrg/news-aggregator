@@ -1,14 +1,27 @@
 <template>
-  <div>
-    <h1>Разделы</h1>
-    <div v-if="loading" class="loading">Загрузка...</div>
-    <ul v-else class="list">
-      <li v-for="s in list" :key="s.id" class="row">
-        <span>{{ s.title }} ({{ s.slug }})</span>
-        <span>{{ s.isVisible ? 'Видим' : 'Скрыт' }}</span>
+  <div class="bg-surface border-2 border-borderline p-6 shadow-sm">
+    <div class="flex items-center justify-between mb-8 border-b-2 border-borderline pb-4">
+      <h1 class="font-bold text-2xl uppercase tracking-wider text-ink">Разделы</h1>
+    </div>
+    
+    <div v-if="loading" class="animate-pulse flex space-x-4">
+      <div class="flex-1 space-y-4 py-1">
+        <div class="h-4 bg-canvas rounded w-3/4"></div>
+        <div class="space-y-2">
+          <div class="h-4 bg-canvas rounded"></div>
+          <div class="h-4 bg-canvas rounded w-5/6"></div>
+        </div>
+      </div>
+    </div>
+    <ul v-else class="flex flex-col border-t border-borderline">
+      <li v-for="s in list" :key="s.id" class="flex justify-between items-center p-4 border-b border-borderline hover:bg-canvas transition-colors">
+        <span class="font-sans font-semibold text-lg">{{ s.title }} <span class="font-mono text-sm text-muted bg-canvas px-2 py-1 ml-2 border border-borderline">{{ s.slug }}</span></span>
+        <span :class="s.isVisible ? 'text-green-600 border-green-600' : 'text-red-600 border-red-600'" class="px-2 py-1 border font-bold text-xs uppercase tracking-wider">
+          {{ s.isVisible ? 'Видим' : 'Скрыт' }}
+        </span>
       </li>
     </ul>
-    <p v-if="list.length === 0 && !loading">Разделов нет.</p>
+    <p v-if="list.length === 0 && !loading" class="text-muted font-mono italic p-4">Разделов нет.</p>
   </div>
 </template>
 
@@ -29,8 +42,3 @@ onMounted(async () => {
   }
 });
 </script>
-
-<style scoped>
-.list { list-style: none; padding: 0; }
-.row { padding: 0.5rem 0; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; }
-</style>

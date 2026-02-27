@@ -1,51 +1,216 @@
 <template>
-  <div>
-    <h1>Главная</h1>
-    <div v-if="pending" class="loading">Загрузка...</div>
-    <div v-else-if="error" class="error">{{ error.message }}</div>
-    <div v-else class="news-list">
-      <NuxtLink
-        v-for="item in data?.items"
-        :key="item.id"
-        :to="`/news/${item.id}`"
-        class="news-card"
-      >
-        <h2 class="news-title">{{ item.title }}</h2>
-        <p v-if="item.summary" class="news-summary">{{ item.summary }}</p>
-        <span class="news-meta">{{ item.publishedAt ? formatDate(item.publishedAt) : '' }} · {{ item.source?.name }}</span>
-      </NuxtLink>
-      <p v-if="data?.items?.length === 0" class="empty">Новостей пока нет.</p>
+  <div class="flex flex-col gap-16 md:gap-20">
+    <AppBreadcrumbs :items="[]" class="hidden" />
+
+    <!-- Top Stories -->
+    <section>
+      <div class="flex items-center justify-between mb-8">
+        <h2 class="font-bold text-2xl md:text-3xl text-gray-900 tracking-tight flex items-center gap-3">
+          <span class="w-1.5 h-6 bg-blue-600 rounded-full"></span>
+          Главное за сегодня
+        </h2>
+      </div>
+      
+      <div v-if="topPending" class="animate-pulse flex space-x-4">
+        <div class="flex-1 space-y-4 py-1">
+          <div class="h-6 bg-gray-200 rounded w-1/4"></div>
+          <div class="h-64 bg-gray-200 rounded-2xl w-full mt-4"></div>
+        </div>
+      </div>
+      <div v-else-if="topData?.items?.length" class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
+        <div class="lg:col-span-8">
+          <NewsCard :item="topData.items[0]" :featured="true" imagePosition="top" />
+        </div>
+        <div class="lg:col-span-4 flex flex-col gap-6">
+          <NewsCard
+            v-for="item in topData.items.slice(1, 4)"
+            :key="item.id"
+            :item="item"
+            imagePosition="top"
+          />
+        </div>
+      </div>
+      <p v-else class="text-gray-500 bg-white p-8 rounded-2xl text-center border border-gray-100">Нет новостей для отображения.</p>
+    </section>
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
+      <!-- Left Column: Region News -->
+      <section v-if="region" class="lg:col-span-8">
+        <div class="flex items-center justify-between mb-8">
+          <h2 class="font-bold text-2xl text-gray-900 tracking-tight flex items-center gap-3">
+            <span class="w-1.5 h-6 bg-blue-400 rounded-full"></span>
+            Новости региона
+          </h2>
+          <NuxtLink v-if="regionSectionId" :to="'/section/region'" class="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 group">
+            Все новости
+            <span class="group-hover:translate-x-1 transition-transform">→</span>
+          </NuxtLink>
+        </div>
+        <div v-if="regionPending" class="animate-pulse space-y-6">
+          <div v-for="i in 3" :key="i" class="h-32 bg-gray-200 rounded-2xl w-full"></div>
+        </div>
+        <div v-else-if="regionData?.items?.length" class="flex flex-col gap-6">
+          <NewsCard
+            v-for="item in regionData.items"
+            :key="item.id"
+            :item="item"
+            imagePosition="left"
+          />
+        </div>
+        <p v-else class="text-gray-500 bg-white p-8 rounded-2xl text-center border border-gray-100">Нет региональных новостей.</p>
+      </section>
+
+      <!-- Right Column: General News -->
+      <aside class="lg:col-span-4">
+        <div class="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm sticky top-24">
+          <h2 class="font-bold text-xl text-gray-900 tracking-tight mb-6">Общая картина</h2>
+          <div v-if="generalPending" class="animate-pulse space-y-6">
+            <div v-for="i in 4" :key="i" class="h-16 bg-gray-200 rounded-xl w-full"></div>
+          </div>
+          <div v-else-if="generalData?.items?.length" class="flex flex-col gap-6">
+            <NuxtLink 
+              v-for="item in generalData.items" 
+              :key="item.id" 
+              :to="`/news/${item.id}`"
+              class="group block relative"
+            >
+              <div class="flex items-start gap-4">
+                <div class="w-10 h-10 shrink-0 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                  {{ formatDateShort(item.publishedAt) }}
+                </div>
+                <div>
+                  <h3 class="font-medium text-gray-900 leading-snug group-hover:text-blue-600 transition-colors line-clamp-3">{{ item.title }}</h3>
+                </div>
+              </div>
+            </NuxtLink>
+            
+            <div v-if="generalSectionId && generalData.total > generalData.items.length" class="pt-6 border-t border-gray-100 text-center mt-2">
+              <NuxtLink to="/section/general" class="inline-flex items-center justify-center w-full py-3 px-4 bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-600 text-sm font-medium rounded-xl transition-colors">
+                Показать больше
+              </NuxtLink>
+            </div>
+          </div>
+          <p v-else class="text-gray-500 text-center py-4">Нет общих новостей.</p>
+        </div>
+      </aside>
     </div>
+
+    <!-- Sections Grid -->
+    <section class="pt-8">
+      <div class="flex items-center justify-center mb-12">
+        <h2 class="font-bold text-3xl md:text-4xl text-gray-900 tracking-tight text-center">По темам</h2>
+      </div>
+      
+      <div v-if="sectionsPending" class="animate-pulse grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+         <div v-for="i in 3" :key="i" class="h-64 bg-gray-200 rounded-3xl w-full"></div>
+      </div>
+      <div v-else-if="sectionSlugs.length" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div
+          v-for="sec in sectionSlugs"
+          :key="sec.id"
+          class="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col h-full"
+        >
+          <div class="mb-6 flex justify-between items-center">
+            <NuxtLink :to="`/section/${sec.slug}`" class="font-bold text-xl text-gray-900 hover:text-blue-600 transition-colors flex items-center gap-2">
+              <span class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 text-sm">#</span>
+              {{ sec.title }}
+            </NuxtLink>
+          </div>
+          
+          <div v-if="sectionNewsMap.get(sec.id)?.length" class="flex flex-col gap-5 flex-1">
+            <NuxtLink
+              v-for="n in (sectionNewsMap.get(sec.id) ?? []).slice(0, 3)"
+              :key="n.id"
+              :to="`/news/${n.id}`"
+              class="group block border-b border-gray-100 pb-5 last:border-0 last:pb-0"
+            >
+              <h4 class="font-medium text-gray-800 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">{{ n.title }}</h4>
+            </NuxtLink>
+          </div>
+          <div v-else class="flex-1 flex items-center justify-center py-8">
+             <p class="text-sm text-gray-400">Нет новостей</p>
+          </div>
+          
+          <NuxtLink :to="`/section/${sec.slug}`" class="mt-6 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors group">
+            Перейти в раздел 
+            <span class="ml-1 group-hover:translate-x-1 transition-transform">→</span>
+          </NuxtLink>
+        </div>
+      </div>
+    </section>
   </div>
 </template>
 
 <script setup lang="ts">
+import { computed, ref, watchEffect } from 'vue';
+
 const apiBase = useApiBase();
+const region = useRegion();
 
-const region = ref('');
-const { data, pending, error } = await useFetch<{ items: { id: string; title: string; summary?: string; publishedAt?: string; source?: { name: string } }[]; total: number }>(
-  () => `${apiBase}/api/news?limit=20${region.value ? `&region=${region.value}` : ''}`
-);
+type NewsItem = {
+  id: string;
+  title: string;
+  summary?: string | null;
+  imageUrl?: string | null;
+  publishedAt?: string | null;
+  source?: { name: string } | null;
+};
+type NewsResponse = { items: NewsItem[]; total: number };
+type Section = { id: string; slug: string; title: string };
 
-function formatDate(d: string) {
-  return new Date(d).toLocaleDateString('ru-RU');
+function formatDateShort(d: string | undefined | null): string {
+  if (!d) return '';
+  const date = new Date(d);
+  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' }).replace('.', '');
 }
+
+// Sections (for links and section blocks)
+const { data: sections, pending: sectionsPending } = await useFetch<Section[]>(`${apiBase}/api/sections`);
+const sectionSlugs = computed(() => {
+  const list = sections.value ?? [];
+  return list.filter((s) => ['top', 'main', 'region', 'general'].indexOf(s.slug) === -1);
+});
+const regionSectionId = computed(() => sections.value?.find((s) => s.slug === 'region')?.id ?? null);
+const generalSectionId = computed(() => sections.value?.find((s) => s.slug === 'general')?.id ?? null);
+
+// Top stories (with region if set)
+const topQuery = computed(() => {
+  const r = region ? `&region=${encodeURIComponent(region)}` : '';
+  return `${apiBase}/api/news?limit=4${r}`;
+});
+const { data: topData, pending: topPending } = await useFetch<NewsResponse>(() => topQuery.value);
+
+// Region block
+const regionQuery = computed(() => (region ? `${apiBase}/api/news?region=${encodeURIComponent(region)}&limit=6` : ''));
+const { data: regionData, pending: regionPending } = await useFetch<NewsResponse>(() => regionQuery.value, {
+  watch: [regionQuery],
+  immediate: !!region,
+});
+
+// General news (by section)
+const generalSectionIdRef = computed(() => generalSectionId.value ?? '');
+const generalQuery = computed(() => {
+  const id = generalSectionIdRef.value;
+  return id ? `${apiBase}/api/news?section=${id}&limit=5` : '';
+});
+const { data: generalData, pending: generalPending } = await useFetch<NewsResponse>(() => generalQuery.value, {
+  watch: [generalQuery],
+  immediate: true,
+});
+
+// Section previews: fetch last 3 per section for sectionSlugs
+const sectionNewsMap = ref<Map<string, NewsItem[]>>(new Map());
+const sectionSlugsRef = computed(() => sectionSlugs.value);
+watchEffect(async () => {
+  const list = sectionSlugsRef.value;
+  if (!list.length) return;
+  const map = new Map<string, NewsItem[]>();
+  await Promise.all(
+    list.map(async (sec) => {
+      const res = await $fetch<NewsResponse>(`${apiBase}/api/news?section=${sec.id}&limit=3`);
+      map.set(sec.id, res.items ?? []);
+    })
+  );
+  sectionNewsMap.value = map;
+});
 </script>
-
-<style scoped>
-.news-list { display: flex; flex-direction: column; gap: 1.5rem; }
-.news-card {
-  padding: 1rem;
-  border: 1px solid #eee;
-  border-radius: 8px;
-  text-decoration: none;
-  color: inherit;
-  display: block;
-}
-.news-card:hover { background: #f8f8f8; }
-.news-title { margin: 0 0 0.5rem; font-size: 1.1rem; }
-.news-summary { margin: 0; color: #555; font-size: 0.95rem; }
-.news-meta { font-size: 0.85rem; color: #888; }
-.loading, .error, .empty { padding: 1rem; }
-.error { color: #c00; }
-</style>

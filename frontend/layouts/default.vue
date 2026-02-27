@@ -1,36 +1,97 @@
 <template>
-  <div class="layout">
-    <header class="header">
-      <NuxtLink to="/" class="logo">Новости</NuxtLink>
-      <nav v-if="menuItems.length" class="nav">
-        <NuxtLink
-          v-for="item in menuItems"
-          :key="item.id"
-          :to="item.url || (item.sectionId ? `/section/${sectionsMap.get(item.sectionId)?.slug}` : '#')"
-          class="nav-link"
-        >
-          {{ item.label }}
-        </NuxtLink>
-      </nav>
+  <div class="min-h-screen flex flex-col bg-gray-50 text-gray-900 font-sans selection:bg-blue-100 selection:text-blue-900">
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <NuxtLink to="/" class="font-bold text-xl tracking-tight text-gray-900 hover:text-blue-600 transition-colors flex items-center gap-2">
+            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <span class="text-white font-bold text-lg leading-none">N</span>
+            </div>
+            <span>News<span class="text-blue-600">App</span></span>
+          </NuxtLink>
+          
+          <button
+            type="button"
+            class="md:hidden flex flex-col justify-center gap-1.5 w-8 h-8 focus:outline-none"
+            aria-label="Открыть меню"
+            :aria-expanded="menuOpen"
+            @click="menuOpen = !menuOpen"
+          >
+            <span class="block w-6 h-0.5 bg-gray-600 rounded-full transition-all origin-center" :class="menuOpen ? 'rotate-45 translate-y-2' : ''" />
+            <span class="block w-6 h-0.5 bg-gray-600 rounded-full transition-all" :class="menuOpen ? 'opacity-0' : ''" />
+            <span class="block w-6 h-0.5 bg-gray-600 rounded-full transition-all origin-center" :class="menuOpen ? '-rotate-45 -translate-y-2' : ''" />
+          </button>
+
+          <nav
+            v-if="menuItems.length"
+            class="hidden md:flex items-center gap-6"
+          >
+            <NuxtLink
+              v-for="item in menuItems"
+              :key="item.id"
+              :to="item.url || (item.sectionId ? `/section/${sectionsMap.get(item.sectionId)?.slug}` : '#')"
+              class="text-sm font-medium text-gray-600 hover:text-blue-600 transition-colors px-2 py-1 rounded-md hover:bg-blue-50"
+              active-class="text-blue-600 bg-blue-50"
+            >
+              {{ item.label }}
+            </NuxtLink>
+          </nav>
+        </div>
+      </div>
     </header>
-    <main class="main">
-      <slot />
-    </main>
-    <footer v-if="footerItems.length" class="footer">
+    
+    <div v-if="menuOpen" class="md:hidden bg-white border-b border-gray-200 fixed top-16 left-0 right-0 z-40 px-4 py-4 flex flex-col gap-2 shadow-lg rounded-b-2xl">
       <NuxtLink
-        v-for="item in footerItems"
+        v-for="item in menuItems"
         :key="item.id"
-        :to="item.url || '#'"
-        class="footer-link"
+        :to="item.url || (item.sectionId ? `/section/${sectionsMap.get(item.sectionId)?.slug}` : '#')"
+        class="text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-4 py-3 rounded-xl transition-colors"
+        active-class="text-blue-600 bg-blue-50"
+        @click="menuOpen = false"
       >
         {{ item.label }}
       </NuxtLink>
+    </div>
+
+    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+      <slot />
+    </main>
+
+    <footer v-if="footerItems.length" class="bg-white border-t border-gray-200 py-12 mt-auto">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center">
+              <span class="text-gray-500 font-bold text-xs leading-none">N</span>
+            </div>
+            <span class="font-bold text-gray-400">NewsApp</span>
+          </div>
+          <div class="flex flex-wrap justify-center gap-x-6 gap-y-3">
+            <NuxtLink
+              v-for="item in footerItems"
+              :key="item.id"
+              :to="item.url || '#'"
+              class="text-sm font-medium text-gray-500 hover:text-gray-900 transition-colors"
+            >
+              {{ item.label }}
+            </NuxtLink>
+          </div>
+        </div>
+        <div class="mt-8 pt-8 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p class="text-sm text-gray-400">
+            © 2026 Regional News Aggregator. All rights reserved.
+          </p>
+        </div>
+      </div>
     </footer>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref, computed } from 'vue';
+
 const apiBase = useApiBase();
+const menuOpen = ref(false);
 
 const { data: sections } = await useFetch<{ id: string; slug: string }[]>(`${apiBase}/api/sections`);
 const sectionsMap = computed(() => new Map((sections.value || []).map((s) => [s.id, s])));
@@ -55,51 +116,3 @@ function flattenItems(items: { id: string; label: string; url?: string; sectionI
 const menuItems = computed(() => flattenItems(headerData.value?.items));
 const footerItems = computed(() => flattenItems(footerData.value?.items));
 </script>
-
-<style scoped>
-.layout {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
-.header {
-  padding: 1rem 2rem;
-  background: #1a1a2e;
-  color: #eee;
-  display: flex;
-  align-items: center;
-  gap: 2rem;
-}
-.logo {
-  font-weight: 700;
-  font-size: 1.25rem;
-  color: inherit;
-  text-decoration: none;
-}
-.nav {
-  display: flex;
-  gap: 1.5rem;
-}
-.nav-link, .footer-link {
-  color: #aaa;
-  text-decoration: none;
-}
-.nav-link:hover, .footer-link:hover {
-  color: #fff;
-}
-.main {
-  flex: 1;
-  padding: 2rem;
-  max-width: 900px;
-  margin: 0 auto;
-  width: 100%;
-}
-.footer {
-  padding: 1.5rem 2rem;
-  background: #16213e;
-  color: #aaa;
-  display: flex;
-  gap: 1.5rem;
-  flex-wrap: wrap;
-}
-</style>

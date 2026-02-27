@@ -1,19 +1,19 @@
 <template>
-  <div class="app">
-    <header v-if="user" class="header">
-      <router-link to="/" class="logo">Админ</router-link>
-      <nav>
-        <router-link to="/news">Новости</router-link>
+  <div class="min-h-screen flex flex-col bg-canvas text-ink font-sans selection:bg-primary selection:text-white">
+    <header v-if="user" class="flex items-center justify-between border-b-2 border-borderline px-6 py-4 bg-surface shadow-sm sticky top-0 z-50">
+      <router-link to="/" class="font-bold text-xl uppercase tracking-widest text-primary hover:text-ink transition-colors">Админ</router-link>
+      <nav class="flex items-center gap-6">
+        <router-link to="/news" class="text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 border-b-2 border-transparent" active-class="border-primary text-primary">Новости</router-link>
         <template v-if="isAdmin">
-          <router-link to="/sources">Источники</router-link>
-          <router-link to="/sections">Разделы</router-link>
-          <router-link to="/menus">Меню</router-link>
-          <router-link to="/pages">Страницы</router-link>
+          <router-link to="/sources" class="text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 border-b-2 border-transparent" active-class="border-primary text-primary">Источники</router-link>
+          <router-link to="/sections" class="text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 border-b-2 border-transparent" active-class="border-primary text-primary">Разделы</router-link>
+          <router-link to="/menus" class="text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 border-b-2 border-transparent" active-class="border-primary text-primary">Меню</router-link>
+          <router-link to="/pages" class="text-sm font-semibold uppercase tracking-wider hover:text-primary transition-colors pb-1 border-b-2 border-transparent" active-class="border-primary text-primary">Страницы</router-link>
         </template>
-        <button class="logout" @click="logout">Выход</button>
+        <button class="ml-4 px-4 py-1.5 border-2 border-ink text-ink font-bold text-xs uppercase tracking-wider hover:bg-ink hover:text-surface transition-colors focus:outline-none" @click="logout">Выход</button>
       </nav>
     </header>
-    <main class="main">
+    <main class="flex-1 w-full max-w-7xl mx-auto p-6 md:p-8">
       <router-view />
     </main>
   </div>
@@ -34,21 +34,3 @@ function logout() {
   router.push('/login');
 }
 </script>
-
-<style scoped>
-.app { min-height: 100vh; display: flex; flex-direction: column; }
-.header {
-  padding: 0.75rem 1.5rem;
-  background: #1a1a2e;
-  color: #eee;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.logo { font-weight: 700; color: inherit; text-decoration: none; margin-right: 1.5rem; }
-nav { display: flex; align-items: center; gap: 1rem; }
-nav a { color: #aaa; text-decoration: none; }
-nav a.router-link-active { color: #fff; }
-.logout { background: transparent; border: 1px solid #666; color: #ccc; padding: 0.35rem 0.75rem; cursor: pointer; border-radius: 4px; }
-.main { flex: 1; padding: 1.5rem; }
-</style>
