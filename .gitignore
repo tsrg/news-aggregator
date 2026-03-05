@@ -34,6 +34,10 @@ Thumbs.db
 backend/prisma/*.db
 backend/prisma/*.db-journal
 
+# Uploaded files (keep directory, ignore contents)
+backend/uploads/*
+!backend/uploads/.gitkeep
+
 # Misc
 *.tgz
 . turbo

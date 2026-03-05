@@ -20,7 +20,7 @@
           
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Текст</label>
-            <textarea v-model="form.body" rows="12" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all resize-y font-mono text-sm leading-relaxed" placeholder="Полный текст новости (поддерживается HTML)..."></textarea>
+            <BlockEditor v-model="form.body" />
           </div>
           
           <div>
@@ -50,29 +50,102 @@
             </div>
           </div>
           
-          <div v-if="id">
-            <label class="block text-sm font-medium text-gray-700 mb-2">Статус</label>
-            <div class="relative">
-              <select v-model="form.status" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all appearance-none pr-10">
-                <option value="PENDING">На модерации</option>
-                <option value="PUBLISHED">Опубликовано</option>
-                <option value="REJECTED">Отклонено</option>
-              </select>
-              <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
-                <svg class="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
-              </div>
+          <!-- Индикатор статуса -->
+          <div v-if="id && currentStatus" class="pt-2">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium"
+              :class="{
+                'bg-yellow-50 text-yellow-700 border border-yellow-200': currentStatus === 'PENDING',
+                'bg-green-50 text-green-700 border border-green-200': currentStatus === 'PUBLISHED',
+                'bg-red-50 text-red-700 border border-red-200': currentStatus === 'REJECTED'
+              }"
+            >
+              <span v-if="currentStatus === 'PENDING'">📝 На модерации</span>
+              <span v-else-if="currentStatus === 'PUBLISHED'">✅ Опубликовано</span>
+              <span v-else-if="currentStatus === 'REJECTED'">❌ Отклонено</span>
             </div>
           </div>
           
+          <!-- Кнопки действий -->
           <div class="pt-4 mt-2 border-t border-gray-100 flex flex-wrap items-center gap-3">
-            <button class="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all shadow-sm shadow-blue-200" @click="save">Сохранить новость</button>
-            <router-link to="/news" class="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors">Отмена</router-link>
-            <button v-if="id" type="button" class="px-6 py-3 border border-red-200 text-red-700 font-medium rounded-xl hover:bg-red-50 transition-colors" @click="remove">Удалить новость</button>
+            <!-- Для новой новости -->
+            <template v-if="!id">
+              <button class="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all shadow-sm shadow-blue-200" @click="saveAsPending">Создать новость</button>
+              <router-link to="/news" class="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors">Отмена</router-link>
+            </template>
+            
+            <!-- Для существующей новости -->
+            <template v-else>
+              <button 
+                class="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all shadow-sm shadow-blue-200 inline-flex items-center gap-2" 
+                :disabled="saveLoading"
+                @click="save"
+              >
+                <svg v-if="saveLoading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M7.707 10.293a1 1 0 10-1.414 1.414l3 3a1 1 0 001.414 0l3-3a1 1 0 00-1.414-1.414L11 11.586V6h5a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V8a2 2 0 012-2h5v5.586l-1.293-1.293zM9 4a1 1 0 012 0v2H9V4z" /></svg>
+                {{ saveLoading ? 'Сохранение...' : 'Сохранить' }}
+              </button>
+              
+              <button 
+                v-if="currentStatus !== 'PUBLISHED'"
+                class="px-6 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 focus:ring-4 focus:ring-green-100 focus:outline-none transition-all shadow-sm shadow-green-200 inline-flex items-center gap-2" 
+                :disabled="publishLoading"
+                @click="publish"
+              >
+                <svg v-if="publishLoading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                {{ publishLoading ? 'Публикация...' : 'Опубликовать' }}
+              </button>
+              
+              <button 
+                v-if="currentStatus !== 'REJECTED'"
+                class="px-6 py-3 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all shadow-sm shadow-red-200 inline-flex items-center gap-2" 
+                :disabled="rejectLoading"
+                @click="reject"
+              >
+                <svg v-if="rejectLoading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                {{ rejectLoading ? 'Отклонение...' : 'Отклонить' }}
+              </button>
+              
+              <router-link to="/news" class="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors">К списку</router-link>
+              
+              <button type="button" class="px-6 py-3 border border-gray-200 text-gray-500 font-medium rounded-xl hover:bg-gray-50 hover:text-red-600 transition-colors ml-auto" @click="remove">Удалить</button>
+            </template>
           </div>
         </div>
       </div>
       
       <div class="w-full lg:w-[320px] shrink-0 flex flex-col gap-6">
+        <!-- Парсинг текста -->
+        <aside v-if="id" class="bg-emerald-50/50 rounded-3xl p-6 border border-emerald-100">
+          <div class="flex items-center gap-2 mb-4">
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" /></svg>
+            </div>
+            <h3 class="font-bold text-gray-900">Парсинг текста</h3>
+          </div>
+          
+          <div class="flex flex-col gap-2">
+            <button 
+              class="w-full text-left px-4 py-2.5 bg-white border border-emerald-100 rounded-xl text-sm font-medium text-gray-700 hover:border-emerald-300 hover:text-emerald-700 transition-all shadow-sm disabled:opacity-50" 
+              :disabled="parseLoading" 
+              @click="parseBody"
+            >
+              <span v-if="parseLoading" class="flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                Загрузка...
+              </span>
+              <span v-else>Загрузить полный текст</span>
+            </button>
+          </div>
+          
+          <div v-if="parseResult" class="mt-4 pt-4 border-t border-emerald-100">
+            <div :class="parseResult.success ? 'text-emerald-700 bg-emerald-50' : 'text-red-700 bg-red-50'" class="px-3 py-2 rounded-lg text-xs">
+              {{ parseResult.message }}
+            </div>
+          </div>
+        </aside>
+
         <aside class="bg-indigo-50/50 rounded-3xl p-6 border border-indigo-100">
           <div class="flex items-center gap-2 mb-4">
             <div class="w-8 h-8 rounded-lg bg-indigo-100 text-indigo-600 flex items-center justify-center">
@@ -126,9 +199,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../../api';
+import BlockEditor from '../../components/BlockEditor.vue';
 
 const props = defineProps<{ id?: string }>();
 const route = useRoute();
@@ -141,9 +215,9 @@ const form = ref({
   body: '',
   sectionId: undefined as string | undefined,
   region: '' as string,
-  status: 'PENDING' as 'PENDING' | 'PUBLISHED' | 'REJECTED',
 });
-const initialStatus = ref<'PENDING' | 'PUBLISHED' | 'REJECTED' | null>(null);
+
+const currentStatus = ref<'PENDING' | 'PUBLISHED' | 'REJECTED' | null>(null);
 
 const sections = ref<{ id: string; title: string }[]>([]);
 const history = ref<{ id: string; createdAt: string }[]>([]);
@@ -151,6 +225,11 @@ const aiLoading = ref(false);
 const aiResult = ref('');
 const factCheckResult = ref('');
 const lastAiField = ref<'title' | 'summary' | 'body'>('body');
+const parseLoading = ref(false);
+const parseResult = ref<{ success: boolean; message: string } | null>(null);
+const saveLoading = ref(false);
+const publishLoading = ref(false);
+const rejectLoading = ref(false);
 
 onMounted(async () => {
   try {
@@ -166,9 +245,8 @@ onMounted(async () => {
         body: item.body || '',
         sectionId: item.sectionId || undefined,
         region: item.region || '',
-        status: (item.status === 'PUBLISHED' || item.status === 'REJECTED' ? item.status : 'PENDING') as 'PENDING' | 'PUBLISHED' | 'REJECTED',
       };
-      initialStatus.value = form.value.status;
+      currentStatus.value = (item.status === 'PUBLISHED' || item.status === 'REJECTED' ? item.status : 'PENDING') as 'PENDING' | 'PUBLISHED' | 'REJECTED';
       const hist = await api().get<{ id: string; createdAt: string }[]>(`/api/admin/news/${id.value}/history`);
       history.value = hist;
     } catch (e) {
@@ -177,20 +255,94 @@ onMounted(async () => {
   }
 });
 
-async function save() {
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+});
+
+// Создать новую новость со статусом PENDING
+async function saveAsPending() {
   try {
-    if (id.value) {
-      await api().put(`/api/admin/news/${id.value}`, { title: form.value.title, summary: form.value.summary, body: form.value.body, sectionId: form.value.sectionId, region: form.value.region });
-      if (initialStatus.value !== null && form.value.status !== initialStatus.value) {
-        await api().patch(`/api/admin/news/${id.value}/status`, { status: form.value.status });
-        initialStatus.value = form.value.status;
-      }
-    } else {
-      await api().post('/api/admin/news', { title: form.value.title, summary: form.value.summary, body: form.value.body, sectionId: form.value.sectionId, region: form.value.region });
-    }
+    await api().post('/api/admin/news', { 
+      title: form.value.title, 
+      summary: form.value.summary, 
+      body: form.value.body, 
+      sectionId: form.value.sectionId, 
+      region: form.value.region 
+    });
     router.push('/news');
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Ошибка сохранения');
+  }
+}
+
+// Сохранить изменения без изменения статуса
+async function save() {
+  if (!id.value) return;
+  saveLoading.value = true;
+  try {
+    await api().put(`/api/admin/news/${id.value}`, { 
+      title: form.value.title, 
+      summary: form.value.summary, 
+      body: form.value.body, 
+      sectionId: form.value.sectionId, 
+      region: form.value.region 
+    });
+    router.push('/news');
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Ошибка сохранения');
+  } finally {
+    saveLoading.value = false;
+  }
+}
+
+// Опубликовать новость (сохранить + опубликовать)
+async function publish() {
+  if (!id.value) return;
+  publishLoading.value = true;
+  try {
+    // Сначала сохраняем изменения
+    await api().put(`/api/admin/news/${id.value}`, { 
+      title: form.value.title, 
+      summary: form.value.summary, 
+      body: form.value.body, 
+      sectionId: form.value.sectionId, 
+      region: form.value.region 
+    });
+    // Затем меняем статус на PUBLISHED
+    await api().patch(`/api/admin/news/${id.value}/status`, { status: 'PUBLISHED' });
+    currentStatus.value = 'PUBLISHED';
+    router.push('/news');
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Ошибка публикации');
+  } finally {
+    publishLoading.value = false;
+  }
+}
+
+// Отклонить новость (сохранить + отклонить + закрыть)
+async function reject() {
+  if (!id.value) return;
+  rejectLoading.value = true;
+  try {
+    // Сначала сохраняем изменения
+    await api().put(`/api/admin/news/${id.value}`, { 
+      title: form.value.title, 
+      summary: form.value.summary, 
+      body: form.value.body, 
+      sectionId: form.value.sectionId, 
+      region: form.value.region 
+    });
+    // Затем меняем статус на REJECTED
+    await api().patch(`/api/admin/news/${id.value}/status`, { status: 'REJECTED' });
+    currentStatus.value = 'REJECTED';
+    router.push('/news');
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Ошибка отклонения');
+  } finally {
+    rejectLoading.value = false;
   }
 }
 
@@ -223,16 +375,32 @@ async function aiAction(action: string) {
   aiResult.value = '';
   const field = action === 'generate-title' ? 'title' : action === 'generate-summary' ? 'summary' : 'body';
   lastAiField.value = field;
-  const text = field === 'title' ? form.value.title : field === 'summary' ? form.value.summary : form.value.body;
+  
+  // Определяем текст для обработки
+  let text = '';
+  if (action === 'generate-title' || action === 'generate-summary') {
+    // Для генерации используем body, если есть, иначе title
+    text = form.value.body || form.value.title || '';
+  } else {
+    // Для improve/shorten используем соответствующее поле
+    text = field === 'title' ? form.value.title : field === 'summary' ? form.value.summary : form.value.body;
+  }
+  
   if (!text && (action === 'improve' || action === 'shorten')) {
     alert('Введите текст для обработки');
     return;
   }
+  
+  if (!text && (action === 'generate-title' || action === 'generate-summary')) {
+    alert('Введите текст новости для генерации');
+    return;
+  }
+  
   aiLoading.value = true;
   try {
     const r = await api().post<{ text: string }>('/api/admin/news/ai/edit', {
       newsId: id.value || undefined,
-      text: text || form.value.body || form.value.title,
+      text,
       field,
       action,
     });
@@ -248,6 +416,65 @@ function applyAiResult() {
   if (lastAiField.value === 'title') form.value.title = aiResult.value;
   else if (lastAiField.value === 'summary') form.value.summary = aiResult.value;
   else form.value.body = aiResult.value;
+}
+
+async function parseBody() {
+  if (!id.value) return;
+  parseLoading.value = true;
+  parseResult.value = null;
+  try {
+    const r = await api().post<{ message: string; item?: { body?: string } }>(`/api/admin/news/${id.value}/parse-body`, {});
+    parseResult.value = { success: true, message: r.message || 'Текст загружается...' };
+    // Если текст уже получен (синхронно), обновляем форму
+    if (r.item?.body) {
+      form.value.body = r.item.body;
+    } else {
+      // Запускаем polling для проверки обновления текста
+      startPollingForBody();
+    }
+  } catch (e) {
+    parseResult.value = { success: false, message: e instanceof Error ? e.message : 'Ошибка загрузки текста' };
+  } finally {
+    parseLoading.value = false;
+  }
+}
+
+let pollInterval: number | null = null;
+
+function startPollingForBody() {
+  // Очищаем предыдущий интервал если есть
+  if (pollInterval) {
+    clearInterval(pollInterval);
+  }
+  
+  let attempts = 0;
+  const maxAttempts = 30; // 30 секунд максимум
+  
+  pollInterval = window.setInterval(async () => {
+    attempts++;
+    
+    try {
+      const item = await api().get<{ body?: string }>(`/api/admin/news/${id.value}`);
+      if (item.body && item.body !== form.value.body) {
+        form.value.body = item.body;
+        parseResult.value = { success: true, message: 'Текст успешно загружен!' };
+        // Останавливаем polling
+        if (pollInterval) {
+          clearInterval(pollInterval);
+          pollInterval = null;
+        }
+      }
+    } catch (e) {
+      console.error('Polling error:', e);
+    }
+    
+    // Останавливаем после максимального количества попыток
+    if (attempts >= maxAttempts && pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+      parseResult.value = { success: false, message: 'Время ожидания истекло. Попробуйте обновить страницу.' };
+    }
+  }, 1000); // Проверяем каждую секунду
 }
 
 function formatDate(d: string) {

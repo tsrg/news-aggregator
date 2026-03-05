@@ -16,9 +16,20 @@ const sourceSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+const filterSchema = z.object({
+  type: z.enum(['INCLUDE', 'EXCLUDE']),
+  field: z.enum(['title', 'content', 'category', 'author']),
+  operator: z.enum(['contains', 'not_contains', 'equals', 'starts_with', 'ends_with', 'regex']),
+  value: z.string().min(1),
+  isActive: z.boolean().optional(),
+});
+
 router.get('/', async (req, res) => {
   try {
-    const list = await prisma.source.findMany({ orderBy: { createdAt: 'desc' } });
+    const list = await prisma.source.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: { filters: { where: { isActive: true } } },
+    });
     return res.json(list);
   } catch (e) {
     console.error(e);
@@ -28,7 +39,10 @@ router.get('/', async (req, res) => {
 
 router.get('/:id', async (req, res) => {
   try {
-    const s = await prisma.source.findUnique({ where: { id: req.params.id } });
+    const s = await prisma.source.findUnique({
+      where: { id: req.params.id },
+      include: { filters: true },
+    });
     if (!s) return res.status(404).json({ error: 'Not found' });
     return res.json(s);
   } catch (e) {
@@ -39,8 +53,19 @@ router.get('/:id', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const data = sourceSchema.parse(req.body);
-    const s = await prisma.source.create({ data: { ...data, type: 'rss' } });
+    const { filters, ...sourceData } = req.body;
+    const data = sourceSchema.parse(sourceData);
+
+    const s = await prisma.source.create({
+      data: {
+        ...data,
+        type: 'rss',
+        filters: filters && Array.isArray(filters)
+          ? { create: filters.map(f => filterSchema.parse(f)) }
+          : undefined,
+      },
+      include: { filters: true },
+    });
     return res.status(201).json(s);
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: e.errors });
@@ -51,8 +76,39 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const data = sourceSchema.partial().parse(req.body);
-    const s = await prisma.source.update({ where: { id: req.params.id }, data });
+    const { filters, ...sourceData } = req.body;
+    const data = sourceSchema.partial().parse(sourceData);
+
+    // Обновляем источник
+    const s = await prisma.source.update({
+      where: { id: req.params.id },
+      data: { ...data },
+      include: { filters: true },
+    });
+
+    // Если переданы фильтры - обновляем их отдельно
+    if (filters && Array.isArray(filters)) {
+      // Удаляем существующие фильтры
+      await prisma.sourceFilter.deleteMany({
+        where: { sourceId: req.params.id },
+      });
+
+      // Создаём новые фильтры
+      for (const f of filters) {
+        const filterData = filterSchema.parse(f);
+        await prisma.sourceFilter.create({
+          data: { ...filterData, sourceId: req.params.id },
+        });
+      }
+
+      // Получаем обновлённый источник с фильтрами
+      const updated = await prisma.source.findUnique({
+        where: { id: req.params.id },
+        include: { filters: true },
+      });
+      return res.json(updated);
+    }
+
     return res.json(s);
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: e.errors });
@@ -63,12 +119,15 @@ router.put('/:id', async (req, res) => {
 
 router.post('/:id/fetch', async (req, res) => {
   try {
-    const source = await prisma.source.findUnique({ where: { id: req.params.id } });
+    const source = await prisma.source.findUnique({
+      where: { id: req.params.id },
+      include: { filters: true },
+    });
     if (!source) return res.status(404).json({ error: 'Not found' });
     await fetchSource(source.id);
-    const updated = await prisma.source.update({
+    const updated = await prisma.source.findUnique({
       where: { id: req.params.id },
-      data: { lastFetchedAt: new Date() },
+      include: { filters: true },
     });
     return res.json(updated);
   } catch (e) {

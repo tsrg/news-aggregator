@@ -10,6 +10,8 @@ const router = createRouter({
     { path: '/news/new', name: 'NewsNew', component: () => import('../views/news/NewsEdit.vue') },
     { path: '/news/:id', name: 'NewsEdit', component: () => import('../views/news/NewsEdit.vue'), props: true },
     { path: '/sources', name: 'Sources', component: () => import('../views/Sources.vue'), meta: { admin: true } },
+    { path: '/sources/new', name: 'SourceNew', component: () => import('../views/SourceEdit.vue'), meta: { admin: true } },
+    { path: '/sources/:id', name: 'SourceEdit', component: () => import('../views/SourceEdit.vue'), props: true, meta: { admin: true } },
     { path: '/sections', name: 'Sections', component: () => import('../views/Sections.vue'), meta: { admin: true } },
     { path: '/sections/new', name: 'SectionNew', component: () => import('../views/SectionEdit.vue'), meta: { admin: true } },
     { path: '/sections/:id', name: 'SectionEdit', component: () => import('../views/SectionEdit.vue'), props: true, meta: { admin: true } },
@@ -19,6 +21,7 @@ const router = createRouter({
     { path: '/pages', name: 'Pages', component: () => import('../views/Pages.vue'), meta: { admin: true } },
     { path: '/pages/new', name: 'PageNew', component: () => import('../views/PageEdit.vue'), meta: { admin: true } },
     { path: '/pages/:id', name: 'PageEdit', component: () => import('../views/PageEdit.vue'), props: true, meta: { admin: true } },
+    { path: '/settings', name: 'Settings', component: () => import('../views/Settings.vue'), meta: { admin: true } },
   ],
 });
 

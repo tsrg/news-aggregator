@@ -12,6 +12,13 @@ import menuAdmin from './modules/menu/menu.admin.routes.js';
 import pagesPublic from './modules/pages/pages.public.routes.js';
 import pagesAdmin from './modules/pages/pages.admin.routes.js';
 import sourcesAdmin from './modules/sources/sources.admin.routes.js';
+import uploadAdmin from './modules/upload/upload.admin.routes.js';
+import settingsRoutes from './modules/settings/settings.routes.js';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.use(
@@ -20,6 +27,9 @@ app.use(
   })
 );
 app.use(express.json());
+
+// Serve uploads folder as static
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 app.use('/api/auth', authRoutes);
 
@@ -34,6 +44,8 @@ app.use('/api/admin/sections', sectionsAdmin);
 app.use('/api/admin/menus', menuAdmin);
 app.use('/api/admin/pages', pagesAdmin);
 app.use('/api/admin/sources', sourcesAdmin);
+app.use('/api/admin/upload', uploadAdmin);
+app.use('/api/admin/settings', settingsRoutes);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

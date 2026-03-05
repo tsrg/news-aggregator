@@ -17,6 +17,7 @@
               <router-link to="/sections" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Разделы</router-link>
               <router-link to="/menus" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Меню</router-link>
               <router-link to="/pages" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Страницы</router-link>
+              <router-link to="/settings" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Настройки</router-link>
             </template>
             <div class="w-px h-6 bg-gray-200 mx-2"></div>
             <button class="px-3 py-2 text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none" @click="logout">Выход</button>

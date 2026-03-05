@@ -21,6 +21,7 @@
             <th class="pb-3 px-4 font-medium">Название</th>
             <th class="pb-3 px-4 font-medium">URL</th>
             <th class="pb-3 px-4 font-medium">Статус</th>
+            <th class="pb-3 px-4 font-medium">Фильтры</th>
             <th class="pb-3 px-4 font-medium">Последний сбор</th>
             <th class="pb-3 px-4 font-medium text-right">Действия</th>
           </tr>
@@ -34,9 +35,21 @@
                 {{ s.isActive ? 'Активен' : 'Отключен' }}
               </span>
             </td>
+            <td class="py-4 px-4">
+              <span v-if="activeFiltersCount(s) > 0" class="text-blue-700 bg-blue-50 border-blue-100 px-2.5 py-1 text-xs font-medium rounded-full border">
+                {{ activeFiltersCount(s) }} фильтр{{ activeFiltersCount(s) === 1 ? '' : activeFiltersCount(s) < 5 ? 'а' : 'ов' }}
+              </span>
+              <span v-else class="text-gray-400 text-xs">—</span>
+            </td>
             <td class="py-4 px-4 text-gray-500">{{ s.lastFetchedAt ? formatDate(s.lastFetchedAt) : '—' }}</td>
             <td class="py-4 px-4 text-right">
-              <button class="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors" @click="fetchOne(s.id)">Собрать</button>
+              <div class="flex items-center justify-end gap-2">
+                <router-link :to="`/sources/${s.id}`" class="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors">
+                  Редактировать
+                </router-link>
+                <button class="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors" @click="fetchOne(s.id)">Собрать</button>
+                <button class="px-3 py-1.5 bg-white border border-red-200 text-red-700 text-xs font-medium rounded-lg hover:bg-red-50 transition-colors" @click="confirmDelete(s.id)">Удалить</button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -56,18 +69,43 @@
 import { ref, onMounted } from 'vue';
 import { api } from '../api';
 
-const list = ref<{ id: string; name: string; url: string; isActive: boolean; lastFetchedAt?: string }[]>([]);
+interface SourceFilter {
+  id: string;
+  type: 'INCLUDE' | 'EXCLUDE';
+  field: string;
+  operator: string;
+  value: string;
+  isActive: boolean;
+}
+
+interface Source {
+  id: string;
+  name: string;
+  url: string;
+  isActive: boolean;
+  lastFetchedAt?: string;
+  filters?: SourceFilter[];
+}
+
+const list = ref<Source[]>([]);
 const loading = ref(true);
 
-onMounted(async () => {
+async function load() {
+  loading.value = true;
   try {
-    list.value = await api().get<typeof list.value[0][]>('/api/admin/sources');
+    list.value = await api().get<Source[]>('/api/admin/sources');
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Ошибка');
   } finally {
     loading.value = false;
   }
-});
+}
+
+onMounted(load);
+
+function activeFiltersCount(source: Source): number {
+  return source.filters?.filter(f => f.isActive !== false).length || 0;
+}
 
 function formatDate(d: string) {
   const date = new Date(d);
@@ -77,11 +115,25 @@ function formatDate(d: string) {
 async function fetchOne(id: string) {
   try {
     await api().post(`/api/admin/sources/${id}/fetch`, {});
-    const s = await api().get<typeof list.value[0]>(`/api/admin/sources/${id}`);
+    const s = await api().get<Source>(`/api/admin/sources/${id}`);
     const i = list.value.findIndex((x) => x.id === id);
     if (i >= 0) list.value[i] = s;
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Ошибка');
+  }
+}
+
+function confirmDelete(id: string) {
+  if (!confirm('Удалить этот источник? Все связанные новости будут удалены.')) return;
+  deleteSource(id);
+}
+
+async function deleteSource(id: string) {
+  try {
+    await api().delete(`/api/admin/sources/${id}`);
+    await load();
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Ошибка удаления');
   }
 }
 </script>

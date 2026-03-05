@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { Router } from 'express';
 import { prisma } from '../../config/prisma.js';
 import { requireAuth, requireEditorOrAdmin } from '../auth/auth.middleware.js';
+import { enrichNewsItem, parseArticle } from '../../services/articleParser.js';
+import { articleQueue } from '../../jobs/queue.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -157,6 +159,58 @@ router.delete('/:id', async (req, res) => {
     if (!existing) return res.status(404).json({ error: 'Not found' });
     await prisma.newsItem.delete({ where: { id: req.params.id } });
     return res.status(204).send();
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Парсинг полного текста новости по URL
+router.post('/:id/parse-body', async (req, res) => {
+  try {
+    const item = await prisma.newsItem.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!item) return res.status(404).json({ error: 'Not found' });
+    if (!item.url) return res.status(400).json({ error: 'News item has no URL' });
+
+    // Запускаем парсинг асинхронно через очередь
+    if (articleQueue) {
+      const job = await articleQueue.add('parse-article', {
+        newsItemId: item.id,
+        url: item.url,
+      }, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+      });
+      return res.json({ message: 'Parsing queued', jobId: job.id });
+    }
+
+    // Если очередь недоступна, парсим синхронно
+    const result = await enrichNewsItem(item.id, item.url);
+    if (result.success) {
+      const updated = await prisma.newsItem.findUnique({
+        where: { id: req.params.id },
+        include: { section: true, source: true },
+      });
+      return res.json({ message: 'Parsing completed', item: updated });
+    } else {
+      return res.status(500).json({ error: 'Parsing failed', detail: result.error });
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Тестирование парсера на произвольном URL
+router.post('/parse-test', async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ error: 'URL is required' });
+
+    const result = await parseArticle(url);
+    return res.json(result);
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Internal server error' });

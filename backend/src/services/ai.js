@@ -1,69 +1,302 @@
-import { config } from '../config/index.js';
+import { getAISettings } from './settings.js';
 
-const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
-
-async function callOpenAI(prompt, options = {}) {
-  const key = config.ai.openaiApiKey;
-  if (!key) throw new Error('OPENAI_API_KEY not configured');
-  const res = await fetch(OPENAI_URL, {
+/**
+ * Вызывает OpenAI-совместимое API
+ */
+async function callOpenAICompatible(url, key, body, options = {}) {
+  console.log('AI Request:', { url, model: body.model, messagesCount: body.messages?.length });
+  
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${key}`,
+      'Authorization': `Bearer ${key}`,
     },
-    body: JSON.stringify({
-      model: options.model || 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: options.max_tokens || 2000,
-    }),
-    signal: AbortSignal.timeout(60000),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(options.timeout || 60000),
   });
+  
   if (!res.ok) {
     const err = await res.text();
-    throw new Error(err || `OpenAI ${res.status}`);
+    console.error('AI API Error:', res.status, err);
+    throw new Error(err || `API error ${res.status}`);
   }
+  
   const data = await res.json();
-  const text = data.choices?.[0]?.message?.content?.trim();
-  if (!text) throw new Error('Empty response from OpenAI');
+  console.log('AI Response:', JSON.stringify(data).slice(0, 1000));
+  
+  // Пробуем разные форматы ответа
+  const message = data.choices?.[0]?.message;
+  let text = message?.content?.trim() ||
+             message?.reasoning_content?.trim() ||  // Z.ai glm-5 использует это поле
+             data.choices?.[0]?.text?.trim() ||
+             data.response?.trim() ||
+             data.text?.trim() ||
+             data.result?.alternatives?.[0]?.message?.text?.trim() ||
+             data.output?.trim();
+             
+  if (!text) {
+    console.error('Empty or unexpected AI response format:', data);
+    throw new Error('Empty response from AI');
+  }
+  
   return text;
 }
 
-async function callZai(prompt) {
-  const key = config.ai.zaiApiKey;
-  if (!key) throw new Error('ZAI_API_KEY not configured');
-  // Placeholder: z.ai API may differ; adjust endpoint and payload as per their docs
-  const res = await fetch('https://api.z.ai/v1/chat/completions', {
+/**
+ * Вызывает OpenAI API
+ */
+async function callOpenAI(prompt, options = {}) {
+  const settings = await getAISettings();
+  const key = settings.apiKey;
+  
+  if (!key) throw new Error('API Key not configured. Please set it in Settings.');
+
+  const baseUrl = settings.baseUrl || 'https://api.openai.com/v1';
+  const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+  
+  const body = {
+    model: options.model || settings.model || 'gpt-4o-mini',
+    messages: [{ role: 'user', content: prompt }],
+    max_tokens: options.max_tokens || settings.maxTokens || 2000,
+    temperature: settings.temperature ?? 0.7,
+  };
+  
+  return callOpenAICompatible(url, key, body, options);
+}
+
+/**
+ * Вызывает Z.ai API (GigaChat через Z.ai)
+ */
+async function callZAI(prompt, options = {}) {
+  const settings = await getAISettings();
+  const key = settings.apiKey;
+  
+  if (!key) throw new Error('API Key not configured. Please set it in Settings.');
+
+  // Z.ai использует OpenAI-совместимый формат
+  const baseUrl = settings.baseUrl || 'https://api.z.ai/api/paas/v4';
+  const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+  
+  // Некоторые модели Z.ai не поддерживают system role
+  const body = {
+    model: options.model || settings.model || 'glm-5',
+    messages: [
+      { role: 'user', content: prompt }
+    ],
+    max_tokens: options.max_tokens || settings.maxTokens || 2000,
+    temperature: settings.temperature ?? 0.7,
+  };
+  
+  return callOpenAICompatible(url, key, body, options);
+}
+
+/**
+ * Вызывает Anthropic Claude API
+ */
+async function callAnthropic(prompt, options = {}) {
+  const settings = await getAISettings();
+  const key = settings.apiKey;
+  
+  if (!key) throw new Error('API Key not configured. Please set it in Settings.');
+
+  const baseUrl = settings.baseUrl || 'https://api.anthropic.com/v1';
+  const url = `${baseUrl.replace(/\/$/, '')}/messages`;
+  
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${key}`,
+      'x-api-key': key,
+      'anthropic-version': '2023-06-01',
     },
-    body: JSON.stringify({ prompt, max_tokens: 2000 }),
-    signal: AbortSignal.timeout(60000),
+    body: JSON.stringify({
+      model: options.model || settings.model || 'claude-3-sonnet-20240229',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: options.max_tokens || settings.maxTokens || 2000,
+      temperature: settings.temperature ?? 0.7,
+    }),
+    signal: AbortSignal.timeout(options.timeout || 60000),
   });
-  if (!res.ok) throw new Error(`z.ai ${res.status}`);
+  
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || `Anthropic ${res.status}`);
+  }
+  
   const data = await res.json();
-  return data.text || data.response || JSON.stringify(data);
+  const text = data.content?.[0]?.text?.trim();
+  if (!text) throw new Error('Empty response from AI');
+  return text;
 }
 
+/**
+ * Вызывает YandexGPT API
+ */
+async function callYandexGPT(prompt, options = {}) {
+  const settings = await getAISettings();
+  const key = settings.apiKey;
+  
+  if (!key) throw new Error('API Key not configured. Please set it in Settings.');
+
+  const baseUrl = settings.baseUrl || 'https://llm.api.cloud.yandex.net/foundationModels/v1';
+  const url = `${baseUrl.replace(/\/$/, '')}/completion`;
+  
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Api-Key ${key}`,
+    },
+    body: JSON.stringify({
+      modelUri: `gpt://${settings.model || 'yandexgpt-lite'}`,
+      completionOptions: {
+        maxTokens: options.max_tokens || settings.maxTokens || 2000,
+        temperature: settings.temperature ?? 0.7,
+      },
+      messages: [{ role: 'user', text: prompt }],
+    }),
+    signal: AbortSignal.timeout(options.timeout || 60000),
+  });
+  
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || `YandexGPT ${res.status}`);
+  }
+  
+  const data = await res.json();
+  const text = data.result?.alternatives?.[0]?.message?.text?.trim();
+  if (!text) throw new Error('Empty response from AI');
+  return text;
+}
+
+/**
+ * Вызывает GigaChat API (Сбер) - напрямую, не через Z.ai
+ */
+async function callGigaChat(prompt, options = {}) {
+  const settings = await getAISettings();
+  const key = settings.apiKey;
+  
+  if (!key) throw new Error('API Key not configured. Please set it in Settings.');
+
+  const baseUrl = settings.baseUrl || 'https://gigachat.devices.sberbank.ru/api/v1';
+  const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
+  
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${key}`,
+    },
+    body: JSON.stringify({
+      model: settings.model || 'GigaChat',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: options.max_tokens || settings.maxTokens || 2000,
+      temperature: settings.temperature ?? 0.7,
+    }),
+    signal: AbortSignal.timeout(options.timeout || 60000),
+  });
+  
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(err || `GigaChat ${res.status}`);
+  }
+  
+  const data = await res.json();
+  const text = data.choices?.[0]?.message?.content?.trim();
+  if (!text) throw new Error('Empty response from AI');
+  return text;
+}
+
+/**
+ * Выбирает провайдера и вызывает соответствующий API
+ */
+async function callAI(prompt, options = {}) {
+  const settings = await getAISettings();
+  const provider = settings.aiProvider || 'openai';
+
+  switch (provider) {
+    case 'zai':
+      return callZAI(prompt, options);
+    case 'anthropic':
+      return callAnthropic(prompt, options);
+    case 'yandex':
+      return callYandexGPT(prompt, options);
+    case 'gigachat':
+      return callGigaChat(prompt, options);
+    case 'openai':
+    case 'custom':
+    default:
+      return callOpenAI(prompt, options);
+  }
+}
+
+/**
+ * Проверяет факты в новостном тексте
+ */
 export async function factCheckNews(title, summary, body) {
   const text = [title, summary, body].filter(Boolean).join('\n\n');
-  const prompt = `Проверь факты в следующем новостном тексте на соответствие известной действительности. Укажи возможные неточности или неподтверждённые утверждения и дай краткий вердикт (1-3 предложения).\n\nТекст:\n${text.slice(0, 8000)}`;
-  const provider = config.ai.provider || 'openai';
-  const raw = provider === 'zai' ? await callZai(prompt) : await callOpenAI(prompt);
+  
+  if (!text.trim()) {
+    throw new Error('Нет текста для проверки. Заполните заголовок, лид или текст новости.');
+  }
+  
+  const prompt = `Проверь факты в следующем новостном тексте на соответствие известной действительности. Укажи возможные неточности или неподтверждённые утверждения и дай краткий вердикт (1-3 предложения).
+
+Текст:
+${text.slice(0, 8000)}`;
+  
+  // Увеличиваем лимит токенов для fact-checking
+  const raw = await callAI(prompt, { max_tokens: 4000 });
   return { summary: raw, raw };
 }
 
+/**
+ * Редактирует текст с помощью AI
+ */
 export async function aiEdit(text, action, field) {
   const prompts = {
-    improve: `Улучши стиль и ясность следующего текста, сохрани смысл. Ответь только улучшенным текстом.\n\n${text}`,
-    shorten: `Сократи следующий текст примерно вдвое, сохрани главное. Ответь только сокращённым текстом.\n\n${text}`,
-    expand: `Немного расширь следующий текст, добавив детали. Ответь только расширенным текстом.\n\n${text}`,
-    'generate-title': `Придумай короткий заголовок новости по тексту. Ответь только заголовком.\n\n${text}`,
-    'generate-summary': `Напиши краткий лид (1-2 предложения) для новости по тексту. Ответь только лидом.\n\n${text}`,
+    improve: `Улучши стиль и ясность следующего текста, сохрани смысл. Ответь только улучшенным текстом.
+
+${text}`,
+    shorten: `Сократи следующий текст примерно вдвое, сохрани главное. Ответь только сокращённым текстом.
+
+${text}`,
+    expand: `Немного расширь следующий текст, добавив детали. Ответь только расширенным текстом.
+
+${text}`,
+    'generate-title': `Придумай короткий заголовок новости по тексту. Ответь только заголовком.
+
+${text}`,
+    'generate-summary': `Напиши краткий лид (1-2 предложения) для новости по тексту. Ответь только лидом.
+
+${text}`,
   };
-  const prompt = prompts[action] || `Обработай текст: ${action}\n\n${text}`;
-  const provider = config.ai.provider || 'openai';
-  const result = provider === 'zai' ? await callZai(prompt) : await callOpenAI(prompt, { max_tokens: 1000 });
+  
+  const prompt = prompts[action] || `Обработай текст: ${action}
+
+${text}`;
+  const result = await callAI(prompt, { max_tokens: 1000 });
   return { text: result };
+}
+
+/**
+ * Тестирует соединение с AI API
+ */
+export async function testAIConnection() {
+  const settings = await getAISettings();
+  
+  if (!settings.apiKey) {
+    throw new Error('API Key not configured');
+  }
+
+  const provider = settings.aiProvider || 'openai';
+
+  try {
+    // Делаем простой тестовый запрос
+    await callAI('Say "OK" or respond with a short greeting', { max_tokens: 10, timeout: 30000 });
+    return { success: true, message: 'Connection successful' };
+  } catch (e) {
+    throw new Error(e.message || 'Connection failed');
+  }
 }

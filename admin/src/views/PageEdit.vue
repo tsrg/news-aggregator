@@ -12,7 +12,7 @@
     <div v-else-if="loadError" class="bg-red-50 border border-red-200 rounded-2xl p-6 text-red-800 text-sm">{{ loadError }}</div>
 
     <div v-else class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
-      <div class="flex flex-col gap-6 max-w-2xl">
+      <div class="flex flex-col gap-6">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">URL (slug)</label>
           <input
@@ -32,12 +32,7 @@
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Содержимое (HTML)</label>
-          <textarea
-            v-model="form.body"
-            rows="12"
-            class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all resize-y font-mono text-sm"
-            placeholder="<p>Текст страницы...</p>"
-          />
+          <BlockEditor v-model="form.body" />
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-2">Порядок</label>
@@ -86,6 +81,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { api } from '../api';
+import BlockEditor from '../components/BlockEditor.vue';
 
 interface PageData {
   id: string;

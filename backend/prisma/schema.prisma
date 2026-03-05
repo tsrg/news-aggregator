@@ -89,8 +89,29 @@ model Source {
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   newsItems NewsItem[]
+  filters   SourceFilter[]
 
   @@map("sources")
+}
+
+model SourceFilter {
+  id          String    @id @default(cuid())
+  sourceId    String    @map("source_id")
+  source      Source    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  type        FilterType
+  field       String    // title, content, category, etc.
+  operator    String    // contains, not_contains, equals, starts_with, ends_with, regex
+  value       String    // значение для сравнения
+  isActive    Boolean   @default(true) @map("is_active")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@map("source_filters")
+}
+
+enum FilterType {
+  INCLUDE // Включить если совпадает
+  EXCLUDE // Исключить если совпадает
 }
 
 model Section {
@@ -150,4 +171,14 @@ model Page {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("pages")
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     Json     // Храним настройки как JSON
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("settings")
 }
