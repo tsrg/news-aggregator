@@ -23,7 +23,7 @@
         </div>
         <div class="lg:col-span-4 flex flex-col gap-6">
           <NewsCard
-            v-for="item in topData.items.slice(1, 4)"
+            v-for="item in topData.items.slice(1, 3)"
             :key="item.id"
             :item="item"
             imagePosition="top"
