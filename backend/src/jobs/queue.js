@@ -1,5 +1,6 @@
 import Bull from 'bull';
 import { config } from '../config/index.js';
+import { prisma } from '../config/prisma.js';
 import { fetchAllSources } from './fetchRss.js';
 import { enrichNewsItem } from '../services/articleParser.js';
 
@@ -27,6 +28,20 @@ export function getArticleQueue() {
       const { newsItemId, url } = job.data;
       console.log(`Parsing article ${url} for news item ${newsItemId}`);
       const result = await enrichNewsItem(newsItemId, url);
+      if (result.success) {
+        try {
+          const updated = await prisma.newsItem.findUnique({
+            where: { id: newsItemId },
+            include: { section: true, source: true },
+          });
+          if (updated?.status === 'PUBLISHED') {
+            const { broadcastNewsUpdated } = await import('../ws.js');
+            broadcastNewsUpdated(updated);
+          }
+        } catch (e) {
+          console.warn('WebSocket broadcast after parse:', e.message);
+        }
+      }
       return result;
     });
 

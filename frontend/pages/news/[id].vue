@@ -74,7 +74,7 @@ const { data, pending, error } = await useFetch<{
   createdAt: string;
   source?: { name: string };
   section?: { slug: string; title: string } | null;
-}>(() => `${apiBase}/api/news/${route.params.id}`);
+}>(() => `${apiBase}/api/news/${route.params.id}`, { key: `news-${route.params.id}` });
 
 const breadcrumbItems = computed(() => {
   if (!data.value) return [];

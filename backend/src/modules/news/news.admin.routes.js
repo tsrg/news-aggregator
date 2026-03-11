@@ -121,6 +121,14 @@ router.put('/:id', async (req, res) => {
     await prisma.newsItemHistory.create({
       data: { newsItemId: item.id, userId: req.userId, snapshot: snapshot(item) },
     });
+    if (item.status === 'PUBLISHED') {
+      try {
+        const { broadcastNewsUpdated } = await import('../../ws.js');
+        broadcastNewsUpdated(item);
+      } catch (e) {
+        console.warn('WebSocket broadcast:', e.message);
+      }
+    }
     return res.json(item);
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: e.errors });
@@ -146,6 +154,14 @@ router.patch('/:id/status', async (req, res) => {
     await prisma.newsItemHistory.create({
       data: { newsItemId: item.id, userId: req.userId, snapshot: snapshot(item) },
     });
+    if (status === 'PUBLISHED') {
+      try {
+        const { broadcastNewsPublished } = await import('../../ws.js');
+        broadcastNewsPublished(item);
+      } catch (e) {
+        console.warn('WebSocket broadcast:', e.message);
+      }
+    }
     return res.json(item);
   } catch (e) {
     console.error(e);
@@ -193,6 +209,14 @@ router.post('/:id/parse-body', async (req, res) => {
         where: { id: req.params.id },
         include: { section: true, source: true },
       });
+      if (updated?.status === 'PUBLISHED') {
+        try {
+          const { broadcastNewsUpdated } = await import('../../ws.js');
+          broadcastNewsUpdated(updated);
+        } catch (e) {
+          console.warn('WebSocket broadcast:', e.message);
+        }
+      }
       return res.json({ message: 'Parsing completed', item: updated });
     } else {
       return res.status(500).json({ error: 'Parsing failed', detail: result.error });

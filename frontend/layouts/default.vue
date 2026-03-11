@@ -150,4 +150,7 @@ const footerItems = computed(() => {
   }));
   return fromSections;
 });
+
+// Real-time: subscribe to new publications so lists refresh without reload
+useNewsLive();
 </script>

@@ -10,19 +10,21 @@
     <div v-if="sectionNotFound" class="bg-gray-50 text-gray-500 p-12 rounded-3xl text-center border border-gray-100">
       <p class="font-medium text-lg">Раздел не найден.</p>
     </div>
-    <div v-else-if="pending" class="space-y-6">
+    <div v-else-if="pending && !data?.items?.length" class="space-y-6">
       <div v-for="i in 5" :key="i" class="h-40 bg-white border border-gray-100 rounded-2xl animate-pulse"></div>
     </div>
     <div v-else-if="error" class="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-100 text-center">
       <p>{{ error.message }}</p>
     </div>
     <div v-else class="flex flex-col gap-6">
-      <NewsCard
-        v-for="item in data?.items"
-        :key="item.id"
-        :item="item"
-        imagePosition="left"
-      />
+      <TransitionGroup name="news-list" tag="div" class="flex flex-col gap-6">
+        <NewsCard
+          v-for="item in data?.items"
+          :key="item.id"
+          :item="item"
+          imagePosition="left"
+        />
+      </TransitionGroup>
       
       <div v-if="data?.items?.length === 0" class="bg-white text-gray-500 p-12 rounded-3xl text-center border border-gray-100">
         <p class="font-medium text-lg">В этом разделе пока нет новостей.</p>
@@ -87,7 +89,7 @@ const hasValidQuery = computed(() => !!newsQuery.value);
 
 const { data, pending, error } = await useFetch<{ items: { id: string; title: string; summary?: string; publishedAt?: string; source?: { name: string }; imageUrl?: string | null }[]; total: number }>(
   () => (hasValidQuery.value ? newsQuery.value : null),
-  { watch: [newsQuery, hasValidQuery], immediate: true }
+  { key: `section-news-${slug}`, watch: [newsQuery, hasValidQuery], immediate: true }
 );
 
 const totalPages = computed(() => {
@@ -105,3 +107,21 @@ const breadcrumbItems = computed(() => [
   { label: pageTitle.value },
 ]);
 </script>
+
+<style scoped>
+.news-list-enter-active,
+.news-list-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.news-list-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.news-list-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+.news-list-move {
+  transition: transform 0.25s ease;
+}
+</style>

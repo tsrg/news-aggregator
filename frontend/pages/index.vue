@@ -11,17 +11,22 @@
         </h2>
       </div>
       
-      <div v-if="topPending" class="animate-pulse flex space-x-4">
+      <div v-if="topPending && !topData?.items?.length" class="animate-pulse flex space-x-4">
         <div class="flex-1 space-y-4 py-1">
           <div class="h-6 bg-gray-200 rounded w-1/4"></div>
           <div class="h-64 bg-gray-200 rounded-2xl w-full mt-4"></div>
         </div>
       </div>
-      <div v-else-if="topData?.items?.length" class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8">
-        <div class="lg:col-span-8">
-          <NewsCard :item="topData.items[0]" :featured="true" imagePosition="top" :priority="true" />
+      <TransitionGroup
+        v-else-if="topData?.items?.length"
+        name="news-list"
+        tag="div"
+        class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8"
+      >
+        <div key="featured" class="lg:col-span-8">
+          <NewsCard :item="topData.items[0]!" :featured="true" imagePosition="top" :priority="true" />
         </div>
-        <div class="lg:col-span-4 flex flex-col gap-6">
+        <div key="top-side" class="lg:col-span-4 flex flex-col gap-6">
           <NewsCard
             v-for="item in topData.items.slice(1, 3)"
             :key="item.id"
@@ -29,7 +34,7 @@
             imagePosition="top"
           />
         </div>
-      </div>
+      </TransitionGroup>
       <p v-else class="text-gray-500 bg-white p-8 rounded-2xl text-center border border-gray-100">Нет новостей для отображения.</p>
     </section>
 
@@ -46,17 +51,22 @@
             <span class="transform-gpu group-hover:translate-x-1 transition-transform">→</span>
           </NuxtLink>
         </div>
-        <div v-if="regionPending" class="animate-pulse space-y-6">
+        <div v-if="regionPending && !regionData?.items?.length" class="animate-pulse space-y-6">
           <div v-for="i in 3" :key="i" class="h-32 bg-gray-200 rounded-2xl w-full"></div>
         </div>
-        <div v-else-if="regionData?.items?.length" class="flex flex-col gap-6">
+        <TransitionGroup
+          v-else-if="regionData?.items?.length"
+          name="news-list"
+          tag="div"
+          class="flex flex-col gap-6"
+        >
           <NewsCard
             v-for="item in regionData.items"
             :key="item.id"
             :item="item"
             imagePosition="left"
           />
-        </div>
+        </TransitionGroup>
         <p v-else class="text-gray-500 bg-white p-8 rounded-2xl text-center border border-gray-100">Нет региональных новостей.</p>
       </section>
 
@@ -64,13 +74,18 @@
       <aside class="lg:col-span-4">
         <div class="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm sticky top-24">
           <h2 class="font-bold text-xl text-gray-900 tracking-tight mb-6">Общая картина</h2>
-          <div v-if="generalPending" class="animate-pulse space-y-6">
+          <div v-if="generalPending && !generalData?.items?.length" class="animate-pulse space-y-6">
             <div v-for="i in 4" :key="i" class="h-16 bg-gray-200 rounded-xl w-full"></div>
           </div>
-          <div v-else-if="generalData?.items?.length" class="flex flex-col gap-6">
-            <NuxtLink 
-              v-for="item in generalData.items" 
-              :key="item.id" 
+          <TransitionGroup
+            v-else-if="generalData?.items?.length"
+            name="news-list"
+            tag="div"
+            class="flex flex-col gap-6"
+          >
+            <NuxtLink
+              v-for="item in generalData.items"
+              :key="item.id"
               :to="`/news/${item.id}`"
               class="group block relative"
             >
@@ -84,12 +99,12 @@
               </div>
             </NuxtLink>
             
-            <div v-if="generalData && generalData.total > generalData.items.length" class="pt-6 border-t border-gray-100 text-center mt-2">
+            <div v-if="generalData && generalData.total > generalData.items.length" key="more-link" class="pt-6 border-t border-gray-100 text-center mt-2">
               <NuxtLink to="/section/general" class="inline-flex items-center justify-center w-full py-3 px-4 bg-gray-50 hover:bg-blue-50 text-gray-700 hover:text-blue-600 text-sm font-medium rounded-xl transition-colors">
                 Показать больше
               </NuxtLink>
             </div>
-          </div>
+          </TransitionGroup>
           <p v-else class="text-gray-500 text-center py-4">Нет общих новостей.</p>
         </div>
       </aside>
@@ -118,14 +133,16 @@
           </div>
           
           <div v-if="sectionNewsMap.get(sec.id)?.length" class="flex flex-col gap-5 flex-1">
-            <NuxtLink
-              v-for="n in (sectionNewsMap.get(sec.id) ?? []).slice(0, 3)"
-              :key="n.id"
-              :to="`/news/${n.id}`"
-              class="group block border-b border-gray-100 pb-5 last:border-0 last:pb-0"
-            >
-              <h4 class="font-medium text-gray-800 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">{{ n.title }}</h4>
-            </NuxtLink>
+            <TransitionGroup name="news-list" tag="div" class="flex flex-col gap-5 flex-1">
+              <NuxtLink
+                v-for="n in (sectionNewsMap.get(sec.id) ?? []).slice(0, 3)"
+                :key="n.id"
+                :to="`/news/${n.id}`"
+                class="group block border-b border-gray-100 pb-5 last:border-0 last:pb-0"
+              >
+                <h4 class="font-medium text-gray-800 group-hover:text-blue-600 transition-colors leading-snug line-clamp-2">{{ n.title }}</h4>
+              </NuxtLink>
+            </TransitionGroup>
           </div>
           <div v-else class="flex-1 flex items-center justify-center py-8">
              <p class="text-sm text-gray-400">Нет новостей</p>
@@ -195,11 +212,13 @@ const { data: generalData, pending: generalPending } = await useFetch<NewsRespon
   immediate: true,
 });
 
-// Section previews: fetch last 3 per section for sectionSlugs
+// Section previews: fetch last 3 per section for sectionSlugs; refetch when refreshTrigger changes (live publication)
+const { refreshTrigger } = useNewsLive();
 const sectionNewsMap = ref<Map<string, NewsItem[]>>(new Map());
 const sectionSlugsRef = computed(() => sectionSlugs.value);
 watchEffect(async () => {
   const list = sectionSlugsRef.value;
+  refreshTrigger.value; // depend on trigger so we refetch when news:published fires
   if (!list.length) return;
   const map = new Map<string, NewsItem[]>();
   await Promise.all(
@@ -211,3 +230,21 @@ watchEffect(async () => {
   sectionNewsMap.value = map;
 });
 </script>
+
+<style scoped>
+.news-list-enter-active,
+.news-list-leave-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.news-list-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.news-list-leave-to {
+  opacity: 0;
+  transform: translateY(4px);
+}
+.news-list-move {
+  transition: transform 0.25s ease;
+}
+</style>

@@ -17,7 +17,7 @@ services:
       CORS_ORIGINS: ""
     command: node --watch src/server.js
     ports:
-      - "3000:3000"
+      - "3002:3000"
 
   frontend:
     build:
@@ -28,7 +28,7 @@ services:
       - /app/node_modules
       - /app/.nuxt
     environment:
-      NUXT_PUBLIC_API_BASE: http://localhost:3000
+      NUXT_PUBLIC_API_BASE: http://localhost:3002
       NUXT_API_BASE_SERVER: http://backend:3000
     command: npx nuxi dev --host 0.0.0.0
     ports:
@@ -42,7 +42,7 @@ services:
       - ./admin:/app
       - /app/node_modules
     environment:
-      VITE_API_BASE_URL: http://localhost:3000
+      VITE_API_BASE_URL: http://localhost:3002
     command: npx vite --host 0.0.0.0
     # Порт на хосте назначается автоматически. Узнать: docker compose port admin 5174
     ports:
