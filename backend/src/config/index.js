@@ -33,4 +33,16 @@ export const config = {
     // Comma-separated origins, e.g. http://localhost:3001,http://localhost:5174. Empty in dev = allow all.
     origins: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim()) : null,
   },
+  s3: {
+    endpoint: process.env.S3_ENDPOINT || null,
+    bucket: process.env.S3_BUCKET || 'news-aggregator',
+    region: process.env.S3_REGION || 'us-east-1',
+    forcePathStyle: Boolean(process.env.S3_ENDPOINT),
+    publicBaseUrl: process.env.S3_PUBLIC_BASE_URL || null,
+    // MinIO by default: when S3_ENDPOINT is set, S3 is enabled even without explicit AWS_* keys (default minioadmin/minioadmin).
+    enabled: Boolean(
+      process.env.S3_ENDPOINT ||
+      (process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY && process.env.S3_BUCKET)
+    ),
+  },
 };

@@ -102,6 +102,16 @@ REDIS_URL=redis://localhost:6379
 AI_PROVIDER=openai               # or "zai"
 OPENAI_API_KEY=sk-...
 ZAI_API_KEY=
+
+# Optional: S3-compatible storage (MinIO in Docker or AWS S3). If unset, uploads use backend/uploads.
+# MinIO (Docker): S3_ENDPOINT=http://minio:9000, S3_BUCKET=news-aggregator, AWS_ACCESS_KEY_ID/AWS_SECRET_ACCESS_KEY = MINIO_ROOT_USER/MINIO_ROOT_PASSWORD. Set S3_PUBLIC_BASE_URL for browser-accessible image URLs (e.g. http://localhost:9000/news-aggregator).
+# AWS S3: set AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_BUCKET, S3_REGION; omit S3_ENDPOINT.
+# S3_BUCKET=
+# S3_REGION=us-east-1
+# S3_ENDPOINT=
+# S3_PUBLIC_BASE_URL=
+# AWS_ACCESS_KEY_ID=
+# AWS_SECRET_ACCESS_KEY=
 ```
 
 ### Frontend (`frontend/.env`)
@@ -342,8 +352,13 @@ In admin panel, open news edit page → "Редактирование с пом�
 
 ### File Uploads Not Visible
 
-- Check `backend/uploads/` directory permissions
-- Verify `/uploads` static route is working
+- If S3 is **not** configured: check `backend/uploads/` directory permissions and that the `/uploads` static route is working.
+- If S3 **is** configured (MinIO or AWS): images are served from object storage. Set `S3_PUBLIC_BASE_URL` so the frontend can load them (e.g. `http://localhost:9000/news-aggregator` with MinIO port 9000 exposed). Backend does not proxy S3; URLs in responses point to that base.
+
+### S3 / MinIO Not Working
+
+- **Docker**: Ensure the `minio` service is healthy and backend has `S3_ENDPOINT=http://minio:9000`, `AWS_ACCESS_KEY_ID`/`AWS_SECRET_ACCESS_KEY` matching `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD`. Bucket is created on first upload.
+- **MinIO**: Use `forcePathStyle` (set automatically when `S3_ENDPOINT` is set). For browser access to images, set `S3_PUBLIC_BASE_URL` to the MinIO URL (e.g. `http://localhost:9000/news-aggregator`).
 
 ### AI Features Not Working
 
