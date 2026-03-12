@@ -166,9 +166,7 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 docker compose exec backend npx prisma migrate deploy
 docker compose exec backend npx prisma db seed
 
-# Get admin panel port
-docker compose port admin 80       # prod
-docker compose -f docker-compose.yml -f docker-compose.dev.yml port admin 5174  # dev
+# Admin panel: http://localhost:5080 (prod) or http://localhost:5174 (dev)
 ```
 
 ### Production Build

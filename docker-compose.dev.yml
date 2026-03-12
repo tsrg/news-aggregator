@@ -44,6 +44,5 @@ services:
     environment:
       VITE_API_BASE_URL: http://localhost:3002
     command: npx vite --host 0.0.0.0
-    # Порт на хосте назначается автоматически. Узнать: docker compose port admin 5174
     ports:
-      - "5174"
+      - "5174:5174"
