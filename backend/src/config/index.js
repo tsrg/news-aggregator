@@ -30,8 +30,12 @@ export const config = {
     zaiApiKey: process.env.ZAI_API_KEY,
   },
   cors: {
-    // Comma-separated origins, e.g. http://localhost:3001,http://localhost:5174. Empty in dev = allow all.
-    origins: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',').map((s) => s.trim()) : null,
+    // Comma-separated origins, e.g. https://ivanovo.online,https://admin.ivanovo.online. Empty = allow all.
+    origins: (() => {
+      const v = (process.env.CORS_ORIGINS || '').trim();
+      if (!v) return null;
+      return v.split(',').map((s) => s.trim()).filter(Boolean);
+    })(),
   },
   s3: {
     endpoint: process.env.S3_ENDPOINT || null,

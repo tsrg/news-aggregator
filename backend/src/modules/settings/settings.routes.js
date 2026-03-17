@@ -1,11 +1,11 @@
 import { Router } from 'express';
-import { requireAuth, requireAdmin } from '../auth/auth.middleware.js';
+import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import { getAISettings, updateSettings, clearSettingsCache } from '../../services/settings.js';
 import { testAIConnection } from '../../services/ai.js';
 
 const router = Router();
 router.use(requireAuth);
-router.use(requireAdmin);
+router.use(requirePermission('settings'));
 
 const AI_SETTINGS_KEY = 'ai_config';
 

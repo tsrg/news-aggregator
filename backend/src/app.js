@@ -14,6 +14,9 @@ import pagesAdmin from './modules/pages/pages.admin.routes.js';
 import sourcesAdmin from './modules/sources/sources.admin.routes.js';
 import uploadAdmin from './modules/upload/upload.admin.routes.js';
 import settingsRoutes from './modules/settings/settings.routes.js';
+import rolesAdmin from './modules/roles/roles.admin.routes.js';
+import permissionsAdmin from './modules/roles/permissions.admin.routes.js';
+import usersAdmin from './modules/users/users.admin.routes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -46,6 +49,9 @@ app.use('/api/admin/pages', pagesAdmin);
 app.use('/api/admin/sources', sourcesAdmin);
 app.use('/api/admin/upload', uploadAdmin);
 app.use('/api/admin/settings', settingsRoutes);
+app.use('/api/admin/permissions', permissionsAdmin);
+app.use('/api/admin/roles', rolesAdmin);
+app.use('/api/admin/users', usersAdmin);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { Router } from 'express';
 import { prisma } from '../../config/prisma.js';
-import { requireAuth, requireEditorOrAdmin } from '../auth/auth.middleware.js';
+import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import { enrichNewsItem, parseArticle } from '../../services/articleParser.js';
 import { articleQueue } from '../../jobs/queue.js';
 
 const router = Router();
 router.use(requireAuth);
-router.use(requireEditorOrAdmin);
+router.use(requirePermission('news'));
 
 const createSchema = z.object({
   sourceId: z.string().optional(),

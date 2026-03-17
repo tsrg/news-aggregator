@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import { Router } from 'express';
 import { prisma } from '../../config/prisma.js';
-import { requireAuth, requireAdmin } from '../auth/auth.middleware.js';
+import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 
 const router = Router();
 router.use(requireAuth);
-router.use(requireAdmin);
+router.use(requirePermission('sections'));
 
 const sectionSchema = z.object({
   slug: z.string().min(1),

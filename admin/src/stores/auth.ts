@@ -3,7 +3,11 @@ import { defineStore } from 'pinia';
 export interface User {
   id: string;
   email: string;
-  role: 'EDITOR' | 'ADMIN';
+  role: string;
+  roleId?: string;
+  roleSlug?: string;
+  isFullAccess?: boolean;
+  permissions?: string[];
 }
 
 export const useAuthStore = defineStore('auth', {
@@ -18,7 +22,19 @@ export const useAuthStore = defineStore('auth', {
   },
   getters: {
     isAuthenticated: (s) => !!s.token && !!s.user,
-    isAdmin: (s) => s.user?.role === 'ADMIN',
+    isFullAccess: (s) => s.user?.isFullAccess === true,
+    hasPermission(): (code: string) => boolean {
+      return (code: string) => {
+        const u = this.user;
+        if (!u) return false;
+        if (u.isFullAccess === true) return true;
+        if ((u.permissions || []).includes(code)) return true;
+        // Обратная совместимость: старый формат ответа API (только role без permissions)
+        if (u.role === 'ADMIN') return true;
+        if (u.role === 'EDITOR' && code === 'news') return true;
+        return false;
+      };
+    },
   },
   actions: {
     setAuth(token: string, user: User) {

@@ -2,7 +2,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { randomUUID } from 'crypto';
-import { requireAuth } from '../auth/auth.middleware.js';
+import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import { config } from '../../config/index.js';
 import { uploadBuffer as s3UploadBuffer } from '../../services/s3.js';
 
@@ -25,7 +25,7 @@ const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
 });
 
-router.post('/', requireAuth, upload.single('image'), async (req, res) => {
+router.post('/', requireAuth, requirePermission('settings'), upload.single('image'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No file uploaded' });
   }

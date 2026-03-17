@@ -8,19 +8,49 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String   @map("password_hash")
-  role         Role     @default(EDITOR)
-  createdAt    DateTime @default(now()) @map("created_at")
+model Permission {
+  id   String @id @default(cuid())
+  code String @unique
+  name String
 
-  @@map("users")
+  roles RolePermission[]
+
+  @@map("permissions")
 }
 
-enum Role {
-  EDITOR
-  ADMIN
+model AuthRole {
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  isFullAccess Boolean  @default(false) @map("is_full_access")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  users       User[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id")
+  permissionId String     @map("permission_id")
+  role         AuthRole   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  roleId       String    @map("role_id")
+  roleRef      AuthRole  @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  createdAt    DateTime  @default(now()) @map("created_at")
+
+  @@map("users")
 }
 
 model NewsItem {

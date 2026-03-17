@@ -1,5 +1,6 @@
-# Backend (Express + Prisma) — Debian slim из-за зависимостей Prisma (OpenSSL)
+# Backend (Express + Prisma) — Debian slim, OpenSSL для Prisma
 FROM node:20-slim AS base
+RUN apt-get update -y && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Dependencies
 FROM base AS deps

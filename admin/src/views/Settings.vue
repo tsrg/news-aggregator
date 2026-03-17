@@ -1,23 +1,12 @@
 <template>
-  <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-      <div>
-        <h1 class="font-bold text-2xl text-gray-900 tracking-tight">Настройки</h1>
-        <p class="text-sm text-gray-500 mt-1">Конфигурация системы</p>
-      </div>
+  <div>
+    <div class="mb-8">
+      <h1 class="font-bold text-2xl text-gray-900 tracking-tight">Настройки AI</h1>
+      <p class="text-sm text-gray-500 mt-1">Подключение к нейросетям для генерации и обработки контента</p>
     </div>
 
-    <!-- Настройки AI -->
     <div class="space-y-6">
       <div class="border-b border-gray-100 pb-6">
-        <h2 class="font-semibold text-lg text-gray-900 mb-4 flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-600" viewBox="0 0 20 20" fill="currentColor">
-            <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" />
-          </svg>
-          Настройки AI
-        </h2>
-        <p class="text-sm text-gray-500 mb-6">Настройте подключение к нейросетям для генерации и обработки контента</p>
-
         <!-- Провайдер -->
         <div class="max-w-2xl space-y-6">
           <div>

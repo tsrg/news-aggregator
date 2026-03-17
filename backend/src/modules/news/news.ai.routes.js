@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import { prisma } from '../../config/prisma.js';
-import { requireAuth, requireEditorOrAdmin } from '../auth/auth.middleware.js';
+import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import { factCheckNews, aiEdit } from '../../services/ai.js';
 
 const router = Router();
 router.use(requireAuth);
-router.use(requireEditorOrAdmin);
+router.use(requirePermission('news'));
 
 router.post('/ai/edit', async (req, res) => {
   try {

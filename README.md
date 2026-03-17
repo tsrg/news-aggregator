@@ -20,7 +20,7 @@ npx prisma db seed       # админ admin@example.com / admin123, редакт
 npm run dev
 ```
 
-API: `http://localhost:3000`. Публичные эндпоинты: `/api/news`, `/api/sections`, `/api/menus/:key`, `/api/pages/:slug`. Админ: `/api/auth/login`, `/api/admin/*` (JWT).
+API: `http://localhost:3000`. Публичные эндпоинты: `/api/news`, `/api/sections`, `/api/menus/:key`, `/api/pages/:slug`. Админ: `/api/auth/login`, `/api/admin/*` (JWT). На сайте отображаются только новости со статусом **Опубликовано** (в админке нужно нажать «Опубликовать» по каждой новости).
 
 ## Frontend (Nuxt 3)
 
@@ -71,14 +71,14 @@ docker compose up -d --build
 - Админка: порт назначается автоматически. После `up` выполните:
   `docker compose port admin 80` (prod) или `docker compose -f docker-compose.yml -f docker-compose.dev.yml port admin 5174` (dev) — в выводе будет хост:порт, откройте http://localhost:ПОРТ  
 
-Первый запуск: применить миграции и seed (пока backend уже поднят):
+Первый запуск: применить миграции и seed (пока backend уже поднят). Выполнять от root, иначе Prisma не сможет писать в `node_modules`:
 
 ```bash
-docker compose exec backend npx prisma migrate deploy
-docker compose exec backend npx prisma db seed
+docker compose exec -u root backend npx prisma migrate deploy
+docker compose exec -u root backend npx prisma db seed
 ```
 
-Переменные окружения (можно задать в `.env` в корне или передать в `docker compose`): `JWT_SECRET`, `CORS_ORIGINS`, `NUXT_PUBLIC_API_BASE`, `VITE_API_BASE_URL`, `AI_PROVIDER`, `OPENAI_API_KEY`, `ZAI_API_KEY`. Пример: `.env.docker.example`.
+Переменные окружения (можно задать в `.env` в корне или передать в `docker compose`): `JWT_SECRET`, `CORS_ORIGINS`, `NUXT_PUBLIC_API_BASE`, `VITE_API_BASE_URL`, `AI_PROVIDER`, `OPENAI_API_KEY`, `ZAI_API_KEY`. Пример: `.env.docker.example`. Для админки указывайте **только origin** (например `https://ivanovo.online`), без `/api` — пути вида `/api/auth/login` и `/api/admin/*` админка дописывает сама.
 
 ### Dev-окружение (с hot-reload)
 
@@ -86,11 +86,11 @@ docker compose exec backend npx prisma db seed
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-После первого запуска один раз выполните миграции и seed в контейнере backend:
+После первого запуска один раз выполните миграции и seed в контейнере backend (от root):
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml exec backend npx prisma migrate deploy
-docker compose -f docker-compose.yml -f docker-compose.dev.yml exec backend npx prisma db seed
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -u root backend npx prisma migrate deploy
+docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -u root backend npx prisma db seed
 ```
 
 Порты: API 3000, сайт 3001. Админка — случайный порт, см. выше.

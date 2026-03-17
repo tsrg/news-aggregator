@@ -6,22 +6,41 @@ const router = createRouter({
   routes: [
     { path: '/login', name: 'Login', component: () => import('../views/Login.vue'), meta: { public: true } },
     { path: '/', redirect: '/news' },
-    { path: '/news', name: 'NewsList', component: () => import('../views/news/NewsList.vue') },
-    { path: '/news/new', name: 'NewsNew', component: () => import('../views/news/NewsEdit.vue') },
-    { path: '/news/:id', name: 'NewsEdit', component: () => import('../views/news/NewsEdit.vue'), props: true },
-    { path: '/sources', name: 'Sources', component: () => import('../views/Sources.vue'), meta: { admin: true } },
-    { path: '/sources/new', name: 'SourceNew', component: () => import('../views/SourceEdit.vue'), meta: { admin: true } },
-    { path: '/sources/:id', name: 'SourceEdit', component: () => import('../views/SourceEdit.vue'), props: true, meta: { admin: true } },
-    { path: '/sections', name: 'Sections', component: () => import('../views/Sections.vue'), meta: { admin: true } },
-    { path: '/sections/new', name: 'SectionNew', component: () => import('../views/SectionEdit.vue'), meta: { admin: true } },
-    { path: '/sections/:id', name: 'SectionEdit', component: () => import('../views/SectionEdit.vue'), props: true, meta: { admin: true } },
-    { path: '/menus', name: 'Menus', component: () => import('../views/Menus.vue'), meta: { admin: true } },
-    { path: '/menus/new', name: 'MenuNew', component: () => import('../views/MenuEdit.vue'), meta: { admin: true } },
-    { path: '/menus/:id', name: 'MenuEdit', component: () => import('../views/MenuEdit.vue'), props: true, meta: { admin: true } },
-    { path: '/pages', name: 'Pages', component: () => import('../views/Pages.vue'), meta: { admin: true } },
-    { path: '/pages/new', name: 'PageNew', component: () => import('../views/PageEdit.vue'), meta: { admin: true } },
-    { path: '/pages/:id', name: 'PageEdit', component: () => import('../views/PageEdit.vue'), props: true, meta: { admin: true } },
-    { path: '/settings', name: 'Settings', component: () => import('../views/Settings.vue'), meta: { admin: true } },
+    { path: '/users', redirect: '/settings/users' },
+    { path: '/users/new', redirect: '/settings/users/new' },
+    { path: '/users/:id', redirect: (to) => `/settings/users/${to.params.id}` },
+    { path: '/roles', redirect: '/settings/roles' },
+    { path: '/roles/new', redirect: '/settings/roles/new' },
+    { path: '/roles/:id', redirect: (to) => `/settings/roles/${to.params.id}` },
+    { path: '/news', name: 'NewsList', component: () => import('../views/news/NewsList.vue'), meta: { permission: 'news' } },
+    { path: '/news/new', name: 'NewsNew', component: () => import('../views/news/NewsEdit.vue'), meta: { permission: 'news' } },
+    { path: '/news/:id', name: 'NewsEdit', component: () => import('../views/news/NewsEdit.vue'), props: true, meta: { permission: 'news' } },
+    { path: '/sources', name: 'Sources', component: () => import('../views/Sources.vue'), meta: { permission: 'sources' } },
+    { path: '/sources/new', name: 'SourceNew', component: () => import('../views/SourceEdit.vue'), meta: { permission: 'sources' } },
+    { path: '/sources/:id', name: 'SourceEdit', component: () => import('../views/SourceEdit.vue'), props: true, meta: { permission: 'sources' } },
+    { path: '/sections', name: 'Sections', component: () => import('../views/Sections.vue'), meta: { permission: 'sections' } },
+    { path: '/sections/new', name: 'SectionNew', component: () => import('../views/SectionEdit.vue'), meta: { permission: 'sections' } },
+    { path: '/sections/:id', name: 'SectionEdit', component: () => import('../views/SectionEdit.vue'), props: true, meta: { permission: 'sections' } },
+    { path: '/menus', name: 'Menus', component: () => import('../views/Menus.vue'), meta: { permission: 'menus' } },
+    { path: '/menus/new', name: 'MenuNew', component: () => import('../views/MenuEdit.vue'), meta: { permission: 'menus' } },
+    { path: '/menus/:id', name: 'MenuEdit', component: () => import('../views/MenuEdit.vue'), props: true, meta: { permission: 'menus' } },
+    { path: '/pages', name: 'Pages', component: () => import('../views/Pages.vue'), meta: { permission: 'pages' } },
+    { path: '/pages/new', name: 'PageNew', component: () => import('../views/PageEdit.vue'), meta: { permission: 'pages' } },
+    { path: '/pages/:id', name: 'PageEdit', component: () => import('../views/PageEdit.vue'), props: true, meta: { permission: 'pages' } },
+    {
+      path: '/settings',
+      component: () => import('../views/SettingsLayout.vue'),
+      meta: { permission: 'settings' },
+      children: [
+        { path: '', name: 'Settings', component: () => import('../views/Settings.vue') },
+        { path: 'users', name: 'Users', component: () => import('../views/Users.vue'), meta: { permission: 'users' } },
+        { path: 'users/new', name: 'UserNew', component: () => import('../views/UserEdit.vue'), meta: { permission: 'users' } },
+        { path: 'users/:id', name: 'UserEdit', component: () => import('../views/UserEdit.vue'), props: true, meta: { permission: 'users' } },
+        { path: 'roles', name: 'Roles', component: () => import('../views/Roles.vue'), meta: { permission: 'roles' } },
+        { path: 'roles/new', name: 'RoleNew', component: () => import('../views/RoleEdit.vue'), meta: { permission: 'roles' } },
+        { path: 'roles/:id', name: 'RoleEdit', component: () => import('../views/RoleEdit.vue'), props: true, meta: { permission: 'roles' } },
+      ],
+    },
   ],
 });
 
@@ -32,7 +51,8 @@ router.beforeEach((to, _from, next) => {
     return next();
   }
   if (!auth.token || !auth.user) return next('/login');
-  if (to.meta.admin && auth.user.role !== 'ADMIN') return next('/news');
+  const perm = to.meta.permission as string | undefined;
+  if (perm && !auth.hasPermission(perm)) return next('/news');
   next();
 });
 

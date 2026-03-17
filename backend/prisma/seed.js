@@ -3,24 +3,65 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+const PERMISSION_CODES = [
+  { code: 'news', name: 'Новости' },
+  { code: 'pages', name: 'Страницы' },
+  { code: 'sections', name: 'Разделы' },
+  { code: 'menus', name: 'Меню' },
+  { code: 'sources', name: 'Источники' },
+  { code: 'users', name: 'Пользователи' },
+  { code: 'roles', name: 'Роли' },
+  { code: 'settings', name: 'Настройки' },
+];
+
 async function main() {
+  // Permissions
+  for (const p of PERMISSION_CODES) {
+    await prisma.permission.upsert({
+      where: { code: p.code },
+      update: { name: p.name },
+      create: p,
+    });
+  }
+
+  // Roles: Admin (full access), Editor (news only)
+  const adminRole = await prisma.authRole.upsert({
+    where: { slug: 'admin' },
+    update: { name: 'Администратор', isFullAccess: true },
+    create: { name: 'Администратор', slug: 'admin', isFullAccess: true },
+  });
+  const editorRole = await prisma.authRole.upsert({
+    where: { slug: 'editor' },
+    update: { name: 'Редактор', isFullAccess: false },
+    create: { name: 'Редактор', slug: 'editor', isFullAccess: false },
+  });
+
+  const newsPerm = await prisma.permission.findUnique({ where: { code: 'news' } });
+  if (newsPerm) {
+    await prisma.rolePermission.upsert({
+      where: { roleId_permissionId: { roleId: editorRole.id, permissionId: newsPerm.id } },
+      update: {},
+      create: { roleId: editorRole.id, permissionId: newsPerm.id },
+    });
+  }
+
   const hash = await bcrypt.hash('admin123', 10);
   await prisma.user.upsert({
     where: { email: 'admin@example.com' },
-    update: {},
+    update: { roleId: adminRole.id },
     create: {
       email: 'admin@example.com',
       passwordHash: hash,
-      role: 'ADMIN',
+      roleId: adminRole.id,
     },
   });
   await prisma.user.upsert({
     where: { email: 'editor@example.com' },
-    update: {},
+    update: { roleId: editorRole.id },
     create: {
       email: 'editor@example.com',
       passwordHash: await bcrypt.hash('editor123', 10),
-      role: 'EDITOR',
+      roleId: editorRole.id,
     },
   });
   const draft = await prisma.source.findFirst({ where: { name: 'Ручной ввод' } });

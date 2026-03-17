@@ -60,7 +60,7 @@ services:
       DATABASE_URL: postgresql://app:appsecret@postgres:5432/news_aggregator?schema=public
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
-      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://ivanovo.online,https://www.ivanovo.online,https://admin.ivanovo.online}
       AI_PROVIDER: ${AI_PROVIDER:-openai}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       ZAI_API_KEY: ${ZAI_API_KEY:-}
