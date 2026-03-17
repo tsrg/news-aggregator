@@ -44,13 +44,14 @@ const router = createRouter({
   ],
 });
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore();
+  if (!auth.initialized) await auth.fetchMe();
   if (to.meta.public) {
-    if (auth.token && auth.user && to.name === 'Login') return next('/');
+    if (auth.user && to.name === 'Login') return next('/');
     return next();
   }
-  if (!auth.token || !auth.user) return next('/login');
+  if (!auth.user) return next('/login');
   const perm = to.meta.permission as string | undefined;
   if (perm && !auth.hasPermission(perm)) return next('/news');
   next();

@@ -51,12 +51,13 @@ async function submit() {
     const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
     const r = await fetch(`${base}/api/auth/login`, {
       method: 'POST',
+      credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email.value, password: password.value }),
     });
     const data = await r.json();
     if (!r.ok) throw new Error(data.error || 'Ошибка входа');
-    auth.setAuth(data.token, data.user);
+    auth.setAuth(data.user);
     router.push('/');
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Ошибка входа';

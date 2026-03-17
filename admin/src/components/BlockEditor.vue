@@ -260,11 +260,12 @@ async function handleImageUpload(event: Event) {
   try {
     const formData = new FormData();
     formData.append('image', file);
-    const token = localStorage.getItem('admin_token');
-    const headers: Record<string, string> = {};
-    if (token) headers.Authorization = `Bearer ${token}`;
     const base = api().base;
-    const res = await fetch(`${base}/api/admin/upload`, { method: 'POST', headers, body: formData });
+    const res = await fetch(`${base}/api/admin/upload`, {
+      method: 'POST',
+      credentials: 'include',
+      body: formData,
+    });
     if (!res.ok) throw new Error('Upload failed');
     const data = await res.json();
     editor.value?.chain().focus().setImage({ src: `${base}${data.url}` }).run();

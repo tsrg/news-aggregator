@@ -10,18 +10,15 @@ export interface User {
   permissions?: string[];
 }
 
+const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+
 export const useAuthStore = defineStore('auth', {
-  state: () => {
-    const token = localStorage.getItem('admin_token');
-    let user: User | null = null;
-    try {
-      const u = localStorage.getItem('admin_user');
-      if (u) user = JSON.parse(u) as User;
-    } catch {}
-    return { token, user };
-  },
+  state: () => ({
+    user: null as User | null,
+    initialized: false,
+  }),
   getters: {
-    isAuthenticated: (s) => !!s.token && !!s.user,
+    isAuthenticated: (s) => !!s.user,
     isFullAccess: (s) => s.user?.isFullAccess === true,
     hasPermission(): (code: string) => boolean {
       return (code: string) => {
@@ -29,7 +26,6 @@ export const useAuthStore = defineStore('auth', {
         if (!u) return false;
         if (u.isFullAccess === true) return true;
         if ((u.permissions || []).includes(code)) return true;
-        // Обратная совместимость: старый формат ответа API (только role без permissions)
         if (u.role === 'ADMIN') return true;
         if (u.role === 'EDITOR' && code === 'news') return true;
         return false;
@@ -37,29 +33,32 @@ export const useAuthStore = defineStore('auth', {
     },
   },
   actions: {
-    setAuth(token: string, user: User) {
-      this.token = token;
+    setAuth(user: User) {
       this.user = user;
-      localStorage.setItem('admin_token', token);
-      localStorage.setItem('admin_user', JSON.stringify(user));
     },
-    logout() {
-      this.token = null;
-      this.user = null;
-      localStorage.removeItem('admin_token');
-      localStorage.removeItem('admin_user');
-    },
-    async fetchUser() {
-      if (!this.token) return;
+    async logout() {
       try {
-        const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-        const r = await fetch(`${base}/api/admin/news?limit=1`, {
-          headers: { Authorization: `Bearer ${this.token}` },
+        await fetch(`${apiBase}/api/auth/logout`, {
+          method: 'POST',
+          credentials: 'include',
         });
-        if (r.ok && this.user) return;
-        if (!r.ok) this.logout();
+      } finally {
+        this.user = null;
+      }
+    },
+    async fetchMe(): Promise<void> {
+      if (this.initialized) return;
+      this.initialized = true;
+      try {
+        const r = await fetch(`${apiBase}/api/auth/me`, { credentials: 'include' });
+        if (r.ok) {
+          const user = await r.json();
+          this.user = user;
+        } else {
+          this.user = null;
+        }
       } catch {
-        this.logout();
+        this.user = null;
       }
     },
   },

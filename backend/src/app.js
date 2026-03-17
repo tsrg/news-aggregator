@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import cookieParser from 'cookie-parser';
 import { config } from './config/index.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import newsPublic from './modules/news/news.public.routes.js';
@@ -27,9 +28,11 @@ const app = express();
 app.use(
   cors({
     origin: config.cors.origins === null ? true : config.cors.origins,
+    credentials: true,
   })
 );
 app.use(express.json());
+app.use(cookieParser());
 
 // Serve uploads folder as static
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));

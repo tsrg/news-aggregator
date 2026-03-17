@@ -5,9 +5,14 @@ import { prisma } from '../../config/prisma.js';
 /**
  * Verify JWT and load user with role and permissions. Sets req.userId, req.user, req.roleRef, req.isFullAccess, req.permissions.
  */
+const ADMIN_SESSION_COOKIE = 'admin_session';
+
 export async function requireAuth(req, res, next) {
   const authHeader = req.headers.authorization;
-  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  let token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  if (!token && req.cookies) {
+    token = req.cookies[ADMIN_SESSION_COOKIE] || null;
+  }
   if (!token) {
     return res.status(401).json({ error: 'Unauthorized' });
   }

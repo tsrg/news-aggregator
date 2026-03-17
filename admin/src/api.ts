@@ -1,21 +1,23 @@
 const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
+const defaultOptions: RequestInit = {
+  credentials: 'include',
+  headers: { 'Content-Type': 'application/json' },
+};
+
 export function api() {
-  const token = localStorage.getItem('admin_token');
   return {
     base,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
+    headers: { 'Content-Type': 'application/json' },
     async get<T>(path: string): Promise<T> {
-      const r = await fetch(`${base}${path}`, { headers: this.headers });
+      const r = await fetch(`${base}${path}`, { ...defaultOptions, headers: this.headers });
       if (!r.ok) throw new Error(await r.text());
       if (r.status === 204) return undefined as T;
       return r.json();
     },
     async post<T>(path: string, body?: unknown): Promise<T> {
       const r = await fetch(`${base}${path}`, {
+        ...defaultOptions,
         method: 'POST',
         headers: this.headers,
         body: body ? JSON.stringify(body) : undefined,
@@ -26,6 +28,7 @@ export function api() {
     },
     async put<T>(path: string, body: unknown): Promise<T> {
       const r = await fetch(`${base}${path}`, {
+        ...defaultOptions,
         method: 'PUT',
         headers: this.headers,
         body: JSON.stringify(body),
@@ -35,6 +38,7 @@ export function api() {
     },
     async patch<T>(path: string, body: unknown): Promise<T> {
       const r = await fetch(`${base}${path}`, {
+        ...defaultOptions,
         method: 'PATCH',
         headers: this.headers,
         body: JSON.stringify(body),
@@ -43,7 +47,11 @@ export function api() {
       return r.json();
     },
     async delete(path: string): Promise<void> {
-      const r = await fetch(`${base}${path}`, { method: 'DELETE', headers: this.headers });
+      const r = await fetch(`${base}${path}`, {
+        ...defaultOptions,
+        method: 'DELETE',
+        headers: this.headers,
+      });
       if (!r.ok) throw new Error(await r.text());
     },
   };
