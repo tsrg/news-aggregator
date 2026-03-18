@@ -62,6 +62,56 @@ const slug = route.params.slug as string;
 const apiBase = useApiBase();
 const region = useRegion();
 
+// SEO
+const pageTitle = computed(() => {
+  if (slug === 'region') return 'Новости региона';
+  if (slug === 'general') return 'Общие новости';
+  return section.value?.title || slug;
+});
+
+const sectionDescriptions: Record<string, string> = {
+  'region': 'Новости Ивановской области: события в Иванове и регионе',
+  'politics': 'Политические новости Ивановской области',
+  'society': 'Общественные события и социальные темы в Ивановской области',
+  'sport': 'Спортивные новости Иванова и Ивановской области',
+  'culture': 'Культурная жизнь Ивановской области: события, выставки, концерты',
+  'economy': 'Экономика и бизнес Ивановской области',
+  'general': 'Общие новости России и мира'
+};
+
+const description = computed(() => {
+  return sectionDescriptions[slug] || `Новости раздела "${pageTitle.value}" на Иваново Онлайн`;
+});
+
+useHead(() => ({
+  title: pageTitle.value,
+  meta: [
+    { name: 'description', content: description.value },
+    { property: 'og:title', content: pageTitle.value },
+    { property: 'og:description', content: description.value },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:url', content: `https://ivanovo.online/section/${slug}` },
+  ],
+  link: [
+    { rel: 'canonical', href: `https://ivanovo.online/section/${slug}` }
+  ]
+}));
+
+// Schema
+useWebPageSchema({
+  title: pageTitle.value,
+  description: description.value,
+  url: `/section/${slug}`,
+  type: 'CollectionPage'
+});
+
+// Breadcrumb schema
+const breadcrumbSchemaItems = computed(() => [
+  { name: 'Главная', url: '/' },
+  { name: pageTitle.value }
+]);
+useBreadcrumbSchema(breadcrumbSchemaItems);
+
 const { data: sections, pending: sectionsPending } = await useFetch<{ id: string; slug: string; title: string }[]>(`${apiBase}/api/sections`);
 const section = computed(() => sections.value?.find((s) => s.slug === slug));
 const sectionNotFound = computed(() => !sectionsPending && slug !== 'region' && slug !== 'general' && section.value === undefined);
@@ -95,11 +145,6 @@ const { data, pending, error } = await useFetch<{ items: { id: string; title: st
 const totalPages = computed(() => {
   const t = data.value?.total ?? 0;
   return Math.max(1, Math.ceil(t / limit));
-});
-
-const pageTitle = computed(() => {
-  if (slug === 'region') return 'Новости региона';
-  return section.value?.title ? section.value.title : slug;
 });
 
 const breadcrumbItems = computed(() => [

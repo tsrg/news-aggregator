@@ -164,6 +164,32 @@ import { computed, ref, watchEffect } from 'vue';
 const apiBase = useApiBase();
 const region = useRegion();
 
+// SEO Meta Tags
+useHead({
+  title: 'Главные новости Ивановской области',
+  meta: [
+    { 
+      name: 'description', 
+      content: 'Свежие новости Иванова и Ивановской области. Политика, общество, спорт, культура, экономика. Последние новости региона.' 
+    },
+    { property: 'og:title', content: 'Главные новости Ивановской области' },
+    { property: 'og:description', content: 'Свежие новости Иванова и Ивановской области' },
+    { property: 'og:type', content: 'website' },
+    { property: 'og:url', content: 'https://ivanovo.online/' },
+  ],
+  link: [
+    { rel: 'canonical', href: 'https://ivanovo.online/' }
+  ]
+});
+
+// WebPage Schema
+useWebPageSchema({
+  title: 'Главные новости Ивановской области',
+  description: 'Свежие новости Иванова и Ивановской области',
+  url: '/',
+  type: 'WebPage'
+});
+
 type NewsItem = {
   id: string;
   title: string;

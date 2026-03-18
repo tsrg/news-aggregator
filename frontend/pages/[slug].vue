@@ -23,7 +23,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watchEffect } from 'vue';
+import { ref, watchEffect, computed } from 'vue';
 import { useRoute, useNuxtApp } from '#app';
 
 const route = useRoute();
@@ -34,6 +34,46 @@ const { data: page, pending, error } = await useFetch<{ title: string; body: str
   () => `${apiBase}/api/pages/${slug}`,
   { key: `page-${slug}` }
 );
+
+// SEO
+useHead(() => {
+  if (!page.value) return {};
+  
+  const description = page.value.body 
+    ? page.value.body.substring(0, 160).replace(/<[^>]*>/g, '') 
+    : page.value.title;
+  
+  const url = `https://ivanovo.online/${slug}`;
+  
+  return {
+    title: page.value.title,
+    meta: [
+      { name: 'description', content: description },
+      { property: 'og:title', content: page.value.title },
+      { property: 'og:description', content: description },
+      { property: 'og:type', content: 'article' },
+      { property: 'og:url', content: url },
+    ],
+    link: [
+      { rel: 'canonical', href: url }
+    ]
+  };
+});
+
+// Schema
+useWebPageSchema(computed(() => ({
+  title: page.value?.title || '',
+  description: page.value?.body?.substring(0, 160).replace(/<[^>]*>/g, '') || '',
+  url: `/${slug}`,
+  type: 'WebPage'
+})));
+
+// Breadcrumb schema
+const breadcrumbSchemaItems = computed(() => [
+  { name: 'Главная', url: '/' },
+  { name: page.value?.title || slug }
+]);
+useBreadcrumbSchema(breadcrumbSchemaItems);
 
 const sanitizedBody = ref('');
 const nuxt = useNuxtApp();

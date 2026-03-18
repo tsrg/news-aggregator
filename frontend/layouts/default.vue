@@ -153,4 +153,8 @@ const footerItems = computed(() => {
 
 // Real-time: subscribe to new publications so lists refresh without reload
 useNewsLive();
+
+// SEO: Add Organization and Website schema on all pages
+useOrganizationSchema();
+useWebsiteSchema();
 </script>

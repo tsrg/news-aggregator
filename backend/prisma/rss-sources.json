@@ -1,0 +1,53 @@
+{
+  "description": "Список RSS-источников новостей для агрегатора. Может быть импортирован через admin API или использован для seed.",
+  "sources": [
+    {
+      "id": "ivanovonews-main",
+      "type": "rss",
+      "name": "IvanovoNews - Главные новости",
+      "url": "https://ivanovonews.ru/rss.php",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru",
+        "timezone": "Europe/Moscow",
+        "updateInterval": 60,
+        "websiteUrl": "https://ivanovonews.ru",
+        "description": "Информационный портал г. Иваново, все новости региона",
+        "categories": [
+          "Интервью",
+          "Телепередачи",
+          "Репортажи",
+          "Политика",
+          "Общество",
+          "Спорт",
+          "Культура",
+          "Экономика",
+          "Происшествия"
+        ],
+        "features": {
+          "yandexNews": true,
+          "yandexTurbo": true,
+          "fullText": true,
+          "images": true
+        }
+      },
+      "filters": [
+        {
+          "type": "EXCLUDE",
+          "field": "title",
+          "operator": "contains",
+          "value": "реклама",
+          "isActive": true
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": "2026-03-18",
+    "totalSources": 1,
+    "regions": ["Иваново"]
+  }
+}

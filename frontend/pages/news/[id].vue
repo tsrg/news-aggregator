@@ -72,9 +72,58 @@ const { data, pending, error } = await useFetch<{
   imageUrl?: string;
   publishedAt?: string;
   createdAt: string;
+  updatedAt?: string;
   source?: { name: string };
   section?: { slug: string; title: string } | null;
 }>(() => `${apiBase}/api/news/${route.params.id}`, { key: `news-${route.params.id}` });
+
+// SEO Meta Tags
+useHead(() => {
+  if (!data.value) return {};
+  
+  const description = data.value.summary || 
+    (data.value.body ? data.value.body.substring(0, 160).replace(/<[^>]*>/g, '') : '') ||
+    'Новость на Иваново Онлайн';
+  
+  const url = `https://ivanovo.online/news/${data.value.id}`;
+  
+  return {
+    title: data.value.title,
+    meta: [
+      { name: 'description', content: description },
+      { property: 'og:title', content: data.value.title },
+      { property: 'og:description', content: description },
+      { property: 'og:type', content: 'article' },
+      { property: 'og:url', content: url },
+      { property: 'og:image', content: data.value.imageUrl || 'https://ivanovo.online/og-image.jpg' },
+      { property: 'article:published_time', content: data.value.publishedAt || data.value.createdAt },
+      { property: 'article:modified_time', content: data.value.updatedAt || data.value.publishedAt || data.value.createdAt },
+      { property: 'article:section', content: data.value.section?.title || 'Новости' },
+      { name: 'twitter:card', content: 'summary_large_image' },
+      { name: 'twitter:title', content: data.value.title },
+      { name: 'twitter:description', content: description },
+      { name: 'twitter:image', content: data.value.imageUrl || 'https://ivanovo.online/og-image.jpg' },
+    ],
+    link: [
+      { rel: 'canonical', href: url }
+    ]
+  };
+});
+
+// Schema.org разметка
+useNewsArticleSchema(data);
+
+// Breadcrumb schema
+const breadcrumbSchemaItems = computed(() => {
+  if (!data.value) return [];
+  const items: { name: string; url?: string }[] = [{ name: 'Главная', url: '/' }];
+  if (data.value.section) {
+    items.push({ name: data.value.section.title, url: `/section/${data.value.section.slug}` });
+  }
+  items.push({ name: data.value.title });
+  return items;
+});
+useBreadcrumbSchema(breadcrumbSchemaItems);
 
 const breadcrumbItems = computed(() => {
   if (!data.value) return [];
