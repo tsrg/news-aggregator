@@ -219,6 +219,45 @@
       </div>
     </div>
   </div>
+
+  <Teleport to="body">
+    <div
+      v-if="showAiVariantsModal"
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ai-variants-title"
+      @click.self="closeAiVariantsModal"
+    >
+      <div class="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-lg w-full max-h-[85vh] flex flex-col">
+        <div class="p-5 border-b border-gray-100 shrink-0">
+          <h2 id="ai-variants-title" class="text-lg font-bold text-gray-900">Варианты от ИИ</h2>
+          <p class="text-sm text-gray-600 mt-1">Куда подставить: <span class="font-medium text-gray-800">{{ aiTargetFieldLabelRu }}</span></p>
+          <p class="text-xs text-gray-500 mt-2">Выберите один из вариантов ниже.</p>
+        </div>
+        <div class="p-3 overflow-y-auto flex flex-col gap-2 min-h-0">
+          <button
+            v-for="(variant, idx) in aiVariantOptions"
+            :key="idx"
+            type="button"
+            class="w-full text-left px-4 py-3 rounded-xl text-sm text-gray-800 bg-gray-50 hover:bg-indigo-50 border border-gray-200 hover:border-indigo-200 transition-colors leading-snug"
+            @click="applyAiVariant(variant)"
+          >
+            {{ variant }}
+          </button>
+        </div>
+        <div class="p-4 border-t border-gray-100 shrink-0">
+          <button
+            type="button"
+            class="w-full py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50"
+            @click="closeAiVariantsModal"
+          >
+            Отмена
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -249,8 +288,16 @@ const sections = ref<{ id: string; title: string }[]>([]);
 const history = ref<{ id: string; createdAt: string }[]>([]);
 const aiLoading = ref(false);
 const aiResult = ref('');
+const showAiVariantsModal = ref(false);
+const aiVariantOptions = ref<string[]>([]);
 const factCheckResult = ref('');
 const lastAiField = ref<'title' | 'summary' | 'body'>('body');
+
+const aiTargetFieldLabelRu = computed(() => {
+  if (lastAiField.value === 'title') return 'Заголовок';
+  if (lastAiField.value === 'summary') return 'Лид';
+  return 'Текст';
+});
 const parseLoading = ref(false);
 const parseResult = ref<{ success: boolean; message: string } | null>(null);
 const saveLoading = ref(false);
@@ -461,18 +508,43 @@ async function aiAction(action: string) {
   
   aiLoading.value = true;
   try {
-    const r = await api().post<{ text: string }>('/api/admin/news/ai/edit', {
+    const r = await api().post<{ text: string; variants?: string[] }>('/api/admin/news/ai/edit', {
       newsId: id.value || undefined,
       text,
       field,
       action,
     });
-    aiResult.value = r.text || '';
+    const variants = Array.isArray(r.variants) ? r.variants.filter((v) => typeof v === 'string' && v.trim()) : [];
+    if (variants.length > 0) {
+      aiVariantOptions.value = variants;
+      aiResult.value = '';
+      showAiVariantsModal.value = true;
+    } else {
+      showAiVariantsModal.value = false;
+      aiVariantOptions.value = [];
+      aiResult.value = r.text || '';
+    }
   } catch (e) {
+    showAiVariantsModal.value = false;
+    aiVariantOptions.value = [];
     aiResult.value = e instanceof Error ? e.message : 'Ошибка ИИ';
   } finally {
     aiLoading.value = false;
   }
+}
+
+function closeAiVariantsModal() {
+  showAiVariantsModal.value = false;
+  aiVariantOptions.value = [];
+}
+
+function applyAiVariant(variant: string) {
+  const v = variant.trim();
+  if (!v) return;
+  if (lastAiField.value === 'title') form.value.title = v;
+  else if (lastAiField.value === 'summary') form.value.summary = v;
+  else form.value.body = v;
+  closeAiVariantsModal();
 }
 
 function applyAiResult() {

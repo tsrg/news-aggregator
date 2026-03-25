@@ -348,6 +348,44 @@ ${text.slice(0, 8000)}`;
   return { summary: raw, raw };
 }
 
+/** Действия, для которых ожидается JSON с массивом вариантов */
+const AI_EDIT_VARIANTS_ACTIONS = new Set(['generate-title', 'generate-summary']);
+
+/**
+ * Убирает обёртку ```json ... ``` если модель её добавила.
+ */
+function stripMarkdownJsonFence(raw) {
+  const t = String(raw || '').trim();
+  const m = t.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+  return m ? m[1].trim() : t;
+}
+
+/**
+ * Парсит {"variants":["..."]} из ответа ИИ.
+ */
+function parseVariantsJson(raw) {
+  const trimmed = stripMarkdownJsonFence(raw);
+  const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return [];
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    const arr = parsed.variants;
+    if (!Array.isArray(arr)) return [];
+    const seen = new Set();
+    const out = [];
+    for (const v of arr) {
+      if (typeof v !== 'string') continue;
+      const s = v.trim();
+      if (!s || seen.has(s)) continue;
+      seen.add(s);
+      out.push(s);
+    }
+    return out.slice(0, 8);
+  } catch {
+    return [];
+  }
+}
+
 /**
  * Редактирует текст с помощью AI
  */
@@ -362,19 +400,37 @@ ${text}`,
     expand: `Немного расширь следующий текст, добавив детали. Ответь только расширенным текстом.
 
 ${text}`,
-    'generate-title': `Придумай короткий заголовок новости по тексту. Ответь только заголовком.
+    'generate-title': `По тексту новости придумай 4–5 разных коротких заголовков на русском языке в новостном стиле.
+Запрещено: пояснения, пошаговый анализ, текст на английском, markdown вне JSON.
+Ответь ТОЛЬКО одним JSON-объектом без текста до или после него:
+{"variants":["вариант 1","вариант 2","вариант 3","вариант 4"]}
 
+Текст новости:
 ${text}`,
-    'generate-summary': `Напиши краткий лид (1-2 предложения) для новости по тексту. Ответь только лидом.
+    'generate-summary': `По тексту новости напиши 4–5 разных вариантов краткого лида (1–2 предложения каждый), на русском языке.
+Запрещено: пояснения, пошаговый анализ, текст на английском, markdown вне JSON.
+Ответь ТОЛЬКО одним JSON-объектом без текста до или после него:
+{"variants":["лид 1","лид 2","лид 3","лид 4"]}
 
+Текст новости:
 ${text}`,
   };
-  
+
   const prompt = prompts[action] || `Обработай текст: ${action}
 
 ${text}`;
-  const result = await callAI(prompt, { max_tokens: 1000 });
-  return { text: result };
+  const maxTokens = AI_EDIT_VARIANTS_ACTIONS.has(action) ? 2000 : 1000;
+  const result = await callAI(prompt, { max_tokens: maxTokens });
+
+  if (AI_EDIT_VARIANTS_ACTIONS.has(action)) {
+    const variants = parseVariantsJson(result);
+    if (variants.length > 0) {
+      return { text: variants[0], variants };
+    }
+    return { text: String(result).trim(), variants: [] };
+  }
+
+  return { text: result, variants: [] };
 }
 
 /**
