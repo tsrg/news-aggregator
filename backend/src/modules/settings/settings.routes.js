@@ -1,6 +1,12 @@
+import { z } from 'zod';
 import { Router } from 'express';
 import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
-import { getAISettings, updateSettings, clearSettingsCache } from '../../services/settings.js';
+import {
+  getAISettings,
+  getGeneralSettings,
+  updateSettings,
+  GENERAL_SETTINGS_KEY,
+} from '../../services/settings.js';
 import { testAIConnection } from '../../services/ai.js';
 
 const router = Router();
@@ -8,6 +14,10 @@ router.use(requireAuth);
 router.use(requirePermission('settings'));
 
 const AI_SETTINGS_KEY = 'ai_config';
+
+const generalPutSchema = z.object({
+  autoDeleteStaleUnpublishedNews: z.boolean(),
+});
 
 // Дефолтные настройки
 const defaultAISettings = {
@@ -18,6 +28,36 @@ const defaultAISettings = {
   temperature: 0.7,
   maxTokens: 2000,
 };
+
+const defaultGeneralSettings = {
+  autoDeleteStaleUnpublishedNews: false,
+};
+
+router.get('/general', async (req, res) => {
+  try {
+    const settings = await getGeneralSettings();
+    return res.json(settings);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/general', async (req, res) => {
+  try {
+    const parsed = generalPutSchema.parse(req.body);
+    const current = await getGeneralSettings();
+    const updated = { ...current, ...parsed };
+    await updateSettings(GENERAL_SETTINGS_KEY, updated);
+    return res.json(updated);
+  } catch (e) {
+    if (e.name === 'ZodError') {
+      return res.status(400).json({ error: 'Validation error', details: e.issues ?? e.errors });
+    }
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 // Получить настройки AI
 router.get('/ai', async (req, res) => {
@@ -139,13 +179,12 @@ router.post('/ai/test', async (req, res) => {
 export async function initializeSettings() {
   try {
     const { prisma } = await import('../../config/prisma.js');
-    
-    const existing = await prisma.setting.findUnique({
+
+    const existingAi = await prisma.setting.findUnique({
       where: { key: AI_SETTINGS_KEY },
     });
 
-    if (!existing) {
-      // Создаем дефолтные настройки
+    if (!existingAi) {
       await prisma.setting.create({
         data: {
           key: AI_SETTINGS_KEY,
@@ -155,6 +194,20 @@ export async function initializeSettings() {
       console.log('Default AI settings created in database');
     } else {
       console.log('AI settings loaded from database');
+    }
+
+    const existingGeneral = await prisma.setting.findUnique({
+      where: { key: GENERAL_SETTINGS_KEY },
+    });
+
+    if (!existingGeneral) {
+      await prisma.setting.create({
+        data: {
+          key: GENERAL_SETTINGS_KEY,
+          value: defaultGeneralSettings,
+        },
+      });
+      console.log('Default general settings created in database');
     }
   } catch (e) {
     console.error('Failed to initialize settings:', e.message);

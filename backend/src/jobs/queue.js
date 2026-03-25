@@ -3,9 +3,11 @@ import { config } from '../config/index.js';
 import { prisma } from '../config/prisma.js';
 import { fetchAllSources } from './fetchRss.js';
 import { enrichNewsItem } from '../services/articleParser.js';
+import { purgeStaleUnpublishedNews } from './cleanupStaleNews.js';
 
 let queue = null;
 let articleQueue = null;
+let cleanupQueue = null;
 
 export function getQueue() {
   if (!queue && config.redis?.url) {
@@ -56,6 +58,19 @@ export function getArticleQueue() {
   return articleQueue;
 }
 
+export function getCleanupQueue() {
+  if (!cleanupQueue && config.redis?.url) {
+    cleanupQueue = new Bull('news-cleanup', config.redis.url, {
+      defaultJobOptions: { removeOnComplete: 50, removeOnFail: 20 },
+    });
+    cleanupQueue.process(async () => purgeStaleUnpublishedNews());
+    cleanupQueue.on('failed', (job, err) => {
+      console.error('Stale news cleanup job failed:', err.message);
+    });
+  }
+  return cleanupQueue;
+}
+
 // Экспортируем articleQueue для использования в других модулях
 export { articleQueue };
 
@@ -67,4 +82,10 @@ export function startScheduler() {
 
   // Инициализируем очередь парсинга статей
   getArticleQueue();
+
+  const cq = getCleanupQueue();
+  if (cq) {
+    cq.add({}, { repeat: { cron: '0 * * * *' } }); // every hour
+    console.log('Stale news cleanup scheduler started (every hour)');
+  }
 }

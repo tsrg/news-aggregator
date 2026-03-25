@@ -1,10 +1,18 @@
 <template>
   <div class="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
     <div class="border-b border-gray-200">
-      <nav class="flex gap-1 p-2" aria-label="Настройки">
+      <nav class="flex flex-wrap gap-1 p-2" aria-label="Настройки">
         <router-link
           v-if="hasPermission('settings')"
-          to="/settings"
+          to="/settings/general"
+          class="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors"
+          :class="isGeneralActive ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
+        >
+          Основные
+        </router-link>
+        <router-link
+          v-if="hasPermission('settings')"
+          to="/settings/ai"
           class="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors"
           :class="isAiActive ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
         >
@@ -43,7 +51,8 @@ const route = useRoute();
 const auth = useAuthStore();
 const hasPermission = auth.hasPermission;
 
-const isAiActive = computed(() => route.path === '/settings' || route.path === '/settings/');
+const isGeneralActive = computed(() => route.path === '/settings/general' || route.path === '/settings' || route.path === '/settings/');
+const isAiActive = computed(() => route.path === '/settings/ai');
 const isUsersActive = computed(() => route.path.startsWith('/settings/users'));
 const isRolesActive = computed(() => route.path.startsWith('/settings/roles'));
 </script>

@@ -41,6 +41,23 @@ export async function getSettings(key) {
 /**
  * Получает настройки AI
  */
+export const GENERAL_SETTINGS_KEY = 'general_config';
+
+const defaultGeneralSettings = {
+  autoDeleteStaleUnpublishedNews: false,
+};
+
+/**
+ * Общие настройки приложения (вкладка «Основные» в админке).
+ */
+export async function getGeneralSettings() {
+  const db = await getSettings(GENERAL_SETTINGS_KEY);
+  if (db && typeof db === 'object') {
+    return { ...defaultGeneralSettings, ...db };
+  }
+  return { ...defaultGeneralSettings };
+}
+
 export async function getAISettings() {
   const defaultSettings = {
     aiProvider: process.env.AI_PROVIDER || 'openai',

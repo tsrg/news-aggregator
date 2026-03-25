@@ -32,7 +32,9 @@ const router = createRouter({
       component: () => import('../views/SettingsLayout.vue'),
       meta: { permission: 'settings' },
       children: [
-        { path: '', name: 'Settings', component: () => import('../views/Settings.vue') },
+        { path: '', redirect: { name: 'SettingsGeneral' } },
+        { path: 'general', name: 'SettingsGeneral', component: () => import('../views/SettingsGeneral.vue') },
+        { path: 'ai', name: 'SettingsAI', component: () => import('../views/Settings.vue') },
         { path: 'users', name: 'Users', component: () => import('../views/Users.vue'), meta: { permission: 'users' } },
         { path: 'users/new', name: 'UserNew', component: () => import('../views/UserEdit.vue'), meta: { permission: 'users' } },
         { path: 'users/:id', name: 'UserEdit', component: () => import('../views/UserEdit.vue'), props: true, meta: { permission: 'users' } },

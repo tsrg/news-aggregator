@@ -16,7 +16,14 @@
             <router-link v-if="hasPermission('sections')" to="/sections" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Разделы</router-link>
             <router-link v-if="hasPermission('menus')" to="/menus" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Меню</router-link>
             <router-link v-if="hasPermission('pages')" to="/pages" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Страницы</router-link>
-            <router-link v-if="hasPermission('settings')" to="/settings" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Настройки</router-link>
+            <router-link
+              v-if="hasPermission('settings')"
+              to="/settings/general"
+              class="px-3 py-2 text-sm font-medium rounded-lg transition-colors"
+              :class="settingsNavActive ? 'text-blue-600 bg-blue-50' : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50'"
+            >
+              Настройки
+            </router-link>
             <div class="w-px h-6 bg-gray-200 mx-2"></div>
             <button class="px-3 py-2 text-sm font-medium text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors focus:outline-none" @click="logout">Выход</button>
           </nav>
@@ -31,13 +38,15 @@
 
 <script setup lang="ts">
 import { computed, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
 
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 const user = computed(() => auth.user);
 const hasPermission = auth.hasPermission;
+const settingsNavActive = computed(() => route.path.startsWith('/settings'));
 
 onMounted(() => {
   auth.fetchMe();
