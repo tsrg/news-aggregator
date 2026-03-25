@@ -74,13 +74,18 @@
               :class="{
                 'bg-yellow-50 text-yellow-700 border border-yellow-200': currentStatus === 'PENDING',
                 'bg-green-50 text-green-700 border border-green-200': currentStatus === 'PUBLISHED',
-                'bg-red-50 text-red-700 border border-red-200': currentStatus === 'REJECTED'
+                'bg-red-50 text-red-700 border border-red-200': currentStatus === 'REJECTED',
+                'bg-violet-50 text-violet-800 border border-violet-200': currentStatus === 'MERGED'
               }"
             >
               <span v-if="currentStatus === 'PENDING'">📝 На модерации</span>
               <span v-else-if="currentStatus === 'PUBLISHED'">✅ Опубликовано</span>
               <span v-else-if="currentStatus === 'REJECTED'">❌ Отклонено</span>
+              <span v-else-if="currentStatus === 'MERGED'">🔗 Объединена в другую новость</span>
             </div>
+            <p v-if="currentStatus === 'MERGED' && mergedIntoCanonicalId" class="text-sm text-violet-700 mt-1">
+              <router-link :to="`/news/${mergedIntoCanonicalId}`" class="underline underline-offset-2">Открыть итоговую новость</router-link>
+            </p>
           </div>
           
           <!-- Кнопки действий -->
@@ -95,7 +100,7 @@
             <template v-else>
               <button 
                 class="px-6 py-3 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all shadow-sm shadow-blue-200 inline-flex items-center gap-2" 
-                :disabled="saveLoading"
+                :disabled="saveLoading || currentStatus === 'MERGED'"
                 @click="save"
               >
                 <svg v-if="saveLoading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
@@ -104,7 +109,7 @@
               </button>
               
               <button 
-                v-if="currentStatus !== 'PUBLISHED'"
+                v-if="currentStatus !== 'PUBLISHED' && currentStatus !== 'MERGED'"
                 class="px-6 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 focus:ring-4 focus:ring-green-100 focus:outline-none transition-all shadow-sm shadow-green-200 inline-flex items-center gap-2" 
                 :disabled="publishLoading"
                 @click="publish"
@@ -115,7 +120,7 @@
               </button>
               
               <button 
-                v-if="currentStatus !== 'REJECTED'"
+                v-if="currentStatus !== 'REJECTED' && currentStatus !== 'MERGED'"
                 class="px-6 py-3 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all shadow-sm shadow-red-200 inline-flex items-center gap-2" 
                 :disabled="rejectLoading"
                 @click="reject"
@@ -146,7 +151,7 @@
           <div class="flex flex-col gap-2">
             <button 
               class="w-full text-left px-4 py-2.5 bg-white border border-emerald-100 rounded-xl text-sm font-medium text-gray-700 hover:border-emerald-300 hover:text-emerald-700 transition-all shadow-sm disabled:opacity-50" 
-              :disabled="parseLoading" 
+              :disabled="parseLoading || currentStatus === 'MERGED'" 
               @click="parseBody"
             >
               <span v-if="parseLoading" class="flex items-center gap-2">
@@ -237,7 +242,8 @@ const form = ref({
   sourcePublishedAtLocal: '' as string,
 });
 
-const currentStatus = ref<'PENDING' | 'PUBLISHED' | 'REJECTED' | null>(null);
+const currentStatus = ref<'PENDING' | 'PUBLISHED' | 'REJECTED' | 'MERGED' | null>(null);
+const mergedIntoCanonicalId = ref<string | null>(null);
 
 const sections = ref<{ id: string; title: string }[]>([]);
 const history = ref<{ id: string; createdAt: string }[]>([]);
@@ -281,6 +287,7 @@ onMounted(async () => {
         sectionId?: string;
         region?: string;
         status?: string;
+        mergedIntoId?: string | null;
         sourcePublishedAt?: string | null;
       }>(`/api/admin/news/${id.value}`);
       form.value = {
@@ -291,7 +298,12 @@ onMounted(async () => {
         region: item.region || '',
         sourcePublishedAtLocal: isoToDatetimeLocal(item.sourcePublishedAt),
       };
-      currentStatus.value = (item.status === 'PUBLISHED' || item.status === 'REJECTED' ? item.status : 'PENDING') as 'PENDING' | 'PUBLISHED' | 'REJECTED';
+      mergedIntoCanonicalId.value = item.mergedIntoId ?? null;
+      if (item.status === 'PUBLISHED' || item.status === 'REJECTED' || item.status === 'MERGED') {
+        currentStatus.value = item.status as 'PUBLISHED' | 'REJECTED' | 'MERGED';
+      } else {
+        currentStatus.value = 'PENDING';
+      }
       const hist = await api().get<{ id: string; createdAt: string }[]>(`/api/admin/news/${id.value}/history`);
       history.value = hist;
     } catch (e) {

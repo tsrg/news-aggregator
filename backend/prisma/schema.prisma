@@ -59,6 +59,8 @@ model NewsItem {
   source      Source       @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   externalId  String?      @map("external_id")
   title       String
+  /// Нормализованный заголовок для pg_trgm / поиска дубликатов (см. titleNormalize.js)
+  titleNormalized String?  @map("title_normalized")
   summary     String?      @db.Text
   body        String?      @db.Text
   url         String?      @db.Text
@@ -93,6 +95,8 @@ enum NewsStatus {
   PENDING
   PUBLISHED
   REJECTED
+  /// Поглощённая запись при объединении дубликатов (mergedIntoId задан)
+  MERGED
 }
 
 model NewsItemHistory {

@@ -5,6 +5,7 @@ import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import { enrichNewsItem, parseArticle } from '../../services/articleParser.js';
 import { articleQueue } from '../../jobs/queue.js';
 import { runDuplicateMergeBatch } from '../../services/newsMerge.js';
+import { normalizeTitleForIndex } from '../../services/titleNormalize.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -138,7 +139,12 @@ router.post('/', async (req, res) => {
       sourceId = draft.id;
     }
     const item = await prisma.newsItem.create({
-      data: { ...data, sourceId, externalId: data.externalId || undefined },
+      data: {
+        ...data,
+        sourceId,
+        externalId: data.externalId || undefined,
+        titleNormalized: normalizeTitleForIndex(data.title),
+      },
       include: { section: true, source: true },
     });
     await prisma.newsItemHistory.create({
@@ -157,9 +163,13 @@ router.put('/:id', async (req, res) => {
     const existing = await prisma.newsItem.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
     const data = updateSchema.parse(req.body);
+    const patch = { ...data };
+    if (data.title !== undefined) {
+      patch.titleNormalized = normalizeTitleForIndex(data.title);
+    }
     const item = await prisma.newsItem.update({
       where: { id: req.params.id },
-      data,
+      data: patch,
       include: { section: true, source: true },
     });
     await prisma.newsItemHistory.create({

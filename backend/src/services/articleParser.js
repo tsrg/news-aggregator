@@ -457,10 +457,12 @@ export async function enrichNewsItem(newsItemId, url, options = {}) {
       return { success: false, error: result.error || 'Content not found' };
     }
 
+    const { normalizeTitleForIndex } = await import('./titleNormalize.js');
     const rawTitle = (titleFromParser && String(titleFromParser).trim()) || existing?.title || '';
     const data = { body };
     if (rawTitle) {
       data.title = await normalizeNewsTitleIfNeeded(rawTitle);
+      data.titleNormalized = normalizeTitleForIndex(data.title);
     }
     if (result.sourcePublishedAt && !existing?.sourcePublishedAt) {
       data.sourcePublishedAt = result.sourcePublishedAt;

@@ -1,23 +1,18 @@
 import { prisma } from '../config/prisma.js';
 import { getGeneralSettings, getAISettings } from './settings.js';
 import { synthesizeMergedNewsFromSources } from './ai.js';
+import { normalizeTitleForIndex } from './titleNormalize.js';
 
 /** Окно поиска «того же события» по времени создания записи */
 const MERGE_TIME_WINDOW_MS = 72 * 60 * 60 * 1000;
 /** Порог похожести заголовков (Jaccard по словам) */
 const TITLE_SIMILARITY_THRESHOLD = 0.72;
-
-function normalizeTitle(s) {
-  return String(s || '')
-    .toLowerCase()
-    .replace(/[«»"'""„…]/g, ' ')
-    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
+/** Нижний порог pg_trgm similarity перед финальным Jaccard */
+const TRIGRAM_MIN_SIMILARITY = 0.28;
+const TRIGRAM_CANDIDATE_LIMIT = 25;
 
 function tokenSet(title) {
-  const words = normalizeTitle(title).split(' ').filter((w) => w.length > 2);
+  const words = normalizeTitleForIndex(title).split(' ').filter((w) => w.length > 2);
   return new Set(words);
 }
 
@@ -68,9 +63,9 @@ function mergeSnapshots(canonical, duplicate, canonicalSource, duplicateSource) 
 }
 
 /**
- * Ищет более старую новость, в которую можно объединить текущую (incoming).
+ * Резервный полный перебор кандидатов (если pg_trgm недоступен или нормализованный заголовок пуст).
  */
-export async function findMergeCandidate(incoming) {
+async function findMergeCandidateLegacy(incoming) {
   const windowStart = new Date(incoming.createdAt.getTime() - MERGE_TIME_WINDOW_MS);
 
   const candidates = await prisma.newsItem.findMany({
@@ -95,6 +90,65 @@ export async function findMergeCandidate(incoming) {
       bestScore = score;
       best = c;
     }
+  }
+  return best;
+}
+
+/**
+ * Ищет более старую новость, в которую можно объединить текущую (incoming).
+ */
+export async function findMergeCandidate(incoming) {
+  const windowStart = new Date(incoming.createdAt.getTime() - MERGE_TIME_WINDOW_MS);
+  const norm = normalizeTitleForIndex(incoming.title);
+
+  if (norm.length < 2) {
+    return findMergeCandidateLegacy(incoming);
+  }
+
+  let rows;
+  try {
+    rows = await prisma.$queryRaw`
+      SELECT ni.id AS id
+      FROM news_items ni
+      WHERE ni.merged_into_id IS NULL
+        AND ni.source_id <> ${incoming.sourceId}
+        AND ni.created_at < ${incoming.createdAt}
+        AND ni.created_at >= ${windowStart}
+        AND ni.title_normalized IS NOT NULL
+        AND length(trim(ni.title_normalized)) > 0
+        AND similarity(ni.title_normalized, ${norm}) > ${TRIGRAM_MIN_SIMILARITY}
+      ORDER BY similarity(ni.title_normalized, ${norm}) DESC
+      LIMIT ${TRIGRAM_CANDIDATE_LIMIT}
+    `;
+  } catch (e) {
+    console.warn('[newsMerge] trigram query failed, falling back:', e.message);
+    return findMergeCandidateLegacy(incoming);
+  }
+
+  const ids = rows.map((r) => r.id);
+  if (ids.length === 0) {
+    return findMergeCandidateLegacy(incoming);
+  }
+
+  const candidates = await prisma.newsItem.findMany({
+    where: { id: { in: ids }, mergedIntoId: null },
+    include: { source: true },
+  });
+  const byId = new Map(candidates.map((c) => [c.id, c]));
+  const ordered = ids.map((id) => byId.get(id)).filter(Boolean);
+
+  let best = null;
+  let bestScore = 0;
+  for (const c of ordered) {
+    if (!regionMatches(c.region, incoming.region)) continue;
+    const score = titleSimilarity(c.title, incoming.title);
+    if (score >= TITLE_SIMILARITY_THRESHOLD && score > bestScore) {
+      bestScore = score;
+      best = c;
+    }
+  }
+  if (!best) {
+    return findMergeCandidateLegacy(incoming);
   }
   return best;
 }
@@ -175,12 +229,16 @@ export async function maybeMergeNewsItem(newsItemId) {
           body: synthesized.body,
           summary: synthesized.summary || synthesized.title.slice(0, 280),
           sourceSnapshots: snapshots,
+          titleNormalized: normalizeTitleForIndex(synthesized.title),
         },
       });
 
       await tx.newsItem.update({
         where: { id: incoming.id },
-        data: { mergedIntoId: canonicalFull.id },
+        data: {
+          mergedIntoId: canonicalFull.id,
+          status: 'MERGED',
+        },
       });
     });
   } catch (e) {
@@ -222,6 +280,7 @@ export async function runDuplicateMergeBatch() {
   const rows = await prisma.newsItem.findMany({
     where: {
       mergedIntoId: null,
+      status: { not: 'MERGED' },
       body: { not: null },
     },
     include: { source: true },

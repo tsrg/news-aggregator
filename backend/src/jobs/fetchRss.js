@@ -4,6 +4,7 @@ import { collectUrlsFromSitemap } from '../services/sitemapFetcher.js';
 import { enrichNewsItem, parseArticleTitle } from '../services/articleParser.js';
 import { normalizeNewsTitleIfNeeded } from '../services/ai.js';
 import { parseDateFromRssItem, parseSitemapLastmod } from '../utils/sourcePublishedAt.js';
+import { normalizeTitleForIndex } from '../services/titleNormalize.js';
 
 const parser = new Parser({
   customFields: {
@@ -122,6 +123,7 @@ async function createNewsFromEntry(sourceId, region, filters, entry) {
       sourceId,
       externalId,
       title: displayTitle,
+      titleNormalized: normalizeTitleForIndex(displayTitle),
       summary: entry.contentSnippet?.slice(0, 500) || entry.content?.slice(0, 500) || entry.summary?.slice(0, 500) || null,
       body: null,
       url: entry.link || entry.url || null,
