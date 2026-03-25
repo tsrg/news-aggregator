@@ -39,9 +39,20 @@
               {{ formatDateTime(displayPublishedAt) }}
             </time>
           </span>
-          <span v-if="data.source" class="text-gray-400 flex items-center gap-2">
+          <span v-if="data.source && !sourceSnapshotsList.length" class="text-gray-400 flex items-center gap-2">
              <span class="w-1 h-1 bg-gray-300 rounded-full"></span> 
              Источник: <span class="text-gray-600 font-semibold">{{ data.source.name }}</span>
+          </span>
+          <span v-else-if="sourceSnapshotsList.length" class="text-gray-400 flex items-center gap-2 flex-wrap">
+            <span class="w-1 h-1 bg-gray-300 rounded-full shrink-0"></span>
+            <span class="text-gray-600">Источники:</span>
+            <span
+              v-for="(s, idx) in sourceSnapshotsList"
+              :key="s.sourceId + String(idx)"
+              class="text-gray-600 font-semibold"
+            >
+              {{ s.sourceName }}<span v-if="idx < sourceSnapshotsList.length - 1">, </span>
+            </span>
           </span>
         </div>
         <h1 class="text-3xl md:text-5xl font-bold text-gray-900 leading-tight tracking-tight mb-6">{{ data.title }}</h1>
@@ -59,6 +70,26 @@
       </div>
 
       <div v-if="data.body" class="prose prose-lg prose-blue max-w-none text-gray-700 leading-relaxed marker:text-blue-600" v-html="sanitizedBody"></div>
+
+      <section
+        v-if="sourceSnapshotsList.length"
+        class="mt-10 pt-8 border-t border-gray-100"
+      >
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">Оригинальные материалы</h2>
+        <ul class="space-y-3 text-sm text-gray-600">
+          <li v-for="(s, idx) in sourceSnapshotsList" :key="`snap-${idx}-${s.sourceId}`">
+            <a
+              v-if="s.url"
+              :href="s.url"
+              class="text-blue-600 font-medium hover:underline"
+              rel="noopener noreferrer"
+              target="_blank"
+            >{{ s.sourceName }}</a>
+            <span v-else class="font-medium">{{ s.sourceName }}</span>
+            <span v-if="s.originalTitle" class="text-gray-500"> — {{ s.originalTitle }}</span>
+          </li>
+        </ul>
+      </section>
     </article>
   </div>
 </template>
@@ -69,6 +100,13 @@ import { useRoute, useNuxtApp } from '#app';
 
 const route = useRoute();
 const apiBase = useApiBase();
+
+type SourceSnapshot = {
+  sourceId: string;
+  sourceName: string;
+  url?: string | null;
+  originalTitle?: string;
+};
 
 const { data, pending, error } = await useFetch<{
   id: string;
@@ -82,7 +120,20 @@ const { data, pending, error } = await useFetch<{
   updatedAt?: string;
   source?: { name: string };
   section?: { slug: string; title: string } | null;
+  sourceSnapshots?: SourceSnapshot[] | null;
 }>(() => `${apiBase}/api/news/${route.params.id}`, { key: `news-${route.params.id}` });
+
+const sourceSnapshotsList = computed((): SourceSnapshot[] => {
+  const raw = data.value?.sourceSnapshots;
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw.filter(
+    (x): x is SourceSnapshot =>
+      x !== null &&
+      typeof x === 'object' &&
+      'sourceId' in x &&
+      typeof (x as SourceSnapshot).sourceName === 'string',
+  );
+});
 
 const displayPublishedAt = computed(() =>
   data.value?.sourcePublishedAt || data.value?.publishedAt || data.value?.createdAt || null,

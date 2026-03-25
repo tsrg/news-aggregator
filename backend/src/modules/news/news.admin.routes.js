@@ -4,6 +4,7 @@ import { prisma } from '../../config/prisma.js';
 import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import { enrichNewsItem, parseArticle } from '../../services/articleParser.js';
 import { articleQueue } from '../../jobs/queue.js';
+import { runDuplicateMergeBatch } from '../../services/newsMerge.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -38,7 +39,7 @@ router.get('/', async (req, res) => {
   try {
     const { status, sectionId, region, page = '1', limit = '20', sort } = req.query;
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-    const where = {};
+    const where = { mergedIntoId: null };
     if (status) where.status = status;
     if (sectionId) where.sectionId = sectionId;
     if (region) where.region = region;
@@ -71,11 +72,40 @@ router.get('/', async (req, res) => {
   }
 });
 
+router.post('/merge-duplicates', async (req, res) => {
+  try {
+    const result = await runDuplicateMergeBatch();
+    if (!result.ok) {
+      if (result.code === 'disabled') {
+        return res.status(400).json({
+          error: 'Включите «Объединение дубликатов из разных источников» в Настройки → Основные.',
+          code: 'disabled',
+        });
+      }
+      if (result.code === 'no_ai_key') {
+        return res.status(400).json({
+          error: 'Укажите API-ключ в Настройки → Настройки AI.',
+          code: 'no_ai_key',
+        });
+      }
+      return res.status(400).json({ error: 'Невозможно запустить объединение', code: result.code });
+    }
+    return res.json(result);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/:id', async (req, res) => {
   try {
     const item = await prisma.newsItem.findUnique({
       where: { id: req.params.id },
-      include: { section: true, source: true },
+      include: {
+        section: true,
+        source: true,
+        mergedInto: { include: { source: true, section: true } },
+      },
     });
     if (!item) return res.status(404).json({ error: 'Not found' });
     return res.json(item);

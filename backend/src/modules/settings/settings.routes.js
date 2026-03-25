@@ -17,6 +17,7 @@ const AI_SETTINGS_KEY = 'ai_config';
 
 const generalPutSchema = z.object({
   autoDeleteStaleUnpublishedNews: z.boolean(),
+  mergeDuplicateNews: z.boolean(),
 });
 
 // Дефолтные настройки
@@ -31,6 +32,7 @@ const defaultAISettings = {
 
 const defaultGeneralSettings = {
   autoDeleteStaleUnpublishedNews: false,
+  mergeDuplicateNews: false,
 };
 
 router.get('/general', async (req, res) => {

@@ -232,6 +232,60 @@ async function callAI(prompt, options = {}) {
 }
 
 /**
+ * Синтез одной новости из нескольких источников (агрегация дубликатов).
+ * @param {{ sources: Array<Record<string, unknown>> }} payload — массив снимков источников
+ * @returns {{ title: string, body: string, summary: string }}
+ */
+export async function synthesizeMergedNewsFromSources(payload) {
+  const settings = await getAISettings();
+  if (!settings.apiKey) {
+    throw new Error('API Key not configured');
+  }
+
+  const jsonIn = JSON.stringify(payload.sources ?? payload, null, 0);
+  const prompt = `Ты редактор новостного агрегатора. Ниже JSON-массив «sources»: несколько версий одной темы из разных СМИ (поля sourceName, url, title, summary, body и т.д.).
+
+Задача:
+1) Составь ОДИН связный материал на русском языке: факты только из переданных текстов, ничего не выдумывай.
+2) Заголовок — информативный, без кликбейта.
+3) Поле body — HTML: допускаются только теги p, strong, em, a, ul, li, br. В тексте обязательно вставь осмысленные ссылки <a href="полный_URL" rel="noopener noreferrer" target="_blank">название источника</a> так, чтобы были представлены ВСЕ источники из входа (по полю url). Можно добавить в конце блок <p><strong>Источники:</strong></p><ul><li>...</li></ul> со ссылками.
+4) Поле summary — короткий лид из 1–3 предложений, написанный по содержанию уже согласованного body (без новых фактов).
+
+Входные данные:
+${jsonIn.slice(0, 100000)}
+
+Ответь ТОЛЬКО одним JSON-объектом без пояснений и без обёртки markdown:
+{"title":"...","body":"...","summary":"..."}`;
+
+  const raw = await callAI(prompt, {
+    max_tokens: Math.min(8000, (settings.maxTokens || 2000) * 4),
+    temperature: 0.35,
+    timeout: 120000,
+  });
+
+  let parsed;
+  const trimmed = raw.trim();
+  const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch {
+      throw new Error('Не удалось разобрать JSON ответа ИИ');
+    }
+  } else {
+    throw new Error('Пустой или неверный ответ ИИ');
+  }
+
+  const title = typeof parsed.title === 'string' ? parsed.title.trim() : '';
+  const body = typeof parsed.body === 'string' ? parsed.body.trim() : '';
+  const summary = typeof parsed.summary === 'string' ? parsed.summary.trim() : '';
+  if (!title || !body) {
+    throw new Error('ИИ вернул неполные поля title/body');
+  }
+  return { title, body, summary };
+}
+
+/**
  * Проверяет факты в новостном тексте
  */
 export async function factCheckNews(title, summary, body) {

@@ -45,6 +45,8 @@ export const GENERAL_SETTINGS_KEY = 'general_config';
 
 const defaultGeneralSettings = {
   autoDeleteStaleUnpublishedNews: false,
+  /** Объединение дубликатов из разных RSS после парсинга (требует настроенный ИИ) */
+  mergeDuplicateNews: false,
 };
 
 /**

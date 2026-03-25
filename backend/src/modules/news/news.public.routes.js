@@ -7,7 +7,7 @@ router.get('/', async (req, res) => {
   try {
     const { region, noRegion, section, dateFrom, dateTo, page = '1', limit = '20' } = req.query;
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-    const where = { status: 'PUBLISHED' };
+    const where = { status: 'PUBLISHED', mergedIntoId: null };
     if (noRegion) {
       where.OR = [{ region: null }, { region: '' }];
     } else if (region) {
@@ -39,8 +39,14 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const id = req.params.id;
+    const raw = await prisma.newsItem.findFirst({
+      where: { OR: [{ id }, { externalId: id }] },
+      include: { section: true, source: true },
+    });
+    if (!raw) return res.status(404).json({ error: 'Not found' });
+    const primaryId = raw.mergedIntoId ?? raw.id;
     const item = await prisma.newsItem.findFirst({
-      where: { status: 'PUBLISHED', OR: [{ id }, { externalId: id }] },
+      where: { id: primaryId, status: 'PUBLISHED' },
       include: { section: true, source: true },
     });
     if (!item) return res.status(404).json({ error: 'Not found' });

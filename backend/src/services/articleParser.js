@@ -427,6 +427,13 @@ export async function enrichNewsItem(newsItemId, url) {
       data,
     });
 
+    try {
+      const { maybeMergeNewsItem } = await import('./newsMerge.js');
+      await maybeMergeNewsItem(newsItemId);
+    } catch (mergeErr) {
+      console.warn('newsMerge after enrich:', mergeErr.message);
+    }
+
     return { success: true, content: result.content };
   } catch (error) {
     console.error(`Failed to enrich news item ${newsItemId}:`, error.message);

@@ -15,12 +15,13 @@ export function api() {
       if (r.status === 204) return undefined as T;
       return r.json();
     },
-    async post<T>(path: string, body?: unknown): Promise<T> {
+    async post<T>(path: string, body?: unknown, init?: { signal?: AbortSignal }): Promise<T> {
       const r = await fetch(`${base}${path}`, {
         ...defaultOptions,
         method: 'POST',
         headers: this.headers,
-        body: body ? JSON.stringify(body) : undefined,
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal: init?.signal,
       });
       if (!r.ok) throw new Error(await r.text());
       if (r.status === 204) return undefined as T;

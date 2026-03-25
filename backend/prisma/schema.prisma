@@ -73,10 +73,19 @@ model NewsItem {
   createdAt   DateTime     @default(now()) @map("created_at")
   updatedAt   DateTime     @updatedAt @map("updated_at")
 
+  /// Если задано — материал объединён в другую новость (не показывать в списках)
+  mergedIntoId String?     @map("merged_into_id")
+  mergedInto   NewsItem?   @relation("NewsMerge", fields: [mergedIntoId], references: [id], onDelete: SetNull)
+  mergedFrom   NewsItem[]  @relation("NewsMerge")
+
+  /// Снимки материалов по каждому источнику (агрегированная новость)
+  sourceSnapshots Json?     @map("source_snapshots")
+
   history     NewsItemHistory[]
   factChecks  NewsItemFactCheck[]
 
   @@unique([sourceId, externalId])
+  @@index([mergedIntoId])
   @@map("news_items")
 }
 

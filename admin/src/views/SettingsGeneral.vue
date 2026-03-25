@@ -19,6 +19,20 @@
         </label>
       </div>
 
+      <div class="flex items-start justify-between gap-6 p-5 bg-gray-50 rounded-2xl border border-gray-100">
+        <div>
+          <p class="font-medium text-gray-900">Объединение дубликатов из разных источников</p>
+          <p class="text-sm text-gray-500 mt-1 leading-relaxed">
+            После загрузки полного текста статьи система ищет похожие материалы из других лент и объединяет их в одну новость: заголовок, лид и текст синтезируются нейросетью, в карточке сохраняются снимки всех источников.
+            Требуется вкладка «Настройки AI» с действующим API-ключом.
+          </p>
+        </div>
+        <label class="relative inline-flex items-center cursor-pointer shrink-0 mt-1">
+          <input v-model="form.mergeDuplicateNews" type="checkbox" class="sr-only peer" />
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-100 rounded-full peer peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+        </label>
+      </div>
+
       <div class="flex items-center gap-3 pt-2">
         <button
           type="button"
@@ -46,10 +60,12 @@ import { api } from '../api';
 
 interface GeneralSettings {
   autoDeleteStaleUnpublishedNews: boolean;
+  mergeDuplicateNews: boolean;
 }
 
 const form = ref<GeneralSettings>({
   autoDeleteStaleUnpublishedNews: false,
+  mergeDuplicateNews: false,
 });
 
 const saveLoading = ref(false);
@@ -70,6 +86,7 @@ async function save() {
   try {
     await api().put('/api/admin/settings/general', {
       autoDeleteStaleUnpublishedNews: form.value.autoDeleteStaleUnpublishedNews,
+      mergeDuplicateNews: form.value.mergeDuplicateNews,
     });
     saveResult.value = { success: true, message: 'Сохранено' };
     setTimeout(() => (saveResult.value = null), 3000);

@@ -21,6 +21,19 @@
           <option value="sourcePublishedAt">Сортировка: дата в источнике</option>
           <option value="createdAt">Сортировка: дата создания</option>
         </select>
+        <button
+          type="button"
+          class="px-4 py-2.5 bg-violet-600 text-white font-medium text-sm rounded-xl hover:bg-violet-700 transition-colors shadow-sm shadow-violet-200 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+          :disabled="mergeRunning"
+          title="Ищет пары по заголовкам и объединяет через ИИ (см. Настройки → Основные)"
+          @click="runMergeDuplicates"
+        >
+          <svg v-if="mergeRunning" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+          </svg>
+          {{ mergeRunning ? 'Поиск…' : 'Объединить дубликаты' }}
+        </button>
         <router-link to="/news/new" class="px-4 py-2.5 bg-blue-600 text-white font-medium text-sm rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 inline-flex items-center gap-2">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
           Добавить
@@ -121,6 +134,98 @@
         </button>
       </div>
     </div>
+
+    <!-- Отчёт об объединении дубликатов -->
+    <div
+      v-if="mergeModalOpen"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      @click.self="closeMergeModal"
+    >
+      <div
+        class="bg-white rounded-2xl shadow-xl max-w-3xl w-full max-h-[85vh] overflow-hidden flex flex-col border border-gray-100"
+        role="dialog"
+        aria-labelledby="merge-report-title"
+      >
+        <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between gap-4">
+          <h2 id="merge-report-title" class="font-bold text-lg text-gray-900">Отчёт: объединение дубликатов</h2>
+          <button type="button" class="text-gray-400 hover:text-gray-600 p-1 rounded-lg" aria-label="Закрыть" @click="closeMergeModal">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div class="px-6 py-4 overflow-y-auto text-sm text-gray-700 space-y-6">
+          <div v-if="mergeModalError" class="rounded-xl bg-red-50 text-red-800 px-4 py-3 border border-red-100">
+            {{ mergeModalError }}
+          </div>
+          <template v-else-if="mergeReport">
+            <div class="flex flex-wrap gap-4 text-gray-600">
+              <span><strong class="text-gray-900">{{ mergeReport.processedCount }}</strong> проверено</span>
+              <span><strong class="text-green-700">{{ mergeReport.merged.length }}</strong> объединено</span>
+              <span><strong class="text-gray-900">{{ (mergeReport.durationMs / 1000).toFixed(1) }}</strong> с</span>
+            </div>
+
+            <div v-if="mergeReport.merged.length">
+              <h3 class="font-semibold text-gray-900 mb-2">Успешные слияния</h3>
+              <div class="overflow-x-auto border border-gray-100 rounded-xl">
+                <table class="w-full text-left text-xs">
+                  <thead>
+                    <tr class="bg-gray-50 text-gray-500">
+                      <th class="px-3 py-2 font-medium">Дубликат → канон</th>
+                      <th class="px-3 py-2 font-medium">Схожесть</th>
+                    </tr>
+                  </thead>
+                  <tbody class="divide-y divide-gray-50">
+                    <tr v-for="(m, i) in mergeReport.merged" :key="i" class="align-top">
+                      <td class="px-3 py-2 whitespace-normal">
+                        <span class="text-gray-500 line-clamp-2">{{ m.duplicateTitle }}</span>
+                        <span class="text-gray-400 mx-1">→</span>
+                        <router-link :to="`/news/${m.canonicalId}`" class="text-blue-600 hover:underline font-medium">канон</router-link>
+                        <span class="text-gray-400 text-[10px] ml-1">({{ m.canonicalId.slice(0, 8) }}…)</span>
+                      </td>
+                      <td class="px-3 py-2 text-gray-600">{{ m.similarity != null ? (m.similarity * 100).toFixed(0) + '%' : '—' }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div v-if="skippedReasonRows.length">
+              <h3 class="font-semibold text-gray-900 mb-2">Пропущено (по причинам)</h3>
+              <ul class="space-y-1">
+                <li v-for="row in skippedReasonRows" :key="row.key" class="flex justify-between gap-4 border-b border-gray-50 pb-1">
+                  <span>{{ row.label }}</span>
+                  <span class="font-medium text-gray-900 shrink-0">{{ row.count }}</span>
+                </li>
+              </ul>
+            </div>
+
+            <div v-if="mergeReport.skippedSamples?.length">
+              <h3 class="font-semibold text-gray-900 mb-2">Примеры пропусков (до 50)</h3>
+              <p v-if="mergeReport.skippedSamples.length >= 50" class="text-amber-700 text-xs mb-2">Показаны не все — лимит 50 примеров.</p>
+              <ul class="space-y-2 text-xs">
+                <li v-for="(s, idx) in mergeReport.skippedSamples" :key="idx" class="border border-gray-100 rounded-lg px-3 py-2">
+                  <span class="text-gray-500">{{ reasonLabel(s.reason) }}</span>
+                  <div class="text-gray-800 mt-0.5 line-clamp-2">{{ s.title }}</div>
+                  <code class="text-[10px] text-gray-400">{{ s.id }}</code>
+                </li>
+              </ul>
+            </div>
+
+            <div v-if="mergeReport.errors?.length">
+              <h3 class="font-semibold text-red-800 mb-2">Сбои</h3>
+              <ul class="space-y-2 text-xs text-red-900">
+                <li v-for="(err, idx) in mergeReport.errors" :key="idx" class="border border-red-100 rounded-lg px-3 py-2 bg-red-50/50">
+                  <code class="text-gray-600">{{ err.id }}</code>
+                  <div class="mt-1">{{ err.message }}</div>
+                </li>
+              </ul>
+            </div>
+          </template>
+        </div>
+        <div class="px-6 py-4 border-t border-gray-100 flex justify-end">
+          <button type="button" class="px-5 py-2.5 bg-gray-900 text-white text-sm font-medium rounded-xl hover:bg-gray-800" @click="closeMergeModal">Закрыть</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -150,6 +255,97 @@ const loading = ref(true);
 const error = ref('');
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / limit)));
+
+interface MergeReport {
+  ok: true;
+  durationMs: number;
+  processedCount: number;
+  merged: Array<{
+    duplicateId: string;
+    canonicalId: string;
+    duplicateTitle?: string;
+    canonicalTitle?: string;
+    similarity?: number;
+  }>;
+  skippedByReason: Record<string, number>;
+  skippedSamples: Array<{ id: string; title: string; reason: string }>;
+  errors: Array<{ id: string; message: string }>;
+}
+
+const mergeRunning = ref(false);
+const mergeModalOpen = ref(false);
+const mergeModalError = ref('');
+const mergeReport = ref<MergeReport | null>(null);
+
+const REASON_LABELS: Record<string, string> = {
+  disabled: 'Функция отключена в настройках',
+  no_candidate: 'Нет пары по заголовку и окну времени',
+  thin_body: 'Короткий текст статьи',
+  skip_item: 'Уже объединено или недоступно',
+  canonical_changed: 'Каноническая запись изменилась',
+  race: 'Конфликт при сохранении',
+  ai_error: 'Ошибка ответа ИИ',
+  no_ai_key: 'Нет API-ключа',
+  exception: 'Внутренняя ошибка',
+  unknown: 'Неизвестно',
+};
+
+function reasonLabel(code: string): string {
+  return REASON_LABELS[code] ?? code;
+}
+
+const skippedReasonRows = computed(() => {
+  const raw = mergeReport.value?.skippedByReason;
+  if (!raw) return [];
+  return Object.entries(raw).map(([key, count]) => ({
+    key,
+    count,
+    label: reasonLabel(key),
+  }));
+});
+
+function parseApiError(e: unknown): string {
+  if (e instanceof Error) {
+    if (e.name === 'AbortError') {
+      return 'Превышено время ожидания (10 мин.) или запрос отменён.';
+    }
+    const t = e.message.trim();
+    try {
+      const j = JSON.parse(t) as { error?: string };
+      if (j?.error) return j.error;
+    } catch {
+      /* raw text */
+    }
+    return t;
+  }
+  return 'Ошибка';
+}
+
+function closeMergeModal() {
+  mergeModalOpen.value = false;
+  mergeModalError.value = '';
+  mergeReport.value = null;
+}
+
+async function runMergeDuplicates() {
+  mergeRunning.value = true;
+  mergeModalError.value = '';
+  mergeReport.value = null;
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 600_000);
+  try {
+    const data = await api().post<MergeReport>('/api/admin/news/merge-duplicates', undefined, { signal: ctrl.signal });
+    mergeReport.value = data;
+    mergeModalOpen.value = true;
+    if (data.merged?.length) await load();
+  } catch (e) {
+    mergeModalOpen.value = true;
+    mergeModalError.value = parseApiError(e);
+  } finally {
+    clearTimeout(tid);
+    mergeRunning.value = false;
+  }
+}
 
 async function load() {
   loading.value = true;
