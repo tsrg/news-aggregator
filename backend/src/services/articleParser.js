@@ -117,6 +117,55 @@ function cleanText(text) {
     .trim();
 }
 
+/**
+ * Дата публикации на стороне источника из HTML (meta / JSON-LD / time).
+ * @param {*} $ cheerio root
+ * @returns {Date|null}
+ */
+function extractPublishedFromDocument($) {
+  const meta =
+    $('meta[property="article:published_time"]').attr('content') ||
+    $('meta[name="article:published_time"]').attr('content') ||
+    $('meta[property="og:article:published_time"]').attr('content') ||
+    $('meta[property="article:published"]').attr('content');
+  if (meta) {
+    const d = new Date(String(meta).trim());
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  const timeDt = $('time[datetime]').first().attr('datetime');
+  if (timeDt) {
+    const d = new Date(String(timeDt).trim());
+    if (!Number.isNaN(d.getTime())) return d;
+  }
+  let fromJsonLd = null;
+  $('script[type="application/ld+json"]').each((_, el) => {
+    const raw = $(el).html();
+    if (!raw || fromJsonLd) return;
+    try {
+      const parsed = JSON.parse(raw);
+      const nodes = Array.isArray(parsed) ? parsed : [parsed];
+      for (const node of nodes) {
+        if (!node || typeof node !== 'object') continue;
+        const dp =
+          node.datePublished ||
+          node.dateCreated ||
+          (node.mainEntity && typeof node.mainEntity === 'object' && node.mainEntity.datePublished);
+        if (dp) {
+          const d = new Date(dp);
+          if (!Number.isNaN(d.getTime())) {
+            fromJsonLd = d;
+            return false;
+          }
+        }
+      }
+    } catch {
+      // ignore invalid JSON-LD
+    }
+  });
+  if (fromJsonLd) return fromJsonLd;
+  return null;
+}
+
 function isNoiseText(text) {
   const lower = text.toLowerCase();
   return (
@@ -137,7 +186,7 @@ function isNoiseText(text) {
 export async function parseArticle(url) {
   try {
     if (!url) {
-      return { success: false, error: 'URL is required', title: null, content: null };
+      return { success: false, error: 'URL is required', title: null, content: null, sourcePublishedAt: null };
     }
 
     const domain = getDomain(url);
@@ -155,6 +204,7 @@ export async function parseArticle(url) {
     });
 
     const $ = cheerio.load(response.data);
+    const sourcePublishedAt = extractPublishedFromDocument($);
 
     // Удаляем ненужные элементы
     if (selectors.removeSelectors) {
@@ -275,6 +325,7 @@ export async function parseArticle(url) {
         error: 'Content not found',
         title,
         content: null,
+        sourcePublishedAt,
       };
     }
 
@@ -283,6 +334,7 @@ export async function parseArticle(url) {
       title,
       content,
       domain,
+      sourcePublishedAt,
     };
 
   } catch (error) {
@@ -292,6 +344,7 @@ export async function parseArticle(url) {
       error: error.message,
       title: null,
       content: null,
+      sourcePublishedAt: null,
     };
   }
 }
@@ -339,26 +392,39 @@ export async function parseArticleTitle(url) {
 export async function enrichNewsItem(newsItemId, url) {
   try {
     const { prisma } = await import('../config/prisma.js');
-    
+
+    const existing = await prisma.newsItem.findUnique({
+      where: { id: newsItemId },
+      select: { sourcePublishedAt: true },
+    });
+
     const result = await parseArticle(url);
-    
+
     if (!result.success) {
+      const patch = {
+        body: `[Не удалось загрузить полный текст: ${result.error}]`,
+      };
+      if (result.sourcePublishedAt && !existing?.sourcePublishedAt) {
+        patch.sourcePublishedAt = result.sourcePublishedAt;
+      }
       await prisma.newsItem.update({
         where: { id: newsItemId },
-        data: {
-          body: `[Не удалось загрузить полный текст: ${result.error}]`,
-        },
+        data: patch,
       });
       return { success: false, error: result.error };
     }
 
+    const data = {
+      body: result.content,
+      title: result.title || undefined,
+    };
+    if (result.sourcePublishedAt && !existing?.sourcePublishedAt) {
+      data.sourcePublishedAt = result.sourcePublishedAt;
+    }
+
     await prisma.newsItem.update({
       where: { id: newsItemId },
-      data: {
-        body: result.content,
-        // Обновляем заголовок только если текущий пустой или очень короткий
-        title: result.title || undefined,
-      },
+      data,
     });
 
     return { success: true, content: result.content };

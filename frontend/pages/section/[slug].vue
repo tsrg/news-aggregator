@@ -137,7 +137,7 @@ const newsQuery = computed(() => {
 
 const hasValidQuery = computed(() => !!newsQuery.value);
 
-const { data, pending, error } = await useFetch<{ items: { id: string; title: string; summary?: string; publishedAt?: string; source?: { name: string }; imageUrl?: string | null }[]; total: number }>(
+const { data, pending, error } = await useFetch<{ items: { id: string; title: string; summary?: string; publishedAt?: string; sourcePublishedAt?: string | null; source?: { name: string }; imageUrl?: string | null }[]; total: number }>(
   () => (hasValidQuery.value ? newsQuery.value : null),
   { key: `section-news-${slug}`, watch: [newsQuery, hasValidQuery], immediate: true }
 );

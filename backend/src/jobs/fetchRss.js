@@ -3,8 +3,13 @@ import { prisma } from '../config/prisma.js';
 import { articleQueue } from './queue.js';
 import { collectUrlsFromSitemap } from '../services/sitemapFetcher.js';
 import { parseArticleTitle } from '../services/articleParser.js';
+import { parseDateFromRssItem, parseSitemapLastmod } from '../utils/sourcePublishedAt.js';
 
-const parser = new Parser();
+const parser = new Parser({
+  customFields: {
+    item: [['dc:date', 'dcDate']],
+  },
+});
 
 function matchesFilter(value, operator, filterValue) {
   if (!value) return false;
@@ -89,6 +94,11 @@ async function createNewsFromEntry(sourceId, region, filters, entry) {
   });
   if (existing) return { created: false, skippedByFilters: false };
 
+  const sourcePublishedAt =
+    entry.sourcePublishedAt instanceof Date && !Number.isNaN(entry.sourcePublishedAt.getTime())
+      ? entry.sourcePublishedAt
+      : parseDateFromRssItem(entry);
+
   const newsItem = await prisma.newsItem.create({
     data: {
       sourceId,
@@ -99,6 +109,7 @@ async function createNewsFromEntry(sourceId, region, filters, entry) {
       url: entry.link || entry.url || null,
       imageUrl: entry.enclosure?.url || null,
       region,
+      ...(sourcePublishedAt ? { sourcePublishedAt } : {}),
       status: 'PENDING',
     },
   });
@@ -172,12 +183,13 @@ async function fetchSitemapSource(source) {
   const sitemapUrl = String(params.sitemapUrl || source.url || '').trim();
   if (!sitemapUrl) return { created: 0, skipped: 0 };
 
-  const { urls } = await collectUrlsFromSitemap(sitemapUrl, params);
+  const { entries } = await collectUrlsFromSitemap(sitemapUrl, params);
 
   let created = 0;
   let skipped = 0;
-  for (const loc of urls) {
+  for (const { url: loc, lastmod } of entries) {
     const normalizedUrl = normalizeArticleUrl(loc);
+    const sourcePublishedAt = parseSitemapLastmod(lastmod);
     let resolvedTitle = buildTitleFromUrl(normalizedUrl);
 
     // Если title из URL выглядит как технический идентификатор, пробуем сразу получить заголовок страницы.
@@ -196,6 +208,7 @@ async function fetchSitemapSource(source) {
       contentSnippet: null,
       summary: null,
       content: null,
+      ...(sourcePublishedAt ? { sourcePublishedAt } : {}),
     };
     const result = await createNewsFromEntry(source.id, region, source.filters, entry);
     if (result.skippedByFilters) skipped++;

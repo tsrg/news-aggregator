@@ -3,6 +3,7 @@ interface NewsArticleData {
   title: string;
   summary?: string;
   imageUrl?: string;
+  sourcePublishedAt?: string | null;
   publishedAt?: string;
   updatedAt?: string;
   body?: string;
@@ -91,8 +92,8 @@ export function useNewsArticleSchema(article: Ref<NewsArticleData | null>) {
       headline: data.title,
       description: data.summary || data.body?.substring(0, 160).replace(/<[^>]*>/g, '') || '',
       image: data.imageUrl ? [data.imageUrl] : undefined,
-      datePublished: data.publishedAt || data.updatedAt,
-      dateModified: data.updatedAt || data.publishedAt,
+      datePublished: data.sourcePublishedAt || data.publishedAt || data.updatedAt,
+      dateModified: data.updatedAt || data.publishedAt || data.sourcePublishedAt,
       author: data.author ? {
         '@type': 'Person',
         name: data.author.name,

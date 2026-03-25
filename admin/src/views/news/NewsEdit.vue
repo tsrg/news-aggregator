@@ -49,6 +49,24 @@
               </div>
             </div>
           </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Публикация в источнике</label>
+            <p class="text-xs text-gray-500 mb-2">Дата и время материала у первоисточника (RSS, sitemap, страница). Можно уточнить вручную.</p>
+            <input
+              v-model="form.sourcePublishedAtLocal"
+              type="datetime-local"
+              class="w-full max-w-md bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+            />
+            <button
+              v-if="id"
+              type="button"
+              class="mt-2 text-sm text-gray-500 hover:text-gray-800 underline underline-offset-2"
+              @click="form.sourcePublishedAtLocal = ''"
+            >
+              Сбросить дату в источнике
+            </button>
+          </div>
           
           <!-- Индикатор статуса -->
           <div v-if="id && currentStatus" class="pt-2">
@@ -215,6 +233,8 @@ const form = ref({
   body: '',
   sectionId: undefined as string | undefined,
   region: '' as string,
+  /** Значение для input[type=datetime-local] (локальное время браузера) */
+  sourcePublishedAtLocal: '' as string,
 });
 
 const currentStatus = ref<'PENDING' | 'PUBLISHED' | 'REJECTED' | null>(null);
@@ -231,6 +251,22 @@ const saveLoading = ref(false);
 const publishLoading = ref(false);
 const rejectLoading = ref(false);
 
+function isoToDatetimeLocal(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function sourcePublishedAtPayload(): Date | null {
+  const local = form.value.sourcePublishedAtLocal;
+  if (!local) return null;
+  const d = new Date(local);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
 onMounted(async () => {
   try {
     const s = await api().get<{ id: string; title: string }[]>('/api/admin/sections');
@@ -238,13 +274,22 @@ onMounted(async () => {
   } catch {}
   if (id.value) {
     try {
-      const item = await api().get<{ title: string; summary?: string; body?: string; sectionId?: string; region?: string; status?: string }>(`/api/admin/news/${id.value}`);
+      const item = await api().get<{
+        title: string;
+        summary?: string;
+        body?: string;
+        sectionId?: string;
+        region?: string;
+        status?: string;
+        sourcePublishedAt?: string | null;
+      }>(`/api/admin/news/${id.value}`);
       form.value = {
         title: item.title || '',
         summary: item.summary || '',
         body: item.body || '',
         sectionId: item.sectionId || undefined,
         region: item.region || '',
+        sourcePublishedAtLocal: isoToDatetimeLocal(item.sourcePublishedAt),
       };
       currentStatus.value = (item.status === 'PUBLISHED' || item.status === 'REJECTED' ? item.status : 'PENDING') as 'PENDING' | 'PUBLISHED' | 'REJECTED';
       const hist = await api().get<{ id: string; createdAt: string }[]>(`/api/admin/news/${id.value}/history`);
@@ -265,13 +310,16 @@ onUnmounted(() => {
 // Создать новую новость со статусом PENDING
 async function saveAsPending() {
   try {
-    await api().post('/api/admin/news', { 
-      title: form.value.title, 
-      summary: form.value.summary, 
-      body: form.value.body, 
-      sectionId: form.value.sectionId, 
-      region: form.value.region 
-    });
+    const body: Record<string, unknown> = {
+      title: form.value.title,
+      summary: form.value.summary,
+      body: form.value.body,
+      sectionId: form.value.sectionId,
+      region: form.value.region,
+    };
+    const sp = sourcePublishedAtPayload();
+    if (sp !== null) body.sourcePublishedAt = sp;
+    await api().post('/api/admin/news', body);
     router.push('/news');
   } catch (e) {
     alert(e instanceof Error ? e.message : 'Ошибка сохранения');
@@ -288,7 +336,8 @@ async function save() {
       summary: form.value.summary, 
       body: form.value.body, 
       sectionId: form.value.sectionId, 
-      region: form.value.region 
+      region: form.value.region,
+      sourcePublishedAt: sourcePublishedAtPayload(),
     });
     router.push('/news');
   } catch (e) {
@@ -309,7 +358,8 @@ async function publish() {
       summary: form.value.summary, 
       body: form.value.body, 
       sectionId: form.value.sectionId, 
-      region: form.value.region 
+      region: form.value.region,
+      sourcePublishedAt: sourcePublishedAtPayload(),
     });
     // Затем меняем статус на PUBLISHED
     await api().patch(`/api/admin/news/${id.value}/status`, { status: 'PUBLISHED' });
@@ -333,7 +383,8 @@ async function reject() {
       summary: form.value.summary, 
       body: form.value.body, 
       sectionId: form.value.sectionId, 
-      region: form.value.region 
+      region: form.value.region,
+      sourcePublishedAt: sourcePublishedAtPayload(),
     });
     // Затем меняем статус на REJECTED
     await api().patch(`/api/admin/news/${id.value}/status`, { status: 'REJECTED' });
@@ -423,13 +474,18 @@ async function parseBody() {
   parseLoading.value = true;
   parseResult.value = null;
   try {
-    const r = await api().post<{ message: string; item?: { body?: string } }>(`/api/admin/news/${id.value}/parse-body`, {});
+    const r = await api().post<{ message: string; item?: { body?: string; sourcePublishedAt?: string | null } }>(
+      `/api/admin/news/${id.value}/parse-body`,
+      {},
+    );
     parseResult.value = { success: true, message: r.message || 'Текст загружается...' };
-    // Если текст уже получен (синхронно), обновляем форму
     if (r.item?.body) {
       form.value.body = r.item.body;
-    } else {
-      // Запускаем polling для проверки обновления текста
+    }
+    if (r.item?.sourcePublishedAt) {
+      form.value.sourcePublishedAtLocal = isoToDatetimeLocal(r.item.sourcePublishedAt);
+    }
+    if (!r.item?.body) {
       startPollingForBody();
     }
   } catch (e) {
@@ -454,11 +510,13 @@ function startPollingForBody() {
     attempts++;
     
     try {
-      const item = await api().get<{ body?: string }>(`/api/admin/news/${id.value}`);
+      const item = await api().get<{ body?: string; sourcePublishedAt?: string | null }>(`/api/admin/news/${id.value}`);
+      if (item.sourcePublishedAt && !form.value.sourcePublishedAtLocal) {
+        form.value.sourcePublishedAtLocal = isoToDatetimeLocal(item.sourcePublishedAt);
+      }
       if (item.body && item.body !== form.value.body) {
         form.value.body = item.body;
         parseResult.value = { success: true, message: 'Текст успешно загружен!' };
-        // Останавливаем polling
         if (pollInterval) {
           clearInterval(pollInterval);
           pollInterval = null;

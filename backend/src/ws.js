@@ -29,6 +29,7 @@ function toPublicPayload(item) {
       imageUrl: item.imageUrl,
       region: item.region,
       publishedAt: item.publishedAt,
+      sourcePublishedAt: item.sourcePublishedAt,
       sectionId: item.sectionId,
       section: item.section
         ? { id: item.section.id, slug: item.section.slug, title: item.section.title }

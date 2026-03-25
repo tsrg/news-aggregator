@@ -49,10 +49,14 @@ function getSitemapLocs(doc, baseUrl) {
     .filter(Boolean);
 }
 
-function getUrlsetLocs(doc, baseUrl) {
+function getUrlsetEntries(doc, baseUrl) {
   const urlEntries = toArray(doc?.urlset?.url);
   return urlEntries
-    .map((entry) => normalizeAbsoluteUrl(entry?.loc, baseUrl))
+    .map((entry) => {
+      const url = normalizeAbsoluteUrl(entry?.loc, baseUrl);
+      const lastmod = entry?.lastmod != null ? String(entry.lastmod).trim() : null;
+      return url ? { url, lastmod: lastmod || null } : null;
+    })
     .filter(Boolean);
 }
 
@@ -107,18 +111,18 @@ export async function collectUrlsFromSitemap(rootSitemapUrl, params = {}) {
       continue;
     }
 
-    const urls = getUrlsetLocs(doc, current);
-    for (const url of urls) {
+    const entries = getUrlsetEntries(doc, current);
+    for (const { url, lastmod } of entries) {
       if (!matchesInclude(url, includePatterns)) continue;
       if (seenUrls.has(url)) continue;
       seenUrls.add(url);
-      collected.push(url);
+      collected.push({ url, lastmod });
       if (collected.length >= maxUrls) break;
     }
   }
 
   return {
-    urls: collected,
+    entries: collected,
     visitedSitemaps: visited.size,
   };
 }

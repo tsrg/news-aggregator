@@ -18,6 +18,8 @@ const createSchema = z.object({
   imageUrl: z.string().optional(),
   region: z.string().optional(),
   sectionId: z.string().optional(),
+  /** Дата/время публикации в оригинальном источнике (ISO-строка или null для сброса) */
+  sourcePublishedAt: z.union([z.coerce.date(), z.null()]).optional(),
 });
 
 const updateSchema = createSchema.partial();
@@ -34,17 +36,29 @@ function snapshot(item) {
 
 router.get('/', async (req, res) => {
   try {
-    const { status, sectionId, region, page = '1', limit = '20' } = req.query;
+    const { status, sectionId, region, page = '1', limit = '20', sort } = req.query;
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const where = {};
     if (status) where.status = status;
     if (sectionId) where.sectionId = sectionId;
     if (region) where.region = region;
+
+    let orderBy;
+    if (sort === 'createdAt') {
+      orderBy = { createdAt: 'desc' };
+    } else {
+      // По умолчанию и sort=sourcePublishedAt: дата в источнике (без даты — в конце), затем по созданию в системе
+      orderBy = [
+        { sourcePublishedAt: { sort: 'desc', nulls: 'last' } },
+        { createdAt: 'desc' },
+      ];
+    }
+
     const [items, total] = await Promise.all([
       prisma.newsItem.findMany({
         where,
         include: { section: true, source: true },
-        orderBy: { createdAt: 'desc' },
+        orderBy,
         skip,
         take: Math.min(parseInt(limit, 10) || 20, 100),
       }),

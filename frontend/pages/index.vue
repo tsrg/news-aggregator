@@ -91,7 +91,7 @@
             >
               <div class="flex items-start gap-4">
                 <div class="w-10 h-10 shrink-0 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                  {{ formatDateShort(item.publishedAt) }}
+                  {{ formatDateShort(item.sourcePublishedAt || item.publishedAt) }}
                 </div>
                 <div>
                   <h3 class="font-medium text-gray-900 leading-snug group-hover:text-blue-600 transition-colors line-clamp-3">{{ item.title }}</h3>
@@ -195,6 +195,7 @@ type NewsItem = {
   title: string;
   summary?: string | null;
   imageUrl?: string | null;
+  sourcePublishedAt?: string | null;
   publishedAt?: string | null;
   source?: { name: string } | null;
 };

@@ -29,9 +29,15 @@
           <NuxtLink v-if="data.section" :to="`/section/${data.section.slug}`" class="px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded-full transition-colors">
             {{ data.section.title }}
           </NuxtLink>
-          <span class="text-gray-400 flex items-center gap-2">
-             <span class="w-1 h-1 bg-gray-300 rounded-full"></span> 
-             {{ formatDate(data.publishedAt || data.createdAt) }}
+          <span
+            v-if="displayPublishedAt"
+            class="text-gray-400 flex items-center gap-2 flex-wrap"
+          >
+            <span class="w-1 h-1 bg-gray-300 rounded-full shrink-0"></span>
+            <time :datetime="displayPublishedAt" class="text-gray-500">
+              <span v-if="data.sourcePublishedAt" class="text-gray-400">В источнике · </span>
+              {{ formatDateTime(displayPublishedAt) }}
+            </time>
           </span>
           <span v-if="data.source" class="text-gray-400 flex items-center gap-2">
              <span class="w-1 h-1 bg-gray-300 rounded-full"></span> 
@@ -70,12 +76,17 @@ const { data, pending, error } = await useFetch<{
   summary?: string;
   body?: string;
   imageUrl?: string;
+  sourcePublishedAt?: string | null;
   publishedAt?: string;
   createdAt: string;
   updatedAt?: string;
   source?: { name: string };
   section?: { slug: string; title: string } | null;
 }>(() => `${apiBase}/api/news/${route.params.id}`, { key: `news-${route.params.id}` });
+
+const displayPublishedAt = computed(() =>
+  data.value?.sourcePublishedAt || data.value?.publishedAt || data.value?.createdAt || null,
+);
 
 // SEO Meta Tags
 useHead(() => {
@@ -96,7 +107,7 @@ useHead(() => {
       { property: 'og:type', content: 'article' },
       { property: 'og:url', content: url },
       { property: 'og:image', content: data.value.imageUrl || 'https://ivanovo.online/og-image.jpg' },
-      { property: 'article:published_time', content: data.value.publishedAt || data.value.createdAt },
+      { property: 'article:published_time', content: data.value.sourcePublishedAt || data.value.publishedAt || data.value.createdAt },
       { property: 'article:modified_time', content: data.value.updatedAt || data.value.publishedAt || data.value.createdAt },
       { property: 'article:section', content: data.value.section?.title || 'Новости' },
       { name: 'twitter:card', content: 'summary_large_image' },
@@ -150,9 +161,16 @@ watchEffect(async () => {
   }
 });
 
-function formatDate(d: string) {
-  const date = new Date(d);
-  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+function formatDateTime(iso: string) {
+  const date = new Date(iso);
+  return date.toLocaleString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Moscow',
+  });
 }
 </script>
 

@@ -24,9 +24,9 @@
           <div class="flex items-center gap-2 text-xs font-medium text-blue-600 mb-3">
             <span v-if="item.source?.name" class="px-2.5 py-1 bg-blue-50 rounded-full">{{ item.source.name }}</span>
             <ClientOnly>
-              <span class="text-gray-400">{{ formatDate(item.publishedAt) }}</span>
+              <span class="text-gray-400">{{ formatDate(displayDate) }}</span>
               <template #fallback>
-                <span class="text-gray-400">{{ formatDateUTC(item.publishedAt) }}</span>
+                <span class="text-gray-400">{{ formatDateUTC(displayDate) }}</span>
               </template>
             </ClientOnly>
           </div>
@@ -39,13 +39,16 @@
 </template>
 
 <script setup lang="ts">
-defineProps<{
+import { computed } from 'vue';
+
+const props = defineProps<{
   item: {
     id: string;
     title: string;
     summary?: string | null;
     imageUrl?: string | null;
     publishedAt?: string | null;
+    sourcePublishedAt?: string | null;
     source?: { name: string } | null;
   };
   featured?: boolean;
@@ -53,6 +56,8 @@ defineProps<{
   /** Set true for LCP candidate (e.g. first card above the fold) to avoid lazy load and use fetchpriority="high" */
   priority?: boolean;
 }>();
+
+const displayDate = computed(() => props.item.sourcePublishedAt || props.item.publishedAt);
 
 function formatDate(d: string | undefined | null): string {
   if (!d) return '';
