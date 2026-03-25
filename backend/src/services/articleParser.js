@@ -1,6 +1,13 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 
+/** Таймаут HTTP при загрузке статьи (мс) */
+const PARSE_FETCH_TIMEOUT_MS = 22000;
+/** Минимум символов текста со страницы */
+const MIN_PAGE_CONTENT_CHARS = 100;
+/** Минимум символов для резервного текста из RSS/HTML */
+const MIN_RSS_FALLBACK_CHARS = 200;
+
 // Конфигурация селекторов для разных доменов
 // Можно расширять через админку или БД
 const DOMAIN_SELECTORS = {
@@ -179,22 +186,29 @@ function isNoiseText(text) {
 }
 
 /**
- * Парсит статью по URL
- * @param {string} url - URL статьи
- * @returns {Promise<{title: string|null, content: string|null, success: boolean, error?: string}>}
+ * Текст из HTML фида (content:encoded и т.п.)
+ * @param {string} html
+ * @returns {string}
  */
-export async function parseArticle(url) {
-  try {
-    if (!url) {
-      return { success: false, error: 'URL is required', title: null, content: null, sourcePublishedAt: null };
-    }
+export function htmlToPlainTextFromRss(html) {
+  if (!html || typeof html !== 'string') return '';
+  const $ = cheerio.load(html);
+  $('script, style, noscript').remove();
+  return cleanText($.text());
+}
 
+/**
+ * Одна попытка загрузки и разбора статьи по URL
+ * @param {string} url
+ */
+async function parseArticleOnce(url) {
+  try {
     const domain = getDomain(url);
     const selectors = getSelectorsForDomain(domain);
 
     // Загружаем страницу
     const response = await axios.get(url, {
-      timeout: 10000,
+      timeout: PARSE_FETCH_TIMEOUT_MS,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -243,7 +257,7 @@ export async function parseArticle(url) {
         if (paragraphs.length === 0) {
           content = element.text().trim();
           // Для сайтов с div-версткой без <p> пытаемся собрать читаемые блочные фрагменты.
-          if (!content || content.length < 100) {
+          if (!content || content.length < MIN_PAGE_CONTENT_CHARS) {
             const blockTexts = [];
             element.find('div').each((_, el) => {
               const text = $(el).text().trim();
@@ -259,14 +273,14 @@ export async function parseArticle(url) {
           content = paragraphs.join('\n\n');
         }
 
-        if (content && content.length > 100) {
+        if (content && content.length > MIN_PAGE_CONTENT_CHARS) {
           break;
         }
       }
     }
 
     // Если основные селекторы не сработали, пробуем универсальный подход
-    if (!content || content.length < 100) {
+    if (!content || content.length < MIN_PAGE_CONTENT_CHARS) {
       // Ищем блок с наибольшим количеством текста
       let bestContent = '';
       $('p').each((_, el) => {
@@ -276,7 +290,7 @@ export async function parseArticle(url) {
         }
       });
       
-      if (bestContent.length > 100) {
+      if (bestContent.length > MIN_PAGE_CONTENT_CHARS) {
         // Собираем все параграфы из того же родителя
         const parent = $('p').toArray().find(el => $(el).text().trim() === bestContent);
         if (parent) {
@@ -294,7 +308,7 @@ export async function parseArticle(url) {
     }
 
     // Последний универсальный fallback: ищем самый "текстовый" контейнер статьи.
-    if (!content || content.length < 100) {
+    if (!content || content.length < MIN_PAGE_CONTENT_CHARS) {
       const containers = $('main, article, [itemprop="articleBody"], [class*="article"], [class*="content"], [class*="news"], [class*="detail"]');
       let bestContainerText = '';
 
@@ -313,13 +327,13 @@ export async function parseArticle(url) {
         }
       });
 
-      if (bestContainerText.length > 100) {
+      if (bestContainerText.length > MIN_PAGE_CONTENT_CHARS) {
         content = bestContainerText;
       }
     }
 
     content = content ? cleanText(content) : null;
-    if (!content || content.length < 100) {
+    if (!content || content.length < MIN_PAGE_CONTENT_CHARS) {
       return {
         success: false,
         error: 'Content not found',
@@ -350,6 +364,22 @@ export async function parseArticle(url) {
 }
 
 /**
+ * Парсит статью по URL (до двух попыток при неудаче).
+ * @param {string} url - URL статьи
+ * @returns {Promise<{title: string|null, content: string|null, success: boolean, error?: string}>}
+ */
+export async function parseArticle(url) {
+  if (!url) {
+    return { success: false, error: 'URL is required', title: null, content: null, sourcePublishedAt: null };
+  }
+  const first = await parseArticleOnce(url);
+  if (first.success) return first;
+  await new Promise((r) => setTimeout(r, 1200));
+  const second = await parseArticleOnce(url);
+  return second.success ? second : first;
+}
+
+/**
  * Быстро получает только заголовок статьи, без извлечения полного текста.
  * Используется при импорте sitemap, чтобы сразу сохранить человекочитаемый title.
  */
@@ -361,7 +391,7 @@ export async function parseArticleTitle(url) {
     const selectors = getSelectorsForDomain(domain);
 
     const response = await axios.get(url, {
-      timeout: 8000,
+      timeout: 15000,
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
@@ -388,21 +418,34 @@ export async function parseArticleTitle(url) {
  * Обновляет новость полным текстом статьи
  * @param {string} newsItemId - ID новости
  * @param {string} url - URL статьи
+ * @param {{ rssContentHtml?: string|null }} [options]
  */
-export async function enrichNewsItem(newsItemId, url) {
+export async function enrichNewsItem(newsItemId, url, options = {}) {
+  const { rssContentHtml = null } = options;
   try {
     const { prisma } = await import('../config/prisma.js');
+    const { normalizeNewsTitleIfNeeded } = await import('./ai.js');
 
     const existing = await prisma.newsItem.findUnique({
       where: { id: newsItemId },
-      select: { sourcePublishedAt: true },
+      select: { sourcePublishedAt: true, title: true },
     });
 
     const result = await parseArticle(url);
 
-    if (!result.success) {
+    let body = result.success && result.content ? result.content : null;
+    let titleFromParser = result.title;
+
+    if (!body && rssContentHtml) {
+      const rssText = htmlToPlainTextFromRss(rssContentHtml);
+      if (rssText.length >= MIN_RSS_FALLBACK_CHARS) {
+        body = rssText;
+      }
+    }
+
+    if (!body) {
       const patch = {
-        body: `[Не удалось загрузить полный текст: ${result.error}]`,
+        body: `[Не удалось загрузить полный текст: ${result.error || 'Content not found'}]`,
       };
       if (result.sourcePublishedAt && !existing?.sourcePublishedAt) {
         patch.sourcePublishedAt = result.sourcePublishedAt;
@@ -411,13 +454,14 @@ export async function enrichNewsItem(newsItemId, url) {
         where: { id: newsItemId },
         data: patch,
       });
-      return { success: false, error: result.error };
+      return { success: false, error: result.error || 'Content not found' };
     }
 
-    const data = {
-      body: result.content,
-      title: result.title || undefined,
-    };
+    const rawTitle = (titleFromParser && String(titleFromParser).trim()) || existing?.title || '';
+    const data = { body };
+    if (rawTitle) {
+      data.title = await normalizeNewsTitleIfNeeded(rawTitle);
+    }
     if (result.sourcePublishedAt && !existing?.sourcePublishedAt) {
       data.sourcePublishedAt = result.sourcePublishedAt;
     }
@@ -434,7 +478,7 @@ export async function enrichNewsItem(newsItemId, url) {
       console.warn('newsMerge after enrich:', mergeErr.message);
     }
 
-    return { success: true, content: result.content };
+    return { success: true, content: body };
   } catch (error) {
     console.error(`Failed to enrich news item ${newsItemId}:`, error.message);
     return { success: false, error: error.message };

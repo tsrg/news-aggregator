@@ -1,15 +1,28 @@
 import Parser from 'rss-parser';
 import { prisma } from '../config/prisma.js';
-import { articleQueue } from './queue.js';
 import { collectUrlsFromSitemap } from '../services/sitemapFetcher.js';
-import { parseArticleTitle } from '../services/articleParser.js';
+import { enrichNewsItem, parseArticleTitle } from '../services/articleParser.js';
+import { normalizeNewsTitleIfNeeded } from '../services/ai.js';
 import { parseDateFromRssItem, parseSitemapLastmod } from '../utils/sourcePublishedAt.js';
 
 const parser = new Parser({
   customFields: {
-    item: [['dc:date', 'dcDate']],
+    item: [
+      ['dc:date', 'dcDate'],
+      ['content:encoded', 'contentEncoded'],
+    ],
   },
 });
+
+/** Полный HTML текста из элемента RSS (для резервного тела при неудачном скрейпинге). */
+function pickRssContentHtml(entry) {
+  if (!entry) return '';
+  let c = entry.content;
+  if (c && typeof c === 'object' && c._) c = c._;
+  if (typeof c !== 'string') c = entry.contentEncoded || entry['content:encoded'] || '';
+  if (typeof c !== 'string') c = entry.description || '';
+  return typeof c === 'string' ? c : '';
+}
 
 function matchesFilter(value, operator, filterValue) {
   if (!value) return false;
@@ -99,11 +112,16 @@ async function createNewsFromEntry(sourceId, region, filters, entry) {
       ? entry.sourcePublishedAt
       : parseDateFromRssItem(entry);
 
+  const rawTitle = entry.title || 'Untitled';
+  const displayTitle = await normalizeNewsTitleIfNeeded(rawTitle);
+
+  const rssContentHtml = pickRssContentHtml(entry);
+
   const newsItem = await prisma.newsItem.create({
     data: {
       sourceId,
       externalId,
-      title: entry.title || 'Untitled',
+      title: displayTitle,
       summary: entry.contentSnippet?.slice(0, 500) || entry.content?.slice(0, 500) || entry.summary?.slice(0, 500) || null,
       body: null,
       url: entry.link || entry.url || null,
@@ -114,14 +132,25 @@ async function createNewsFromEntry(sourceId, region, filters, entry) {
     },
   });
 
-  if (entry.link || entry.url) {
-    await articleQueue.add('parse-article', {
+  const articleUrl = entry.link || entry.url;
+  if (articleUrl) {
+    const jobPayload = {
       newsItemId: newsItem.id,
-      url: entry.link || entry.url,
-    }, {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
-    });
+      url: articleUrl,
+      ...(rssContentHtml ? { rssContentHtml } : {}),
+    };
+    const { getArticleQueue } = await import('./queue.js');
+    const q = getArticleQueue();
+    if (q) {
+      await q.add('parse-article', jobPayload, {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+      });
+    } else {
+      enrichNewsItem(newsItem.id, articleUrl, { rssContentHtml: rssContentHtml || null }).catch((err) => {
+        console.error(`enrichNewsItem without queue failed for ${articleUrl}:`, err.message);
+      });
+    }
   }
 
   return { created: true, skippedByFilters: false };
@@ -199,6 +228,8 @@ async function fetchSitemapSource(source) {
         resolvedTitle = parsedTitle;
       }
     }
+
+    resolvedTitle = await normalizeNewsTitleIfNeeded(resolvedTitle);
 
     const entry = {
       externalId: normalizedUrl,

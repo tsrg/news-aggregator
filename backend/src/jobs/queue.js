@@ -27,9 +27,11 @@ export function getArticleQueue() {
     });
 
     articleQueue.process('parse-article', async (job) => {
-      const { newsItemId, url } = job.data;
+      const { newsItemId, url, rssContentHtml } = job.data;
       console.log(`Parsing article ${url} for news item ${newsItemId}`);
-      const result = await enrichNewsItem(newsItemId, url);
+      const result = await enrichNewsItem(newsItemId, url, {
+        rssContentHtml: rssContentHtml || null,
+      });
       if (result.success) {
         try {
           const updated = await prisma.newsItem.findUnique({
