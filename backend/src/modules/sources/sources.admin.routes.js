@@ -9,7 +9,7 @@ router.use(requireAuth);
 router.use(requirePermission('sources'));
 
 const sourceSchema = z.object({
-  type: z.literal('rss').optional(),
+  type: z.enum(['rss', 'sitemap']).optional(),
   url: z.string().url(),
   name: z.string().min(1),
   params: z.record(z.any()).optional(),
@@ -18,7 +18,7 @@ const sourceSchema = z.object({
 
 const filterSchema = z.object({
   type: z.enum(['INCLUDE', 'EXCLUDE']),
-  field: z.enum(['title', 'content', 'category', 'author']),
+  field: z.enum(['title', 'content', 'category', 'author', 'url']),
   operator: z.enum(['contains', 'not_contains', 'equals', 'starts_with', 'ends_with', 'regex']),
   value: z.string().min(1),
   isActive: z.boolean().optional(),
@@ -59,7 +59,7 @@ router.post('/', async (req, res) => {
     const s = await prisma.source.create({
       data: {
         ...data,
-        type: 'rss',
+        type: data.type || 'rss',
         filters: filters && Array.isArray(filters)
           ? { create: filters.map(f => filterSchema.parse(f)) }
           : undefined,

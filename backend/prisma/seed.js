@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import { PrismaClient } from '@prisma/client';
+import { readFile } from 'node:fs/promises';
 
 const prisma = new PrismaClient();
 
@@ -13,6 +14,53 @@ const PERMISSION_CODES = [
   { code: 'roles', name: 'Роли' },
   { code: 'settings', name: 'Настройки' },
 ];
+
+async function seedConfiguredSources() {
+  const fileUrl = new URL('./rss-sources.json', import.meta.url);
+  const raw = await readFile(fileUrl, 'utf8');
+  const data = JSON.parse(raw);
+  const sources = Array.isArray(data?.sources) ? data.sources : [];
+
+  for (const source of sources) {
+    if (!source?.id || !source?.url || !source?.name) continue;
+
+    await prisma.source.upsert({
+      where: { id: source.id },
+      update: {
+        type: source.type || 'rss',
+        url: source.url,
+        name: source.name,
+        params: source.params || undefined,
+        isActive: source.isActive !== false,
+      },
+      create: {
+        id: source.id,
+        type: source.type || 'rss',
+        url: source.url,
+        name: source.name,
+        params: source.params || undefined,
+        isActive: source.isActive !== false,
+      },
+    });
+
+    await prisma.sourceFilter.deleteMany({
+      where: { sourceId: source.id },
+    });
+
+    if (Array.isArray(source.filters) && source.filters.length > 0) {
+      await prisma.sourceFilter.createMany({
+        data: source.filters.map((filter) => ({
+          sourceId: source.id,
+          type: filter.type,
+          field: filter.field,
+          operator: filter.operator,
+          value: filter.value,
+          isActive: filter.isActive !== false,
+        })),
+      });
+    }
+  }
+}
 
 async function main() {
   // Permissions
@@ -86,6 +134,8 @@ async function main() {
       },
     });
   }
+
+  await seedConfiguredSources();
 
   const sectionSlugs = [
     { slug: 'top', title: 'Главное', order: 0 },

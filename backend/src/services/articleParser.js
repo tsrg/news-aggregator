@@ -117,6 +117,18 @@ function cleanText(text) {
     .trim();
 }
 
+function isNoiseText(text) {
+  const lower = text.toLowerCase();
+  return (
+    lower.includes('поделиться') ||
+    lower.includes('написать авторам') ||
+    lower.includes('нашли ошибку') ||
+    lower.includes('cookie') ||
+    lower.includes('политик') ||
+    lower.includes('реклама')
+  );
+}
+
 /**
  * Парсит статью по URL
  * @param {string} url - URL статьи
@@ -180,6 +192,19 @@ export async function parseArticle(url) {
         // Если не нашли параграфы, берём весь текст
         if (paragraphs.length === 0) {
           content = element.text().trim();
+          // Для сайтов с div-версткой без <p> пытаемся собрать читаемые блочные фрагменты.
+          if (!content || content.length < 100) {
+            const blockTexts = [];
+            element.find('div').each((_, el) => {
+              const text = $(el).text().trim();
+              if (text.length > 40) {
+                blockTexts.push(text);
+              }
+            });
+            if (blockTexts.length > 0) {
+              content = blockTexts.join('\n\n');
+            }
+          }
         } else {
           content = paragraphs.join('\n\n');
         }
@@ -218,7 +243,40 @@ export async function parseArticle(url) {
       }
     }
 
+    // Последний универсальный fallback: ищем самый "текстовый" контейнер статьи.
+    if (!content || content.length < 100) {
+      const containers = $('main, article, [itemprop="articleBody"], [class*="article"], [class*="content"], [class*="news"], [class*="detail"]');
+      let bestContainerText = '';
+
+      containers.each((_, container) => {
+        const blocks = [];
+        $(container).find('p, div, li').each((__, el) => {
+          const text = $(el).text().trim();
+          if (text.length > 40 && !isNoiseText(text)) {
+            blocks.push(text);
+          }
+        });
+
+        const joined = blocks.join('\n\n');
+        if (joined.length > bestContainerText.length) {
+          bestContainerText = joined;
+        }
+      });
+
+      if (bestContainerText.length > 100) {
+        content = bestContainerText;
+      }
+    }
+
     content = content ? cleanText(content) : null;
+    if (!content || content.length < 100) {
+      return {
+        success: false,
+        error: 'Content not found',
+        title,
+        content: null,
+      };
+    }
 
     return {
       success: true,
@@ -235,6 +293,41 @@ export async function parseArticle(url) {
       title: null,
       content: null,
     };
+  }
+}
+
+/**
+ * Быстро получает только заголовок статьи, без извлечения полного текста.
+ * Используется при импорте sitemap, чтобы сразу сохранить человекочитаемый title.
+ */
+export async function parseArticleTitle(url) {
+  try {
+    if (!url) return null;
+
+    const domain = getDomain(url);
+    const selectors = getSelectorsForDomain(domain);
+
+    const response = await axios.get(url, {
+      timeout: 8000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+      maxRedirects: 5,
+    });
+
+    const $ = cheerio.load(response.data);
+
+    const fromSelector = selectors.title ? $(selectors.title).first().text().trim() : '';
+    const fromMeta = $('meta[property="og:title"]').attr('content')
+      || $('meta[name="twitter:title"]').attr('content')
+      || $('title').text().trim();
+
+    const title = (fromSelector || fromMeta || '').trim();
+    return title || null;
+  } catch {
+    return null;
   }
 }
 

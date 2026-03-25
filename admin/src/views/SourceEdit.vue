@@ -25,13 +25,23 @@
             />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-2">URL RSS-ленты</label>
+            <label class="block text-sm font-medium text-gray-700 mb-2">{{ urlFieldLabel }}</label>
             <input
               v-model="form.url"
               type="url"
               class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all font-mono text-sm"
-              placeholder="https://example.com/rss.xml"
+              :placeholder="urlPlaceholder"
             />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Тип источника</label>
+            <select
+              v-model="form.type"
+              class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+            >
+              <option value="rss">RSS</option>
+              <option value="sitemap">Sitemap</option>
+            </select>
           </div>
           <div class="flex items-center gap-2">
             <input
@@ -95,6 +105,7 @@
                   <option value="content">Содержание</option>
                   <option value="category">Категория</option>
                   <option value="author">Автор</option>
+                  <option value="url">URL</option>
                 </select>
               </div>
 
@@ -194,7 +205,7 @@ import { api } from '../api';
 interface SourceFilter {
   id?: string;
   type: 'INCLUDE' | 'EXCLUDE';
-  field: 'title' | 'content' | 'category' | 'author';
+  field: 'title' | 'content' | 'category' | 'author' | 'url';
   operator: 'contains' | 'not_contains' | 'equals' | 'starts_with' | 'ends_with' | 'regex';
   value: string;
   isActive: boolean;
@@ -202,6 +213,7 @@ interface SourceFilter {
 
 interface SourceData {
   id: string;
+  type?: 'rss' | 'sitemap';
   name: string;
   url: string;
   isActive: boolean;
@@ -215,6 +227,7 @@ const isNew = computed(() => route.path === '/sources/new' || route.name === 'So
 const sourceId = computed(() => (route.params.id as string) || '');
 
 const form = ref({
+  type: 'rss' as 'rss' | 'sitemap',
   name: '',
   url: '',
   isActive: true,
@@ -230,6 +243,7 @@ const fieldLabels: Record<string, string> = {
   content: 'содержание',
   category: 'категория',
   author: 'автор',
+  url: 'url',
 };
 
 const operatorLabels: Record<string, string> = {
@@ -240,6 +254,18 @@ const operatorLabels: Record<string, string> = {
   ends_with: 'заканчивается на',
   regex: 'соответствует regex',
 };
+
+const urlFieldLabel = computed(() => (
+  form.value.type === 'sitemap'
+    ? 'URL sitemap (sitemap.xml, включая .xml.gz)'
+    : 'URL RSS-ленты'
+));
+
+const urlPlaceholder = computed(() => (
+  form.value.type === 'sitemap'
+    ? 'https://example.com/sitemap.xml'
+    : 'https://example.com/rss.xml'
+));
 
 function createEmptyFilter(): SourceFilter {
   return {
@@ -266,6 +292,7 @@ async function loadSource() {
   try {
     const data = await api().get<SourceData>(`/api/admin/sources/${sourceId.value}`);
     form.value = {
+      type: data.type || 'rss',
       name: data.name,
       url: data.url,
       isActive: data.isActive ?? true,
@@ -325,6 +352,7 @@ async function save() {
   saveLoading.value = true;
   try {
     const payload = {
+      type: form.value.type,
       name: form.value.name.trim(),
       url: form.value.url.trim(),
       isActive: form.value.isActive,

@@ -1,5 +1,5 @@
 {
-  "description": "Список RSS-источников новостей для агрегатора. Может быть импортирован через admin API или использован для seed.",
+  "description": "Список источников для автоимпорта новостей (RSS + sitemap). Используется в админке/seed для настройки источников.",
   "sources": [
     {
       "id": "ivanovonews-main",
@@ -42,12 +42,203 @@
           "isActive": true
         }
       ]
+    },
+    {
+      "id": "newsivanovo-sitemap",
+      "type": "sitemap",
+      "name": "NEWSIVANOVO.RU",
+      "url": "https://newsivanovo.ru/sitemap.xml",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru",
+        "parserType": "sitemap",
+        "sitemapUrl": "https://newsivanovo.ru/sitemap.xml",
+        "maxUrls": 5000
+      }
+    },
+    {
+      "id": "i3vestno-sitemap",
+      "type": "sitemap",
+      "name": "i3vestno.ru",
+      "url": "https://i3vestno.ru/sitemap.xml",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru",
+        "parserType": "sitemap",
+        "sitemapUrl": "https://i3vestno.ru/sitemap.xml",
+        "maxUrls": 5000
+      }
+    },
+    {
+      "id": "168ru-feed",
+      "type": "rss",
+      "name": "168.ru",
+      "url": "https://168.ru/feed",
+      "isActive": true,
+      "params": {
+        "region": "Ивановская область",
+        "city": "Кинешма",
+        "language": "ru",
+        "platform": "wordpress"
+      },
+      "filters": [
+        {
+          "type": "EXCLUDE",
+          "field": "category",
+          "operator": "equals",
+          "value": "Без рубрики",
+          "isActive": true
+        }
+      ]
+    },
+    {
+      "id": "ivanovolive-feed",
+      "type": "rss",
+      "name": "ИВАНОВОLIVE",
+      "url": "https://ivanovolive.ru/feed",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru",
+        "platform": "custom"
+      }
+    },
+    {
+      "id": "kineshemec-sitemap-news",
+      "type": "sitemap",
+      "name": "Кинешемец.RU (sitemap/news only)",
+      "url": "https://kineshemec.ru/sitemap.xml",
+      "isActive": true,
+      "params": {
+        "region": "Ивановская область",
+        "city": "Кинешма",
+        "language": "ru",
+        "parserType": "sitemap",
+        "sitemapUrl": "https://kineshemec.ru/sitemap.xml",
+        "sitemapUrlInclude": [
+          "/news/"
+        ],
+        "maxUrls": 5000
+      }
+    },
+    {
+      "id": "kstati-rss-mainnews",
+      "type": "rss",
+      "name": "Кстати.NEWS — Главные новости",
+      "url": "https://kstati.news/rss_mainnews.php",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru",
+        "platform": "bitrix"
+      }
+    },
+    {
+      "id": "kstati-rss-news",
+      "type": "rss",
+      "name": "Кстати.NEWS — Все новости",
+      "url": "https://kstati.news/rss_news.php",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru",
+        "platform": "bitrix"
+      }
+    },
+    {
+      "id": "ivteleradio-rss",
+      "type": "rss",
+      "name": "ГТРК Ивтелерадио",
+      "url": "https://ivteleradio.ru/rss",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru"
+      }
+    },
+    {
+      "id": "news1ivanovo-rss",
+      "type": "rss",
+      "name": "NEWS1 Иваново",
+      "url": "https://news1ivanovo.ru/rss",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru"
+      }
+    },
+    {
+      "id": "aif-ivanovo-googlearticles",
+      "type": "rss",
+      "name": "АиФ Иваново — Google Articles",
+      "url": "https://ivanovo.aif.ru/rss/googlearticles",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru",
+        "platform": "aif_engine"
+      }
+    },
+    {
+      "id": "aif-ivanovo-googlenews",
+      "type": "rss",
+      "name": "АиФ Иваново — Google News",
+      "url": "https://ivanovo.aif.ru/rss/googlenews",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru",
+        "platform": "aif_engine"
+      }
+    },
+    {
+      "id": "ivgazeta-rss",
+      "type": "rss",
+      "name": "Ивановская газета",
+      "url": "http://ivgazeta.ru/rss",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru"
+      }
+    },
+    {
+      "id": "rk37-rss",
+      "type": "rss",
+      "name": "Рабочий край",
+      "url": "https://rk37.ru/rss",
+      "isActive": true,
+      "params": {
+        "region": "Иваново",
+        "city": "Иваново",
+        "language": "ru"
+      }
     }
   ],
   "metadata": {
     "version": "1.0",
-    "lastUpdated": "2026-03-18",
-    "totalSources": 1,
-    "regions": ["Иваново"]
+    "lastUpdated": "2026-03-25",
+    "totalSources": 14,
+    "regions": [
+      "Иваново",
+      "Ивановская область"
+    ],
+    "notes": [
+      "Включены только источники с рабочим RSS или sitemap",
+      "HTML-only источники намеренно исключены",
+      "kineshemec.ru ограничен только URL с /news/"
+    ]
   }
 }

@@ -1,6 +1,8 @@
 import Parser from 'rss-parser';
 import { prisma } from '../config/prisma.js';
 import { articleQueue } from './queue.js';
+import { collectUrlsFromSitemap } from '../services/sitemapFetcher.js';
+import { parseArticleTitle } from '../services/articleParser.js';
 
 const parser = new Parser();
 
@@ -48,6 +50,8 @@ function shouldIncludeItem(entry, filters) {
         return entry.categories?.join(' ') || entry.category || '';
       case 'author':
         return entry.author || entry.creator || '';
+      case 'url':
+        return entry.url || entry.link || '';
       default:
         return '';
     }
@@ -73,6 +77,134 @@ function shouldIncludeItem(entry, filters) {
   return true;
 }
 
+async function createNewsFromEntry(sourceId, region, filters, entry) {
+  const externalId = entry.guid || entry.externalId || entry.link || entry.url || entry.title;
+  if (!externalId) return { created: false, skippedByFilters: false };
+  if (!shouldIncludeItem(entry, filters)) {
+    return { created: false, skippedByFilters: true };
+  }
+
+  const existing = await prisma.newsItem.findUnique({
+    where: { sourceId_externalId: { sourceId, externalId } },
+  });
+  if (existing) return { created: false, skippedByFilters: false };
+
+  const newsItem = await prisma.newsItem.create({
+    data: {
+      sourceId,
+      externalId,
+      title: entry.title || 'Untitled',
+      summary: entry.contentSnippet?.slice(0, 500) || entry.content?.slice(0, 500) || entry.summary?.slice(0, 500) || null,
+      body: null,
+      url: entry.link || entry.url || null,
+      imageUrl: entry.enclosure?.url || null,
+      region,
+      status: 'PENDING',
+    },
+  });
+
+  if (entry.link || entry.url) {
+    await articleQueue.add('parse-article', {
+      newsItemId: newsItem.id,
+      url: entry.link || entry.url,
+    }, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+    });
+  }
+
+  return { created: true, skippedByFilters: false };
+}
+
+function buildTitleFromUrl(articleUrl) {
+  try {
+    const { pathname } = new URL(articleUrl);
+    const tail = pathname.split('/').filter(Boolean).pop();
+    if (!tail) return 'Новость';
+    const normalized = decodeURIComponent(tail)
+      .replace(/[-_]+/g, ' ')
+      .replace(/\.html?$/i, '')
+      .trim();
+
+    // Частый случай sitemap-URL newsivanovo: fn_1234567.html (это не человекочитаемый заголовок).
+    if (/^fn\s*\d+$/i.test(normalized)) {
+      return 'Новость';
+    }
+
+    return normalized.slice(0, 180) || 'Новость';
+  } catch {
+    return 'Новость';
+  }
+}
+
+function normalizeArticleUrl(rawUrl) {
+  try {
+    const parsed = new URL(rawUrl);
+    parsed.hash = '';
+    if (parsed.pathname.length > 1) {
+      parsed.pathname = parsed.pathname.replace(/\/+$/, '');
+    }
+    return parsed.toString();
+  } catch {
+    return rawUrl;
+  }
+}
+
+async function fetchRssSource(source) {
+  const feed = await parser.parseURL(source.url);
+  const params = (source.params && typeof source.params === 'object') ? source.params : {};
+  const region = params.region || null;
+  let created = 0;
+  let skipped = 0;
+
+  for (const entry of feed.items || []) {
+    const result = await createNewsFromEntry(source.id, region, source.filters, entry);
+    if (result.skippedByFilters) skipped++;
+    if (result.created) created++;
+  }
+
+  return { created, skipped };
+}
+
+async function fetchSitemapSource(source) {
+  const params = (source.params && typeof source.params === 'object') ? source.params : {};
+  const region = params.region || null;
+  const sitemapUrl = String(params.sitemapUrl || source.url || '').trim();
+  if (!sitemapUrl) return { created: 0, skipped: 0 };
+
+  const { urls } = await collectUrlsFromSitemap(sitemapUrl, params);
+
+  let created = 0;
+  let skipped = 0;
+  for (const loc of urls) {
+    const normalizedUrl = normalizeArticleUrl(loc);
+    let resolvedTitle = buildTitleFromUrl(normalizedUrl);
+
+    // Если title из URL выглядит как технический идентификатор, пробуем сразу получить заголовок страницы.
+    if (resolvedTitle === 'Новость') {
+      const parsedTitle = await parseArticleTitle(normalizedUrl);
+      if (parsedTitle) {
+        resolvedTitle = parsedTitle;
+      }
+    }
+
+    const entry = {
+      externalId: normalizedUrl,
+      url: normalizedUrl,
+      link: normalizedUrl,
+      title: resolvedTitle,
+      contentSnippet: null,
+      summary: null,
+      content: null,
+    };
+    const result = await createNewsFromEntry(source.id, region, source.filters, entry);
+    if (result.skippedByFilters) skipped++;
+    if (result.created) created++;
+  }
+
+  return { created, skipped };
+}
+
 export async function fetchSource(sourceId) {
   const source = await prisma.source.findUnique({
     where: { id: sourceId },
@@ -80,63 +212,18 @@ export async function fetchSource(sourceId) {
   });
   if (!source || !source.isActive) return;
 
-  const feed = await parser.parseURL(source.url);
-  const params = (source.params && typeof source.params === 'object') ? source.params : {};
-  const region = params.region || null;
-
-  let created = 0;
-  let skipped = 0;
-
-  for (const entry of feed.items || []) {
-    const externalId = entry.guid || entry.link || entry.title;
-    if (!externalId) continue;
-
-    if (!shouldIncludeItem(entry, source.filters)) {
-      skipped++;
-      continue;
-    }
-
-    const existing = await prisma.newsItem.findUnique({
-      where: { sourceId_externalId: { sourceId, externalId } },
-    });
-    if (existing) continue;
-
-    // Создаём новость
-    const newsItem = await prisma.newsItem.create({
-      data: {
-        sourceId,
-        externalId,
-        title: entry.title || 'Untitled',
-        summary: entry.contentSnippet?.slice(0, 500) || entry.content?.slice(0, 500) || null,
-        body: null, // Будет заполнено после парсинга полного текста
-        url: entry.link || null,
-        imageUrl: entry.enclosure?.url || null,
-        region,
-        status: 'PENDING',
-      },
-    });
-
-    // Добавляем задачу на парсинг полного текста
-    if (entry.link) {
-      await articleQueue.add('parse-article', {
-        newsItemId: newsItem.id,
-        url: entry.link,
-      }, {
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-      });
-    }
-
-    created++;
-  }
+  const sourceType = source.type === 'sitemap' ? 'sitemap' : 'rss';
+  const result = sourceType === 'sitemap'
+    ? await fetchSitemapSource(source)
+    : await fetchRssSource(source);
 
   await prisma.source.update({
     where: { id: sourceId },
     data: { lastFetchedAt: new Date() },
   });
 
-  console.log(`Source ${sourceId}: created ${created}, skipped by filters ${skipped}`);
-  return created;
+  console.log(`Source ${sourceId}: created ${result.created}, skipped by filters ${result.skipped}`);
+  return result.created;
 }
 
 export async function fetchAllSources() {
