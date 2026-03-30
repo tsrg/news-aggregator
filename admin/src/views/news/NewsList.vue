@@ -1,23 +1,44 @@
 <template>
-  <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
-    <div class="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-      <div>
-        <h1 class="font-bold text-2xl text-gray-900 tracking-tight">Новости</h1>
-        <p class="text-sm text-gray-500 mt-1">Управление новостным контентом</p>
+  <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100 w-full min-w-0 max-w-none">
+    <div class="flex flex-col gap-4 mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 min-w-0">
+        <div class="min-w-0">
+          <h1 class="font-bold text-2xl text-gray-900 tracking-tight">Новости</h1>
+          <p class="text-sm text-gray-500 mt-1">Управление новостным контентом</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            class="px-4 py-2.5 bg-violet-600 text-white font-medium text-sm rounded-xl hover:bg-violet-700 transition-colors shadow-sm shadow-violet-200 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            :disabled="mergeRunning"
+            title="Ищет пары по заголовкам и объединяет через ИИ (см. Настройки → Основные)"
+            @click="runMergeDuplicates"
+          >
+            <svg v-if="mergeRunning" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+            </svg>
+            {{ mergeRunning ? 'Поиск…' : 'Объединить дубликаты' }}
+          </button>
+          <router-link to="/news/new" class="px-4 py-2.5 bg-blue-600 text-white font-medium text-sm rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 inline-flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
+            Добавить
+          </router-link>
+        </div>
       </div>
-      <div class="flex items-center gap-4">
-        <select v-model="statusFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-4 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all">
+      <div class="flex flex-wrap items-center gap-2 min-w-0">
+        <select v-model="statusFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-3 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-0 flex-1 sm:flex-none sm:min-w-[160px]">
           <option value="">Все статусы</option>
           <option value="PENDING">На модерации</option>
           <option value="PUBLISHED">Опубликовано</option>
           <option value="REJECTED">Отклонено</option>
         </select>
-        <select v-model="regionFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-4 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all">
+        <select v-model="regionFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-3 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-0 flex-1 sm:flex-none sm:min-w-[140px]">
           <option value="">Все регионы</option>
           <option value="Иваново">Иваново</option>
           <option value="Другой">Другой</option>
         </select>
-        <select v-model="contentClassFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-4 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all">
+        <select v-model="contentClassFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-3 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-0 flex-1 sm:flex-none sm:min-w-[180px]">
           <option value="">Все типы материалов</option>
           <option value="NEWS">Новость</option>
           <option value="REPORT">Репортаж</option>
@@ -25,7 +46,7 @@
           <option value="OPINION">Мнение</option>
           <option value="UNKNOWN">Не определен</option>
         </select>
-        <select v-model="legalReviewFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-4 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all">
+        <select v-model="legalReviewFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-3 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-0 flex-1 sm:flex-none sm:min-w-[200px]">
           <option value="">Все legal-статусы</option>
           <option value="NOT_REQUIRED">Не требуется</option>
           <option value="PENDING">Ожидает проверки</option>
@@ -33,27 +54,10 @@
           <option value="APPROVED">Одобрено</option>
           <option value="REJECTED">Отклонено</option>
         </select>
-        <select v-model="sortBy" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-4 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-[220px]">
+        <select v-model="sortBy" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-3 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-0 flex-1 sm:flex-1 sm:min-w-[220px]">
           <option value="sourcePublishedAt">Сортировка: дата в источнике</option>
           <option value="createdAt">Сортировка: дата создания</option>
         </select>
-        <button
-          type="button"
-          class="px-4 py-2.5 bg-violet-600 text-white font-medium text-sm rounded-xl hover:bg-violet-700 transition-colors shadow-sm shadow-violet-200 inline-flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          :disabled="mergeRunning"
-          title="Ищет пары по заголовкам и объединяет через ИИ (см. Настройки → Основные)"
-          @click="runMergeDuplicates"
-        >
-          <svg v-if="mergeRunning" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-          </svg>
-          {{ mergeRunning ? 'Поиск…' : 'Объединить дубликаты' }}
-        </button>
-        <router-link to="/news/new" class="px-4 py-2.5 bg-blue-600 text-white font-medium text-sm rounded-xl hover:bg-blue-700 transition-colors shadow-sm shadow-blue-200 inline-flex items-center gap-2">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd" /></svg>
-          Добавить
-        </router-link>
       </div>
     </div>
     
@@ -64,32 +68,40 @@
       <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 shrink-0" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" /></svg>
       {{ error }}
     </div>
-    <div class="overflow-x-auto" v-else>
-      <table class="w-full text-left text-sm whitespace-nowrap">
+    <div class="overflow-x-auto min-w-0 -mx-1" v-else>
+      <table class="w-full min-w-0 table-fixed text-left text-sm">
         <thead>
           <tr class="text-gray-500 border-b border-gray-100">
-            <th class="pb-3 px-4 font-medium w-1/2">Заголовок</th>
-            <th class="pb-3 px-4 font-medium">Источник</th>
-            <th class="pb-3 px-4 font-medium">Регион</th>
-            <th class="pb-3 px-4 font-medium">Статус</th>
-            <th class="pb-3 px-4 font-medium">Тип</th>
-            <th class="pb-3 px-4 font-medium">Legal</th>
-            <th class="pb-3 px-4 font-medium">В источнике</th>
-            <th class="pb-3 px-4 font-medium">Создано</th>
-            <th class="pb-3 px-4 font-medium text-right">Действия</th>
+            <th class="pb-3 px-3 font-medium min-w-0 w-[28%]">Заголовок</th>
+            <th class="pb-3 px-2 font-medium w-[12%] min-w-0">Источник</th>
+            <th class="pb-3 px-2 font-medium w-[8%] whitespace-nowrap">Регион</th>
+            <th class="pb-3 px-2 font-medium w-[11%]">Статус</th>
+            <th class="pb-3 px-1 font-medium w-9 text-center" title="Тип материала">
+              <RiArticleLine class="w-5 h-5 inline-block text-gray-400" aria-hidden="true" />
+              <span class="sr-only">Тип</span>
+            </th>
+            <th class="pb-3 px-1 font-medium w-9 text-center" title="Legal / проверка">
+              <RiScales3Line class="w-5 h-5 inline-block text-gray-400" aria-hidden="true" />
+              <span class="sr-only">Legal</span>
+            </th>
+            <th class="pb-3 px-2 font-medium w-[14%] whitespace-nowrap">В источнике</th>
+            <th class="pb-3 px-2 font-medium w-[12%] whitespace-nowrap">Создано</th>
+            <th class="pb-3 px-2 font-medium text-right w-[10%]">Действия</th>
           </tr>
         </thead>
         <tbody class="divide-y divide-gray-50">
           <tr v-for="item in items" :key="item.id" class="hover:bg-gray-50/50 transition-colors group">
-            <td class="py-4 px-4 font-medium text-gray-900 whitespace-normal">
-              <span class="line-clamp-2 leading-snug">{{ item.title }}</span>
+            <td class="py-3 px-3 font-medium text-gray-900 min-w-0 align-top">
+              <span class="line-clamp-2 leading-snug break-words">{{ item.title }}</span>
             </td>
-            <td class="py-4 px-4 text-gray-500">{{ item.source?.name || 'Вручную' }}</td>
-            <td class="py-4 px-4 text-gray-500">{{ item.region || '—' }}</td>
-            <td class="py-4 px-4">
+            <td class="py-3 px-2 text-gray-500 min-w-0 align-top">
+              <span class="line-clamp-2 break-words">{{ item.source?.name || 'Вручную' }}</span>
+            </td>
+            <td class="py-3 px-2 text-gray-500 align-top whitespace-nowrap">{{ item.region || '—' }}</td>
+            <td class="py-3 px-2 align-top">
               <select
                 :value="item.status"
-                class="bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg px-2.5 py-1.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-[140px]"
+                class="bg-gray-50 border border-gray-200 text-gray-700 text-xs rounded-lg px-2 py-1.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all w-full max-w-full min-w-0"
                 @change="onStatusChange(item, $event)"
               >
                 <option value="PENDING">На модерации</option>
@@ -97,11 +109,26 @@
                 <option value="REJECTED">Отклонено</option>
               </select>
             </td>
-            <td class="py-4 px-4 text-gray-600">{{ item.contentClass || 'UNKNOWN' }}</td>
-            <td class="py-4 px-4 text-gray-600">{{ item.legalReviewStatus || '—' }}</td>
-            <td class="py-4 px-4 text-gray-500">{{ item.sourcePublishedAt ? formatDateTime(item.sourcePublishedAt) : '—' }}</td>
-            <td class="py-4 px-4 text-gray-500">{{ formatDate(item.createdAt) }}</td>
-            <td class="py-4 px-4 text-right">
+            <td class="py-3 px-1 text-center align-middle">
+              <component
+                :is="contentClassIcon(item.contentClass)"
+                class="w-5 h-5 mx-auto text-gray-600"
+                :title="contentClassLabel(item.contentClass)"
+                aria-hidden="true"
+              />
+            </td>
+            <td class="py-3 px-1 text-center align-middle">
+              <component
+                :is="legalReviewIcon(item.legalReviewStatus)"
+                class="w-5 h-5 mx-auto"
+                :class="legalReviewIconClass(item.legalReviewStatus)"
+                :title="legalReviewLabel(item.legalReviewStatus)"
+                aria-hidden="true"
+              />
+            </td>
+            <td class="py-3 px-2 text-gray-500 align-top text-xs whitespace-normal">{{ item.sourcePublishedAt ? formatDateTime(item.sourcePublishedAt) : '—' }}</td>
+            <td class="py-3 px-2 text-gray-500 align-top text-xs whitespace-normal">{{ formatDate(item.createdAt) }}</td>
+            <td class="py-3 px-2 text-right align-top">
               <div class="flex items-center justify-end gap-2">
                 <router-link :to="`/news/${item.id}`" class="px-3 py-1.5 bg-white border border-gray-200 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors">Ред.</router-link>
                 <button
@@ -250,8 +277,82 @@
 </template>
 
 <script setup lang="ts">
+import type { Component } from 'vue';
 import { ref, watch, computed } from 'vue';
+import {
+  RiArticleLine,
+  RiScales3Line,
+  RiNewspaperLine,
+  RiFileTextLine,
+  RiBarChartLine,
+  RiChatQuoteLine,
+  RiQuestionLine,
+  RiSubtractLine,
+  RiTimeLine,
+  RiAlertLine,
+  RiCheckboxCircleLine,
+  RiCloseCircleLine,
+} from '@remixicon/vue';
 import { api } from '../../api';
+
+const CONTENT_CLASS_ICONS: Record<string, Component> = {
+  NEWS: RiNewspaperLine,
+  REPORT: RiFileTextLine,
+  ANALYSIS: RiBarChartLine,
+  OPINION: RiChatQuoteLine,
+  UNKNOWN: RiQuestionLine,
+};
+
+const LEGAL_ICONS: Record<string, Component> = {
+  NOT_REQUIRED: RiSubtractLine,
+  PENDING: RiTimeLine,
+  NEEDS_REVIEW: RiAlertLine,
+  APPROVED: RiCheckboxCircleLine,
+  REJECTED: RiCloseCircleLine,
+};
+
+function contentClassIcon(c?: string | null): Component {
+  const key = (c || 'UNKNOWN').toUpperCase();
+  return CONTENT_CLASS_ICONS[key] ?? RiQuestionLine;
+}
+
+function contentClassLabel(c?: string | null): string {
+  const map: Record<string, string> = {
+    NEWS: 'Новость',
+    REPORT: 'Репортаж',
+    ANALYSIS: 'Аналитика',
+    OPINION: 'Мнение',
+    UNKNOWN: 'Не определён',
+  };
+  const k = c || 'UNKNOWN';
+  return map[k] ?? k;
+}
+
+function legalReviewIcon(s?: string | null): Component {
+  if (s == null || s === '') return RiSubtractLine;
+  return LEGAL_ICONS[s] ?? RiQuestionLine;
+}
+
+function legalReviewLabel(s?: string | null): string {
+  const map: Record<string, string> = {
+    NOT_REQUIRED: 'Не требуется',
+    PENDING: 'Ожидает проверки',
+    NEEDS_REVIEW: 'Требует ручной проверки',
+    APPROVED: 'Одобрено',
+    REJECTED: 'Отклонено',
+  };
+  if (s == null || s === '') return 'Не указано';
+  return map[s] ?? s;
+}
+
+function legalReviewIconClass(s?: string | null): string {
+  if (s == null || s === '') return 'text-gray-400';
+  if (s === 'APPROVED') return 'text-green-600';
+  if (s === 'REJECTED') return 'text-red-600';
+  if (s === 'PENDING' || s === 'NEEDS_REVIEW') return 'text-amber-600';
+  if (s === 'NOT_REQUIRED') return 'text-gray-400';
+  return 'text-gray-600';
+}
 
 const statusFilter = ref('');
 const regionFilter = ref('');

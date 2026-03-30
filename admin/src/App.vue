@@ -1,7 +1,7 @@
 <template>
   <div class="min-h-screen flex flex-col bg-gray-50 text-gray-900 font-sans selection:bg-blue-100 selection:text-blue-900">
     <header v-if="user" class="bg-white/80 backdrop-blur-md sticky top-0 z-50 border-b border-gray-200">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="w-full px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <router-link to="/" class="font-bold text-xl tracking-tight text-gray-900 hover:text-blue-600 transition-colors flex items-center gap-2">
             <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -30,7 +30,7 @@
         </div>
       </div>
     </header>
-    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main class="flex-1 w-full min-w-0 px-4 sm:px-6 lg:px-8 py-8">
       <router-view />
     </main>
   </div>
