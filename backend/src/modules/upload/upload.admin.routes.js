@@ -2,50 +2,40 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { mkdir, writeFile } from 'fs/promises';
 import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
-import { config } from '../../config/index.js';
-import { uploadBuffer as s3UploadBuffer } from '../../services/s3.js';
+import { resolveStorageProvider, uploadFileBySettings } from '../../services/storage.js';
 
 const router = Router();
 
-const memoryStorage = multer.memoryStorage();
-
-const diskStorage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${randomUUID()}${ext}`);
-  },
-});
-
 const upload = multer({
-  storage: config.s3.enabled ? memoryStorage : diskStorage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB limit
 });
 
 router.post('/', requireAuth, requirePermission('settings'), upload.single('image'), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: 'No file uploaded' });
-  }
-
-  if (config.s3.enabled) {
-    try {
-      const ext = path.extname(req.file.originalname);
-      const key = `uploads/${new Date().getUTCFullYear()}/${randomUUID()}${ext}`;
-      const url = await s3UploadBuffer(key, req.file.buffer, req.file.mimetype || 'application/octet-stream');
-      if (url) {
-        return res.json({ url });
-      }
-    } catch (err) {
-      console.error('S3 upload failed:', err.message);
-      return res.status(500).json({ error: 'Upload failed' });
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
     }
-  }
 
-  const url = `/uploads/${req.file.filename}`;
-  res.json({ url });
+    const provider = await resolveStorageProvider();
+
+    if (provider === 'minio' || provider === 'cdn') {
+      const url = await uploadFileBySettings(req.file);
+      return res.json({ url });
+    }
+
+    await mkdir('uploads', { recursive: true });
+    const ext = path.extname(req.file.originalname);
+    const filename = `${randomUUID()}${ext}`;
+    await writeFile(path.join('uploads', filename), req.file.buffer);
+    const url = `/uploads/${filename}`;
+    return res.json({ url });
+  } catch (err) {
+    console.error('Storage upload failed:', err.message);
+    return res.status(500).json({ error: err.message || 'Upload failed' });
+  }
 });
 
 export default router;

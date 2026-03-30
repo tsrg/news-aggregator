@@ -20,6 +20,7 @@
           <tr class="text-gray-500 border-b border-gray-100">
             <th class="pb-3 px-4 font-medium">Название</th>
             <th class="pb-3 px-4 font-medium">URL</th>
+            <th class="pb-3 px-4 font-medium">Регион</th>
             <th class="pb-3 px-4 font-medium">Статус</th>
             <th class="pb-3 px-4 font-medium">Фильтры</th>
             <th class="pb-3 px-4 font-medium">Последний сбор</th>
@@ -30,6 +31,7 @@
           <tr v-for="s in list" :key="s.id" class="hover:bg-gray-50/50 transition-colors group">
             <td class="py-4 px-4 font-medium text-gray-900">{{ s.name }}</td>
             <td class="py-4 px-4 text-gray-500 truncate max-w-[200px]" :title="s.url">{{ s.url }}</td>
+            <td class="py-4 px-4 text-gray-500">{{ getSourceRegion(s) || '—' }}</td>
             <td class="py-4 px-4">
               <span :class="s.isActive ? 'text-green-700 bg-green-50 border-green-100' : 'text-red-700 bg-red-50 border-red-100'" class="px-2.5 py-1 text-xs font-medium rounded-full border">
                 {{ s.isActive ? 'Активен' : 'Отключен' }}
@@ -82,6 +84,7 @@ interface Source {
   id: string;
   name: string;
   url: string;
+  params?: Record<string, unknown> | null;
   isActive: boolean;
   lastFetchedAt?: string;
   filters?: SourceFilter[];
@@ -105,6 +108,10 @@ onMounted(load);
 
 function activeFiltersCount(source: Source): number {
   return source.filters?.filter(f => f.isActive !== false).length || 0;
+}
+
+function getSourceRegion(source: Source): string {
+  return typeof source.params?.region === 'string' ? source.params.region : '';
 }
 
 function formatDate(d: string) {

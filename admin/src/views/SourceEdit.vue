@@ -43,6 +43,18 @@
               <option value="sitemap">Sitemap</option>
             </select>
           </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Регион по умолчанию</label>
+            <select
+              v-model="form.defaultRegion"
+              class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+            >
+              <option value="">Не указан</option>
+              <option v-for="region in availableRegions" :key="region" :value="region">
+                {{ region }}
+              </option>
+            </select>
+          </div>
           <div class="flex items-center gap-2">
             <input
               v-model="form.isActive"
@@ -216,6 +228,7 @@ interface SourceData {
   type?: 'rss' | 'sitemap';
   name: string;
   url: string;
+  params?: Record<string, unknown> | null;
   isActive: boolean;
   lastFetchedAt?: string;
   filters: SourceFilter[];
@@ -230,6 +243,8 @@ const form = ref({
   type: 'rss' as 'rss' | 'sitemap',
   name: '',
   url: '',
+  defaultRegion: '',
+  rawParams: {} as Record<string, unknown>,
   isActive: true,
   filters: [] as SourceFilter[],
 });
@@ -237,6 +252,7 @@ const loading = ref(false);
 const loadError = ref('');
 const saveLoading = ref(false);
 const deleteLoading = ref(false);
+const availableRegions = ref<string[]>([]);
 
 const fieldLabels: Record<string, string> = {
   title: 'заголовок',
@@ -285,6 +301,19 @@ function removeFilter(index: number) {
   form.value.filters.splice(index, 1);
 }
 
+function normalizeRegion(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+async function loadAvailableRegions() {
+  try {
+    const data = await api().get<{ regions: string[] }>('/api/admin/settings/regions');
+    availableRegions.value = Array.isArray(data.regions) ? data.regions.slice().sort((a, b) => a.localeCompare(b, 'ru')) : [];
+  } catch {
+    availableRegions.value = [];
+  }
+}
+
 async function loadSource() {
   if (!sourceId.value || isNew.value) return;
   loadError.value = '';
@@ -295,6 +324,8 @@ async function loadSource() {
       type: data.type || 'rss',
       name: data.name,
       url: data.url,
+      defaultRegion: typeof data.params?.region === 'string' ? data.params.region : '',
+      rawParams: (data.params && typeof data.params === 'object') ? { ...data.params } : {},
       isActive: data.isActive ?? true,
       filters: (data.filters || []).map(f => ({
         id: f.id,
@@ -305,6 +336,10 @@ async function loadSource() {
         isActive: f.isActive ?? true,
       })),
     };
+    const currentRegion = normalizeRegion(form.value.defaultRegion);
+    if (currentRegion && !availableRegions.value.includes(currentRegion)) {
+      availableRegions.value = [currentRegion, ...availableRegions.value];
+    }
   } catch (e) {
     loadError.value = e instanceof Error ? e.message : 'Ошибка загрузки источника';
   } finally {
@@ -313,6 +348,7 @@ async function loadSource() {
 }
 
 onMounted(() => {
+  loadAvailableRegions();
   if (!isNew.value) loadSource();
 });
 
@@ -351,10 +387,18 @@ async function save() {
   if (!validate()) return;
   saveLoading.value = true;
   try {
+    const mergedParams: Record<string, unknown> = {
+      ...form.value.rawParams,
+    };
+    const normalizedRegion = form.value.defaultRegion.trim();
+    if (normalizedRegion) mergedParams.region = normalizedRegion;
+    else delete mergedParams.region;
+
     const payload = {
       type: form.value.type,
       name: form.value.name.trim(),
       url: form.value.url.trim(),
+      params: mergedParams,
       isActive: form.value.isActive,
       filters: form.value.filters.map(f => ({
         type: f.type,

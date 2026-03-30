@@ -18,6 +18,7 @@ import settingsRoutes from './modules/settings/settings.routes.js';
 import rolesAdmin from './modules/roles/roles.admin.routes.js';
 import permissionsAdmin from './modules/roles/permissions.admin.routes.js';
 import usersAdmin from './modules/users/users.admin.routes.js';
+import regionsPublic from './modules/regions/regions.public.routes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -43,6 +44,7 @@ app.use('/api/news', newsPublic);
 app.use('/api/sections', sectionsPublic);
 app.use('/api/menus', menuPublic);
 app.use('/api/pages', pagesPublic);
+app.use('/api/regions', regionsPublic);
 
 app.use('/api/admin/news', newsAiRoutes);
 app.use('/api/admin/news', newsAdmin);

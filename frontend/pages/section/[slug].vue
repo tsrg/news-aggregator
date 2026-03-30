@@ -62,6 +62,10 @@ const slug = route.params.slug as string;
 const apiBase = useApiBase();
 const region = useRegion();
 
+const { data: sections, pending: sectionsPending } = await useFetch<{ id: string; slug: string; title: string }[]>(`${apiBase}/api/sections`);
+const section = computed(() => sections.value?.find((s) => s.slug === slug));
+const sectionNotFound = computed(() => !sectionsPending.value && slug !== 'region' && slug !== 'general' && section.value === undefined);
+
 // SEO
 const pageTitle = computed(() => {
   if (slug === 'region') return 'Новости региона';
@@ -112,20 +116,16 @@ const breadcrumbSchemaItems = computed(() => [
 ]);
 useBreadcrumbSchema(breadcrumbSchemaItems);
 
-const { data: sections, pending: sectionsPending } = await useFetch<{ id: string; slug: string; title: string }[]>(`${apiBase}/api/sections`);
-const section = computed(() => sections.value?.find((s) => s.slug === slug));
-const sectionNotFound = computed(() => !sectionsPending && slug !== 'region' && slug !== 'general' && section.value === undefined);
-
 const page = ref(1);
 const limit = 20;
 
-const isRegionSection = computed(() => slug === 'region' && !!region);
+const isRegionSection = computed(() => slug === 'region' && !!region.value);
 const isGeneralSection = computed(() => slug === 'general');
 
 const newsQuery = computed(() => {
   const base = `${apiBase}/api/news?limit=${limit}&page=${page.value}`;
   if (isRegionSection.value) {
-    return `${base}&region=${encodeURIComponent(region)}`;
+    return `${base}&region=${encodeURIComponent(region.value as string)}`;
   }
   if (isGeneralSection.value) {
     return `${base}&noRegion=1`;

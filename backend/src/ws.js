@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { config } from './config/index.js';
+import { rewriteStorageUrlForBrowser } from './services/s3.js';
 
 let io = null;
 
@@ -26,7 +27,7 @@ function toPublicPayload(item) {
       summary: item.summary,
       body: item.body,
       url: item.url,
-      imageUrl: item.imageUrl,
+      imageUrl: item.imageUrl ? rewriteStorageUrlForBrowser(item.imageUrl) : item.imageUrl,
       region: item.region,
       publishedAt: item.publishedAt,
       sourcePublishedAt: item.sourcePublishedAt,

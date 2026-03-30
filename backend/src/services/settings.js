@@ -42,11 +42,31 @@ export async function getSettings(key) {
  * Получает настройки AI
  */
 export const GENERAL_SETTINGS_KEY = 'general_config';
+export const STORAGE_SETTINGS_KEY = 'storage_config';
+export const REGIONS_SETTINGS_KEY = 'regions_config';
+/** Настройки OpenAI Images API для генерации обложек новостей */
+export const AI_IMAGE_SETTINGS_KEY = 'ai_image_config';
 
 const defaultGeneralSettings = {
   autoDeleteStaleUnpublishedNews: false,
   /** Объединение дубликатов из разных RSS после парсинга (требует настроенный ИИ) */
   mergeDuplicateNews: false,
+};
+
+const defaultStorageSettings = {
+  provider: 'minio',
+  minioEnabled: true,
+  baseUrl: '',
+  uploadEndpoint: '',
+  httpMethod: 'POST',
+  fileFieldName: 'file',
+  pathFieldName: '',
+  responseUrlPath: 'url',
+  responsePathPath: '',
+};
+
+const defaultRegionsSettings = {
+  regions: [process.env.NUXT_PUBLIC_REGION || 'Иваново'],
 };
 
 /**
@@ -58,6 +78,44 @@ export async function getGeneralSettings() {
     return { ...defaultGeneralSettings, ...db };
   }
   return { ...defaultGeneralSettings };
+}
+
+/**
+ * Настройки хранилища файлов (MinIO/CDN).
+ * Если запись в БД отсутствует — используем env как fallback.
+ */
+export async function getStorageSettings() {
+  const db = await getSettings(STORAGE_SETTINGS_KEY);
+  if (db && typeof db === 'object') {
+    return { ...defaultStorageSettings, ...db };
+  }
+
+  const hasS3Endpoint = Boolean(process.env.S3_ENDPOINT);
+  const hasAwsCredentials = Boolean(
+    process.env.AWS_ACCESS_KEY_ID &&
+      process.env.AWS_SECRET_ACCESS_KEY &&
+      process.env.S3_BUCKET
+  );
+  const minioEnabled = hasS3Endpoint || hasAwsCredentials;
+
+  return {
+    ...defaultStorageSettings,
+    provider: minioEnabled ? 'minio' : 'cdn',
+    minioEnabled,
+  };
+}
+
+/**
+ * Список доступных регионов сайта.
+ * Если настройка в БД отсутствует — используем env как fallback.
+ */
+export async function getRegionsSettings() {
+  const db = await getSettings(REGIONS_SETTINGS_KEY);
+  if (db && typeof db === 'object') {
+    const regions = Array.isArray(db.regions) ? db.regions : [];
+    return { regions: regions.filter((r) => typeof r === 'string') };
+  }
+  return { ...defaultRegionsSettings };
 }
 
 export async function getAISettings() {
@@ -77,6 +135,38 @@ export async function getAISettings() {
   }
 
   return defaultSettings;
+}
+
+export const defaultImageGenSettings = {
+  /** openai | custom | zai — совместимый с OpenAI POST /images/generations */
+  imageProvider: 'openai',
+  apiKey: '',
+  baseUrl: '',
+  model: 'dall-e-3',
+  size: '1792x1024',
+};
+
+/**
+ * Настройки генерации изображений (обложек): отдельный API-ключ и endpoint.
+ * Fallback из env: OPENAI_IMAGE_API_KEY, OPENAI_IMAGE_BASE_URL.
+ */
+export async function getImageGenSettings() {
+  const envProvider = (process.env.AI_IMAGE_PROVIDER || '').trim().toLowerCase();
+  const defaults = {
+    ...defaultImageGenSettings,
+    ...(envProvider && ['openai', 'custom', 'zai'].includes(envProvider)
+      ? { imageProvider: envProvider }
+      : {}),
+    apiKey: process.env.OPENAI_IMAGE_API_KEY || defaultImageGenSettings.apiKey,
+    baseUrl: process.env.OPENAI_IMAGE_BASE_URL || defaultImageGenSettings.baseUrl,
+  };
+
+  const db = await getSettings(AI_IMAGE_SETTINGS_KEY);
+  if (db && typeof db === 'object') {
+    return { ...defaults, ...db };
+  }
+
+  return { ...defaults };
 }
 
 /**

@@ -17,6 +17,51 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Лид (Summary)</label>
             <textarea v-model="form.summary" rows="3" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all resize-y" placeholder="Краткое содержание..."></textarea>
           </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Обложка</label>
+            <div v-if="coverImageSrc" class="mb-3 space-y-3 max-w-lg">
+              <div class="rounded-xl overflow-hidden border border-gray-200 aspect-video bg-gray-100 shadow-sm">
+                <img :src="coverImageSrc" alt="" class="w-full h-full object-cover" />
+              </div>
+              <button
+                v-if="id && currentStatus !== 'MERGED'"
+                type="button"
+                class="text-sm font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                :disabled="coverGenLoading || aiLoading"
+                @click="generateCover"
+              >
+                {{ coverGenLoading ? 'Генерация…' : 'Сгенерировать другую обложку' }}
+              </button>
+            </div>
+            <div
+              v-else-if="id && currentStatus !== 'MERGED'"
+              class="mb-3 rounded-xl border-2 border-dashed border-gray-200 aspect-video max-w-lg bg-gray-50/80 flex flex-col items-center justify-center gap-3 p-4"
+            >
+              <p class="text-sm text-gray-500 text-center">Обложка не задана</p>
+              <button
+                type="button"
+                class="px-5 py-2.5 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all disabled:opacity-50 inline-flex items-center gap-2"
+                :disabled="coverGenLoading || aiLoading"
+                @click="generateCover"
+              >
+                <svg v-if="coverGenLoading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                {{ coverGenLoading ? 'Генерация обложки…' : 'Сгенерировать обложку' }}
+              </button>
+            </div>
+            <p v-else-if="!id" class="text-sm text-gray-500 mb-3">Превью появится после указания URL или генерации</p>
+            <p v-else class="text-sm text-gray-500 mb-3">Обложка не задана</p>
+            <input
+              v-model="form.imageUrl"
+              type="text"
+              class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all text-sm"
+              placeholder="URL изображения (или сгенерируйте выше / в блоке «ИИ Ассистент»)"
+            />
+            <p v-if="!id" class="text-xs text-gray-500 mt-2">После сохранения новости можно сгенерировать обложку здесь или в блоке «ИИ Ассистент».</p>
+          </div>
           
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Текст</label>
@@ -183,6 +228,14 @@
             <button class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50" :disabled="aiLoading" @click="aiAction('shorten')">Сократить текст</button>
             <button class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50" :disabled="aiLoading" @click="aiAction('generate-title')">Придумать заголовок</button>
             <button class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50" :disabled="aiLoading" @click="aiAction('generate-summary')">Сгенерировать лид</button>
+            <button
+              type="button"
+              class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50"
+              :disabled="coverGenLoading || aiLoading || !id || currentStatus === 'MERGED'"
+              @click="generateCover"
+            >
+              {{ coverGenLoading ? 'Генерация обложки...' : 'Сгенерировать обложку' }}
+            </button>
           </div>
 
           <div v-if="aiLoading" class="mt-4 flex items-center justify-center p-4">
@@ -258,6 +311,50 @@
       </div>
     </div>
   </Teleport>
+
+  <Teleport to="body">
+    <div
+      v-if="showCoverModal"
+      class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="cover-modal-title"
+      @click.self="closeCoverModal"
+    >
+      <div class="bg-white rounded-2xl shadow-xl border border-gray-100 max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div class="p-5 border-b border-gray-100 shrink-0">
+          <h2 id="cover-modal-title" class="text-lg font-bold text-gray-900">Превью обложки</h2>
+          <p class="text-sm text-gray-600 mt-1">Сохраните изображение в хранилище или отмените.</p>
+        </div>
+        <div class="p-4 overflow-y-auto flex-grow min-h-0 flex items-center justify-center bg-gray-50">
+          <img
+            v-if="coverPreviewDataUrl"
+            :src="coverPreviewDataUrl"
+            alt="Превью обложки"
+            class="max-w-full max-h-[60vh] rounded-lg shadow-md object-contain"
+          />
+        </div>
+        <div class="p-4 border-t border-gray-100 shrink-0 flex gap-3">
+          <button
+            type="button"
+            class="flex-1 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50"
+            :disabled="coverSaveLoading"
+            @click="closeCoverModal"
+          >
+            Отмена
+          </button>
+          <button
+            type="button"
+            class="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 disabled:opacity-50"
+            :disabled="coverSaveLoading"
+            @click="confirmCoverSave"
+          >
+            {{ coverSaveLoading ? 'Сохранение...' : 'Сохранить' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </Teleport>
 </template>
 
 <script setup lang="ts">
@@ -275,6 +372,7 @@ const form = ref({
   title: '',
   summary: '',
   body: '',
+  imageUrl: '' as string,
   sectionId: undefined as string | undefined,
   region: '' as string,
   /** Значение для input[type=datetime-local] (локальное время браузера) */
@@ -304,6 +402,25 @@ const saveLoading = ref(false);
 const publishLoading = ref(false);
 const rejectLoading = ref(false);
 
+const coverGenLoading = ref(false);
+const coverSaveLoading = ref(false);
+const showCoverModal = ref(false);
+const coverPreviewBase64 = ref('');
+const coverPreviewMime = ref('image/png');
+
+const coverPreviewDataUrl = computed(() => {
+  if (!coverPreviewBase64.value) return '';
+  return `data:${coverPreviewMime.value};base64,${coverPreviewBase64.value}`;
+});
+
+const coverImageSrc = computed(() => {
+  const u = form.value.imageUrl?.trim() || '';
+  if (!u) return '';
+  if (u.startsWith('http://') || u.startsWith('https://')) return u;
+  const base = api().base;
+  return `${base}${u.startsWith('/') ? '' : '/'}${u}`;
+});
+
 function isoToDatetimeLocal(iso: string | null | undefined): string {
   if (!iso) return '';
   const d = new Date(iso);
@@ -331,6 +448,7 @@ onMounted(async () => {
         title: string;
         summary?: string;
         body?: string;
+        imageUrl?: string | null;
         sectionId?: string;
         region?: string;
         status?: string;
@@ -341,6 +459,7 @@ onMounted(async () => {
         title: item.title || '',
         summary: item.summary || '',
         body: item.body || '',
+        imageUrl: item.imageUrl || '',
         sectionId: item.sectionId || undefined,
         region: item.region || '',
         sourcePublishedAtLocal: isoToDatetimeLocal(item.sourcePublishedAt),
@@ -376,6 +495,8 @@ async function saveAsPending() {
       sectionId: form.value.sectionId,
       region: form.value.region,
     };
+    const trimmedCover = form.value.imageUrl.trim();
+    if (trimmedCover) body.imageUrl = trimmedCover;
     const sp = sourcePublishedAtPayload();
     if (sp !== null) body.sourcePublishedAt = sp;
     await api().post('/api/admin/news', body);
@@ -394,6 +515,7 @@ async function save() {
       title: form.value.title, 
       summary: form.value.summary, 
       body: form.value.body, 
+      imageUrl: form.value.imageUrl.trim(),
       sectionId: form.value.sectionId, 
       region: form.value.region,
       sourcePublishedAt: sourcePublishedAtPayload(),
@@ -416,6 +538,7 @@ async function publish() {
       title: form.value.title, 
       summary: form.value.summary, 
       body: form.value.body, 
+      imageUrl: form.value.imageUrl.trim(),
       sectionId: form.value.sectionId, 
       region: form.value.region,
       sourcePublishedAt: sourcePublishedAtPayload(),
@@ -441,6 +564,7 @@ async function reject() {
       title: form.value.title, 
       summary: form.value.summary, 
       body: form.value.body, 
+      imageUrl: form.value.imageUrl.trim(),
       sectionId: form.value.sectionId, 
       region: form.value.region,
       sourcePublishedAt: sourcePublishedAtPayload(),
@@ -551,6 +675,77 @@ function applyAiResult() {
   if (lastAiField.value === 'title') form.value.title = aiResult.value;
   else if (lastAiField.value === 'summary') form.value.summary = aiResult.value;
   else form.value.body = aiResult.value;
+}
+
+function closeCoverModal() {
+  showCoverModal.value = false;
+  coverPreviewBase64.value = '';
+  coverPreviewMime.value = 'image/png';
+}
+
+async function generateCover() {
+  if (!id.value) {
+    alert('Сначала сохраните новость');
+    return;
+  }
+  const hasText =
+    form.value.title.trim() ||
+    form.value.summary.trim() ||
+    form.value.body.trim();
+  if (!hasText) {
+    alert('Введите заголовок или текст новости');
+    return;
+  }
+  coverGenLoading.value = true;
+  try {
+    const r = await api().post<{ imageBase64: string; mimeType?: string }>('/api/admin/news/ai/generate-cover', {
+      title: form.value.title,
+      summary: form.value.summary,
+      body: form.value.body,
+    });
+    coverPreviewBase64.value = r.imageBase64;
+    coverPreviewMime.value = r.mimeType || 'image/png';
+    showCoverModal.value = true;
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Ошибка генерации');
+  } finally {
+    coverGenLoading.value = false;
+  }
+}
+
+async function confirmCoverSave() {
+  if (!id.value || !coverPreviewBase64.value) return;
+  coverSaveLoading.value = true;
+  try {
+    const dataUrl = coverPreviewDataUrl.value;
+    const blob = dataUrl
+      ? await (await fetch(dataUrl)).blob()
+      : new Blob(
+          [Uint8Array.from(atob(coverPreviewBase64.value.replace(/\s/g, '')), (c) => c.charCodeAt(0))],
+          { type: coverPreviewMime.value || 'image/png' },
+        );
+    const mime = blob.type || coverPreviewMime.value || 'image/png';
+    const ext = mime.includes('jpeg') || mime.includes('jpg') ? 'jpg' : mime.includes('webp') ? 'webp' : 'png';
+    const fd = new FormData();
+    fd.append('image', blob, `cover.${ext}`);
+    const base = api().base;
+    const res = await fetch(`${base}/api/admin/news/${id.value}/cover`, {
+      method: 'POST',
+      credentials: 'include',
+      body: fd,
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error(t);
+    }
+    const data = (await res.json()) as { url: string };
+    form.value.imageUrl = data.url || '';
+    closeCoverModal();
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Ошибка сохранения обложки');
+  } finally {
+    coverSaveLoading.value = false;
+  }
 }
 
 async function parseBody() {

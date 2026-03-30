@@ -1,4 +1,4 @@
-import { getAISettings } from './settings.js';
+import { getAISettings, getImageGenSettings } from './settings.js';
 import {
   looksLikeLatinTransliteratedRussianTitle,
   reverseTransliterateLatinToCyrillic,
@@ -431,6 +431,244 @@ ${text}`;
   }
 
   return { text: result, variants: [] };
+}
+
+function stripHtmlForCover(html) {
+  if (!html) return '';
+  return String(html)
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/** Не дублировать суффикс, если в baseUrl уже указан полный путь …/images/generations */
+function resolveImagesGenerationsUrl(baseUrlRaw) {
+  const base = String(baseUrlRaw || '')
+    .trim()
+    .replace(/\/+$/, '');
+  if (!base) return '';
+  if (/\/images\/generations$/i.test(base)) return base;
+  return `${base}/images/generations`;
+}
+
+/** Корень API Z.ai для картинок: …/api без /paas/v4 → дополняем */
+function normalizeZaiImageBase(raw) {
+  const s = String(raw || '').trim().replace(/\/$/, '');
+  if (!s) return 'https://api.z.ai/api/paas/v4';
+  if (/^https?:\/\/api\.z\.ai\/api$/i.test(s)) {
+    return 'https://api.z.ai/api/paas/v4';
+  }
+  return s;
+}
+
+/** Размеры DALL·E → рекомендуемые для GLM-Image (docs.z.ai) */
+function mapDalleSizeToZaiSize(size) {
+  const s = String(size || '').trim().toLowerCase();
+  const map = {
+    '1024x1024': '1280x1280',
+    '1792x1024': '1728x960',
+    '1024x1792': '960x1728',
+  };
+  return map[s] || '1280x1280';
+}
+
+function resolveZaiImageModel(model) {
+  const m = String(model || '').trim();
+  const lower = m.toLowerCase();
+  if (!m || lower === 'dall-e-3' || lower.startsWith('dall-e')) {
+    return 'glm-image';
+  }
+  return m;
+}
+
+/**
+ * Z.ai иногда отдаёт относительный путь; часть CDN требует User-Agent или Bearer.
+ * @param {string} imageUrl
+ * @param {{ originHint?: string, bearerToken?: string }} [opts]
+ */
+function resolveAbsoluteImageFetchUrl(imageUrl, opts = {}) {
+  const raw = String(imageUrl || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  if (raw.startsWith('//')) return `https:${raw}`;
+  const base = String(opts.originHint || 'https://api.z.ai')
+    .trim()
+    .replace(/\/$/, '');
+  try {
+    const u = new URL(raw, `${base}/`);
+    return u.href;
+  } catch {
+    const path = raw.startsWith('/') ? raw : `/${raw}`;
+    return `${base}${path}`;
+  }
+}
+
+async function fetchImageUrlAsBase64(imageUrl, opts = {}) {
+  const { originHint, bearerToken } = opts;
+  const absolute = resolveAbsoluteImageFetchUrl(imageUrl, { originHint });
+  if (!absolute) {
+    throw new Error('Пустой URL изображения в ответе API');
+  }
+
+  const baseHeaders = {
+    Accept: 'image/avif,image/webp,image/apng,image/*,*/*;q=0.8',
+    'User-Agent': 'NewsAggregator/1.0 (cover; +https://github.com)',
+  };
+
+  async function tryFetch(withBearer) {
+    const headers = { ...baseHeaders };
+    if (withBearer && bearerToken) {
+      headers.Authorization = `Bearer ${bearerToken}`;
+    }
+    return fetch(absolute, {
+      signal: AbortSignal.timeout(120000),
+      redirect: 'follow',
+      headers,
+    });
+  }
+
+  let res = await tryFetch(false);
+  if (!res.ok && (res.status === 401 || res.status === 403) && bearerToken) {
+    res = await tryFetch(true);
+  }
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(
+      t?.slice(0, 500) || `Не удалось скачать сгенерированное изображение: ${res.status}`,
+    );
+  }
+  const ct = (res.headers.get('content-type') || 'image/png').split(';')[0].trim();
+  const buf = Buffer.from(await res.arrayBuffer());
+  if (!buf.length) {
+    throw new Error('Пустой файл при скачивании изображения по URL');
+  }
+  return {
+    mimeType: ct || 'image/png',
+    imageBase64: buf.toString('base64'),
+  };
+}
+
+/**
+ * Генерация превью обложки через OpenAI Images API.
+ * Ключ: настройки «API изображений» или (fallback) ключ основного ИИ при провайдере openai/custom.
+ * @param {{ title?: string, summary?: string, body?: string }} input
+ * @returns {Promise<{ mimeType: string, imageBase64: string }>}
+ */
+export async function generateCoverImagePreview({ title, summary, body }) {
+  const image = await getImageGenSettings();
+  const chat = await getAISettings();
+  const chatProvider = (chat.aiProvider || 'openai').toLowerCase();
+  const imgProvider = (image.imageProvider || 'openai').toLowerCase();
+
+  const imageKey = (image.apiKey || '').trim();
+  const chatKeyOpenAi = ['openai', 'custom'].includes(chatProvider)
+    ? (chat.apiKey || '').trim()
+    : '';
+  const chatKeyZai = chatProvider === 'zai' ? (chat.apiKey || '').trim() : '';
+
+  let apiKey = '';
+  if (imgProvider === 'zai') {
+    apiKey = imageKey || chatKeyZai;
+  } else {
+    apiKey = imageKey || chatKeyOpenAi;
+  }
+
+  if (!apiKey) {
+    const hint =
+      imgProvider === 'zai'
+        ? 'Укажите API-ключ в блоке «Изображения» или выберите провайдер Z.ai в основном чате с ключом.'
+        : 'Укажите API-ключ в «Настройки → Настройки AI → Изображения (обложки)» или настройте основной провайдер OpenAI / Custom с ключом для чата.';
+    throw new Error(hint);
+  }
+
+  const imageBase = (image.baseUrl || '').trim();
+  const chatBase = (chat.baseUrl || '').trim();
+  const defaultBase =
+    imgProvider === 'zai'
+      ? 'https://api.z.ai/api/paas/v4'
+      : 'https://api.openai.com/v1';
+  let baseForUrl = imageBase || chatBase || defaultBase;
+  if (imgProvider === 'zai') {
+    baseForUrl = normalizeZaiImageBase(baseForUrl);
+  }
+  const baseUrl = String(baseForUrl).replace(/\/$/, '');
+  const model = (image.model || 'dall-e-3').trim();
+  const size = (image.size || '1792x1024').trim();
+
+  const titlePart = (title || '').trim().slice(0, 200);
+  const summaryPart = stripHtmlForCover(summary || '').slice(0, 400);
+  const bodyPart = stripHtmlForCover(body || '').slice(0, 600);
+  const context = [
+    titlePart && `Тема: ${titlePart}`,
+    summaryPart && `Кратко: ${summaryPart}`,
+    bodyPart && `Детали: ${bodyPart}`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+
+  if (!context.trim()) {
+    throw new Error('Недостаточно текста для генерации обложки (заголовок или текст новости).');
+  }
+
+  const prompt = `Создай реалистичную или стилизованную редакционную иллюстрацию для новостного сайта на русском языке по следующему контексту. Никакого текста на изображении, без логотипов и водяных знаков. Нейтральный, серьёзный визуальный стиль, подходит для новостной ленты.
+
+${context}`;
+
+  const url = resolveImagesGenerationsUrl(baseUrl);
+  if (!url) {
+    throw new Error('Не задан базовый URL для Images API.');
+  }
+
+  const isZai = imgProvider === 'zai';
+  const requestBody = isZai
+    ? {
+        model: resolveZaiImageModel(model),
+        prompt: prompt.slice(0, 4000),
+        size: mapDalleSizeToZaiSize(size),
+        quality: 'standard',
+      }
+    : {
+        model,
+        prompt: prompt.slice(0, 4000),
+        n: 1,
+        size,
+        response_format: 'b64_json',
+      };
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify(requestBody),
+    signal: AbortSignal.timeout(120000),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    console.error('Images API error:', res.status, err);
+    throw new Error(err || `Images API error ${res.status}`);
+  }
+
+  const data = await res.json();
+  const first = Array.isArray(data.data) ? data.data[0] : data.data;
+  const imageUrl =
+    first?.url ||
+    first?.image_url ||
+    (typeof first === 'string' && /^https?:\/\//i.test(first) ? first : null);
+  if (first?.b64_json) {
+    return { mimeType: 'image/png', imageBase64: first.b64_json };
+  }
+  if (imageUrl) {
+    return fetchImageUrlAsBase64(imageUrl, {
+      originHint: baseUrl,
+      bearerToken: isZai ? apiKey : undefined,
+    });
+  }
+
+  console.error('Unexpected Images API response:', JSON.stringify(data).slice(0, 500));
+  throw new Error('Пустой ответ Images API (нет b64_json и url).');
 }
 
 /**

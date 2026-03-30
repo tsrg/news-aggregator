@@ -78,11 +78,25 @@ router.put('/:id', async (req, res) => {
   try {
     const { filters, ...sourceData } = req.body;
     const data = sourceSchema.partial().parse(sourceData);
+    const existing = await prisma.source.findUnique({
+      where: { id: req.params.id },
+    });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+
+    const existingParams = (existing.params && typeof existing.params === 'object') ? existing.params : {};
+    const incomingParams = (data.params && typeof data.params === 'object') ? data.params : null;
+    const updateData = { ...data };
+    if (incomingParams) {
+      updateData.params = {
+        ...existingParams,
+        ...incomingParams,
+      };
+    }
 
     // Обновляем источник
     const s = await prisma.source.update({
       where: { id: req.params.id },
-      data: { ...data },
+      data: updateData,
       include: { filters: true },
     });
 

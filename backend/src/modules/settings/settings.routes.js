@@ -4,8 +4,15 @@ import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import {
   getAISettings,
   getGeneralSettings,
+  getStorageSettings,
+  getRegionsSettings,
+  getImageGenSettings,
   updateSettings,
   GENERAL_SETTINGS_KEY,
+  STORAGE_SETTINGS_KEY,
+  REGIONS_SETTINGS_KEY,
+  AI_IMAGE_SETTINGS_KEY,
+  defaultImageGenSettings,
 } from '../../services/settings.js';
 import { testAIConnection } from '../../services/ai.js';
 
@@ -18,6 +25,18 @@ const AI_SETTINGS_KEY = 'ai_config';
 const generalPutSchema = z.object({
   autoDeleteStaleUnpublishedNews: z.boolean(),
   mergeDuplicateNews: z.boolean(),
+});
+
+const storagePutSchema = z.object({
+  provider: z.enum(['minio', 'cdn']).optional(),
+  minioEnabled: z.boolean(),
+  baseUrl: z.string(),
+  uploadEndpoint: z.string(),
+  httpMethod: z.enum(['POST', 'PUT']),
+  fileFieldName: z.string(),
+  pathFieldName: z.string(),
+  responseUrlPath: z.string(),
+  responsePathPath: z.string(),
 });
 
 // Дефолтные настройки
@@ -35,6 +54,36 @@ const defaultGeneralSettings = {
   mergeDuplicateNews: false,
 };
 
+const regionsPutSchema = z.object({
+  regions: z.array(z.string().min(1)),
+});
+
+const defaultRegionsSettings = {
+  regions: [process.env.NUXT_PUBLIC_REGION || 'Иваново'],
+};
+
+function buildDefaultStorageSettings() {
+  const hasS3Endpoint = Boolean(process.env.S3_ENDPOINT);
+  const hasAwsCredentials = Boolean(
+    process.env.AWS_ACCESS_KEY_ID &&
+      process.env.AWS_SECRET_ACCESS_KEY &&
+      process.env.S3_BUCKET
+  );
+  const minioEnabled = hasS3Endpoint || hasAwsCredentials;
+
+  return {
+    provider: minioEnabled ? 'minio' : 'cdn',
+    minioEnabled,
+    baseUrl: '',
+    uploadEndpoint: '',
+    httpMethod: 'POST',
+    fileFieldName: 'file',
+    pathFieldName: '',
+    responseUrlPath: 'url',
+    responsePathPath: '',
+  };
+}
+
 router.get('/general', async (req, res) => {
   try {
     const settings = await getGeneralSettings();
@@ -51,6 +100,66 @@ router.put('/general', async (req, res) => {
     const current = await getGeneralSettings();
     const updated = { ...current, ...parsed };
     await updateSettings(GENERAL_SETTINGS_KEY, updated);
+    return res.json(updated);
+  } catch (e) {
+    if (e.name === 'ZodError') {
+      return res.status(400).json({ error: 'Validation error', details: e.issues ?? e.errors });
+    }
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/storage', async (req, res) => {
+  try {
+    const settings = await getStorageSettings();
+    return res.json(settings);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/storage', async (req, res) => {
+  try {
+    const parsed = storagePutSchema.parse(req.body);
+    const current = await getStorageSettings();
+    const provider = parsed.minioEnabled ? 'minio' : 'cdn';
+    const updated = { ...current, ...parsed, provider };
+    await updateSettings(STORAGE_SETTINGS_KEY, updated);
+    return res.json(updated);
+  } catch (e) {
+    if (e.name === 'ZodError') {
+      return res.status(400).json({ error: 'Validation error', details: e.issues ?? e.errors });
+    }
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/regions', async (req, res) => {
+  try {
+    const settings = await getRegionsSettings();
+    return res.json(settings);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/regions', async (req, res) => {
+  try {
+    const parsed = regionsPutSchema.parse(req.body);
+    const normalized = Array.from(
+      new Set(
+        parsed.regions
+          .map((r) => r.trim())
+          .filter((r) => r.length > 0)
+      ),
+    ).slice(0, 50);
+
+    await updateSettings(REGIONS_SETTINGS_KEY, { regions: normalized });
+    const updated = await getRegionsSettings();
     return res.json(updated);
   } catch (e) {
     if (e.name === 'ZodError') {
@@ -107,6 +216,58 @@ router.put('/ai', async (req, res) => {
     return res.json({
       ...updatedSettings,
       apiKey: updatedSettings.apiKey ? '••••••••' + updatedSettings.apiKey.slice(-4) : '',
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/ai-image', async (req, res) => {
+  try {
+    const settings = await getImageGenSettings();
+    return res.json({
+      ...settings,
+      apiKey: settings.apiKey ? '••••••••' + settings.apiKey.slice(-4) : '',
+    });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+const aiImagePutSchema = z.object({
+  imageProvider: z.enum(['openai', 'custom', 'zai']).optional(),
+  apiKey: z.string().optional(),
+  baseUrl: z.string().optional(),
+  model: z.string().optional(),
+  size: z.string().optional(),
+});
+
+router.put('/ai-image', async (req, res) => {
+  try {
+    const parsed = aiImagePutSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({
+        error: 'Validation error',
+        details: parsed.error.flatten(),
+      });
+    }
+    const { imageProvider, apiKey, baseUrl, model, size } = parsed.data;
+    const current = await getImageGenSettings();
+    const updated = {
+      ...current,
+      ...(imageProvider && { imageProvider }),
+      ...(apiKey && !String(apiKey).startsWith('••••') && { apiKey: String(apiKey) }),
+      ...(baseUrl !== undefined && { baseUrl: String(baseUrl) }),
+      ...(model !== undefined && { model: String(model) }),
+      ...(size !== undefined && { size: String(size) }),
+    };
+    await updateSettings(AI_IMAGE_SETTINGS_KEY, updated);
+    const out = await getImageGenSettings();
+    return res.json({
+      ...out,
+      apiKey: out.apiKey ? '••••••••' + out.apiKey.slice(-4) : '',
     });
   } catch (e) {
     console.error(e);
@@ -210,6 +371,48 @@ export async function initializeSettings() {
         },
       });
       console.log('Default general settings created in database');
+    }
+
+    const existingStorage = await prisma.setting.findUnique({
+      where: { key: STORAGE_SETTINGS_KEY },
+    });
+
+    if (!existingStorage) {
+      await prisma.setting.create({
+        data: {
+          key: STORAGE_SETTINGS_KEY,
+          value: buildDefaultStorageSettings(),
+        },
+      });
+      console.log('Default storage settings created in database');
+    }
+
+    const existingRegions = await prisma.setting.findUnique({
+      where: { key: REGIONS_SETTINGS_KEY },
+    });
+
+    if (!existingRegions) {
+      await prisma.setting.create({
+        data: {
+          key: REGIONS_SETTINGS_KEY,
+          value: defaultRegionsSettings,
+        },
+      });
+      console.log('Default regions settings created in database');
+    }
+
+    const existingAiImage = await prisma.setting.findUnique({
+      where: { key: AI_IMAGE_SETTINGS_KEY },
+    });
+
+    if (!existingAiImage) {
+      await prisma.setting.create({
+        data: {
+          key: AI_IMAGE_SETTINGS_KEY,
+          value: { ...defaultImageGenSettings },
+        },
+      });
+      console.log('Default AI image settings created in database');
     }
   } catch (e) {
     console.error('Failed to initialize settings:', e.message);

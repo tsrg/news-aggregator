@@ -3,6 +3,7 @@ import {
   PutObjectCommand,
   HeadBucketCommand,
   CreateBucketCommand,
+  PutBucketPolicyCommand,
 } from '@aws-sdk/client-s3';
 import { config } from '../config/index.js';
 
@@ -30,6 +31,29 @@ function getClient() {
 }
 
 /**
+ * Анонимное чтение объектов (GET в браузере). Без этого MinIO отдаёт 403 на публичный URL.
+ */
+async function ensureBucketPublicReadPolicy(client, bucket) {
+  const policy = {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Effect: 'Allow',
+        Principal: { AWS: ['*'] },
+        Action: ['s3:GetObject'],
+        Resource: [`arn:aws:s3:::${bucket}/*`],
+      },
+    ],
+  };
+  await client.send(
+    new PutBucketPolicyCommand({
+      Bucket: bucket,
+      Policy: JSON.stringify(policy),
+    })
+  );
+}
+
+/**
  * Ensure the configured bucket exists; create it if missing.
  * Safe to call before each upload (idempotent).
  */
@@ -46,6 +70,68 @@ export async function ensureBucketExists() {
       throw err;
     }
   }
+  if (config.s3.endpoint) {
+    try {
+      await ensureBucketPublicReadPolicy(c, bucket);
+    } catch (e) {
+      console.warn('[s3] bucket public read policy:', e.message || e);
+    }
+  }
+}
+
+/**
+ * Подменяет внутренний S3 endpoint (Docker: http://minio:9000/bucket) на публичный
+ * (S3_PUBLIC_BASE_URL), иначе браузер не откроет картинку по сохранённому URL.
+ *
+ * Дополнительно: любой URL с хостом minio (Docker DNS) переписывается — даже если
+ * префикс не совпал с S3_ENDPOINT из .env или публичный base не задан (fallback localhost).
+ */
+export function rewriteStorageUrlForBrowser(url) {
+  if (!url || typeof url !== 'string') return url;
+  const trimmed = url.trim();
+  if (!trimmed) return url;
+
+  const publicBaseRaw = (config.s3.publicBaseUrl || process.env.S3_PUBLIC_BASE_URL || '').trim();
+  const publicBase = publicBaseRaw.replace(/\/$/, '');
+  const ep = (config.s3.endpoint || '').trim().replace(/\/$/, '');
+  const bucket = (config.s3.bucket || '').trim();
+
+  // Совпадение origin с S3_ENDPOINT (надёжнее строкового префикса при path-style URL)
+  if (publicBaseRaw && ep) {
+    try {
+      const u = new URL(trimmed);
+      const epUrl = new URL(ep.includes('://') ? ep : `http://${ep}`);
+      if (u.origin === epUrl.origin) {
+        const pb = new URL(publicBaseRaw.includes('://') ? publicBaseRaw : `http://${publicBaseRaw}`);
+        return `${pb.origin}${u.pathname}${u.search}${u.hash}`;
+      }
+    } catch {
+      /* continue */
+    }
+  }
+
+  if (publicBase && ep && bucket) {
+    const internalPrefix = `${ep}/${bucket}`;
+    if (trimmed.startsWith(internalPrefix)) {
+      return `${publicBase}${trimmed.slice(internalPrefix.length)}`;
+    }
+  }
+
+  // Хост minio (Docker DNS) — даже если S3_ENDPOINT в .env не совпал со строкой в БД
+  if (/^https?:\/\/minio(:\d+)?\//i.test(trimmed)) {
+    try {
+      const u = new URL(trimmed);
+      if (publicBaseRaw) {
+        const pb = new URL(publicBaseRaw.includes('://') ? publicBaseRaw : `http://${publicBaseRaw}`);
+        return `${pb.origin}${u.pathname}${u.search}${u.hash}`;
+      }
+    } catch {
+      /* fall through */
+    }
+    return trimmed.replace(/^https?:\/\/minio(:\d+)?(?=\/|$)/i, (_, port) => `http://localhost${port || ':9000'}`);
+  }
+
+  return url;
 }
 
 /**
@@ -73,5 +159,5 @@ export async function uploadBuffer(key, buffer, contentType) {
       ? `${config.s3.endpoint}/${config.s3.bucket}`
       : null;
   if (!base) return key;
-  return `${base}/${key}`;
+  return rewriteStorageUrlForBrowser(`${base}/${key}`);
 }

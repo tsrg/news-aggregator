@@ -1,7 +1,15 @@
 import { Router } from 'express';
 import { prisma } from '../../config/prisma.js';
+import { rewriteStorageUrlForBrowser } from '../../services/s3.js';
 
 const router = Router();
+
+function withPublicImageUrl(item) {
+  if (!item || typeof item !== 'object') return item;
+  const o = { ...item };
+  if (o.imageUrl) o.imageUrl = rewriteStorageUrlForBrowser(o.imageUrl);
+  return o;
+}
 
 router.get('/', async (req, res) => {
   try {
@@ -29,7 +37,7 @@ router.get('/', async (req, res) => {
       }),
       prisma.newsItem.count({ where }),
     ]);
-    return res.json({ items, total });
+    return res.json({ items: items.map(withPublicImageUrl), total });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Internal server error' });
@@ -50,7 +58,7 @@ router.get('/:id', async (req, res) => {
       include: { section: true, source: true },
     });
     if (!item) return res.status(404).json({ error: 'Not found' });
-    return res.json(item);
+    return res.json(withPublicImageUrl(item));
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Internal server error' });

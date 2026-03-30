@@ -19,6 +19,22 @@
           Настройки AI
         </router-link>
         <router-link
+          v-if="hasPermission('settings')"
+          to="/settings/storage"
+          class="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors"
+          :class="isStorageActive ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
+        >
+          Хранилище
+        </router-link>
+        <router-link
+          v-if="hasPermission('settings')"
+          to="/settings/regions"
+          class="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors"
+          :class="isRegionsActive ? 'bg-blue-100 text-blue-700' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'"
+        >
+          Регионы
+        </router-link>
+        <router-link
           v-if="hasPermission('users')"
           to="/settings/users"
           class="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors"
@@ -53,6 +69,8 @@ const hasPermission = auth.hasPermission;
 
 const isGeneralActive = computed(() => route.path === '/settings/general' || route.path === '/settings' || route.path === '/settings/');
 const isAiActive = computed(() => route.path === '/settings/ai');
+const isStorageActive = computed(() => route.path === '/settings/storage');
+const isRegionsActive = computed(() => route.path === '/settings/regions');
 const isUsersActive = computed(() => route.path.startsWith('/settings/users'));
 const isRolesActive = computed(() => route.path.startsWith('/settings/roles'));
 </script>

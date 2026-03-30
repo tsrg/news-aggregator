@@ -6,8 +6,16 @@ import { enrichNewsItem, parseArticle } from '../../services/articleParser.js';
 import { articleQueue } from '../../jobs/queue.js';
 import { runDuplicateMergeBatch } from '../../services/newsMerge.js';
 import { normalizeTitleForIndex } from '../../services/titleNormalize.js';
+import { rewriteStorageUrlForBrowser } from '../../services/s3.js';
 
 const router = Router();
+
+function withPublicImageUrl(item) {
+  if (!item || typeof item !== 'object') return item;
+  const o = { ...item };
+  if (o.imageUrl) o.imageUrl = rewriteStorageUrlForBrowser(o.imageUrl);
+  return o;
+}
 router.use(requireAuth);
 router.use(requirePermission('news'));
 
@@ -66,7 +74,7 @@ router.get('/', async (req, res) => {
       }),
       prisma.newsItem.count({ where }),
     ]);
-    return res.json({ items, total });
+    return res.json({ items: items.map(withPublicImageUrl), total });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Internal server error' });
@@ -109,7 +117,7 @@ router.get('/:id', async (req, res) => {
       },
     });
     if (!item) return res.status(404).json({ error: 'Not found' });
-    return res.json(item);
+    return res.json(withPublicImageUrl(item));
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Internal server error' });
@@ -150,7 +158,7 @@ router.post('/', async (req, res) => {
     await prisma.newsItemHistory.create({
       data: { newsItemId: item.id, userId: req.userId, snapshot: snapshot(item) },
     });
-    return res.status(201).json(item);
+    return res.status(201).json(withPublicImageUrl(item));
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: e.errors });
     console.error(e);
@@ -183,7 +191,7 @@ router.put('/:id', async (req, res) => {
         console.warn('WebSocket broadcast:', e.message);
       }
     }
-    return res.json(item);
+    return res.json(withPublicImageUrl(item));
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: e.errors });
     console.error(e);
@@ -216,7 +224,7 @@ router.patch('/:id/status', async (req, res) => {
         console.warn('WebSocket broadcast:', e.message);
       }
     }
-    return res.json(item);
+    return res.json(withPublicImageUrl(item));
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Internal server error' });
@@ -271,7 +279,7 @@ router.post('/:id/parse-body', async (req, res) => {
           console.warn('WebSocket broadcast:', e.message);
         }
       }
-      return res.json({ message: 'Parsing completed', item: updated });
+      return res.json({ message: 'Parsing completed', item: withPublicImageUrl(updated) });
     } else {
       return res.status(500).json({ error: 'Parsing failed', detail: result.error });
     }

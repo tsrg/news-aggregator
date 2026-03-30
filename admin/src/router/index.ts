@@ -35,6 +35,8 @@ const router = createRouter({
         { path: '', redirect: { name: 'SettingsGeneral' } },
         { path: 'general', name: 'SettingsGeneral', component: () => import('../views/SettingsGeneral.vue') },
         { path: 'ai', name: 'SettingsAI', component: () => import('../views/Settings.vue') },
+        { path: 'storage', name: 'SettingsStorage', component: () => import('../views/SettingsStorage.vue') },
+        { path: 'regions', name: 'SettingsRegions', component: () => import('../views/SettingsRegions.vue') },
         { path: 'users', name: 'Users', component: () => import('../views/Users.vue'), meta: { permission: 'users' } },
         { path: 'users/new', name: 'UserNew', component: () => import('../views/UserEdit.vue'), meta: { permission: 'users' } },
         { path: 'users/:id', name: 'UserEdit', component: () => import('../views/UserEdit.vue'), props: true, meta: { permission: 'users' } },
