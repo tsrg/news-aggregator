@@ -17,6 +17,22 @@
           <option value="Иваново">Иваново</option>
           <option value="Другой">Другой</option>
         </select>
+        <select v-model="contentClassFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-4 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all">
+          <option value="">Все типы материалов</option>
+          <option value="NEWS">Новость</option>
+          <option value="REPORT">Репортаж</option>
+          <option value="ANALYSIS">Аналитика</option>
+          <option value="OPINION">Мнение</option>
+          <option value="UNKNOWN">Не определен</option>
+        </select>
+        <select v-model="legalReviewFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-4 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all">
+          <option value="">Все legal-статусы</option>
+          <option value="NOT_REQUIRED">Не требуется</option>
+          <option value="PENDING">Ожидает проверки</option>
+          <option value="NEEDS_REVIEW">Требует ручной проверки</option>
+          <option value="APPROVED">Одобрено</option>
+          <option value="REJECTED">Отклонено</option>
+        </select>
         <select v-model="sortBy" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-4 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-[220px]">
           <option value="sourcePublishedAt">Сортировка: дата в источнике</option>
           <option value="createdAt">Сортировка: дата создания</option>
@@ -56,6 +72,8 @@
             <th class="pb-3 px-4 font-medium">Источник</th>
             <th class="pb-3 px-4 font-medium">Регион</th>
             <th class="pb-3 px-4 font-medium">Статус</th>
+            <th class="pb-3 px-4 font-medium">Тип</th>
+            <th class="pb-3 px-4 font-medium">Legal</th>
             <th class="pb-3 px-4 font-medium">В источнике</th>
             <th class="pb-3 px-4 font-medium">Создано</th>
             <th class="pb-3 px-4 font-medium text-right">Действия</th>
@@ -79,6 +97,8 @@
                 <option value="REJECTED">Отклонено</option>
               </select>
             </td>
+            <td class="py-4 px-4 text-gray-600">{{ item.contentClass || 'UNKNOWN' }}</td>
+            <td class="py-4 px-4 text-gray-600">{{ item.legalReviewStatus || '—' }}</td>
             <td class="py-4 px-4 text-gray-500">{{ item.sourcePublishedAt ? formatDateTime(item.sourcePublishedAt) : '—' }}</td>
             <td class="py-4 px-4 text-gray-500">{{ formatDate(item.createdAt) }}</td>
             <td class="py-4 px-4 text-right">
@@ -235,6 +255,8 @@ import { api } from '../../api';
 
 const statusFilter = ref('');
 const regionFilter = ref('');
+const contentClassFilter = ref('');
+const legalReviewFilter = ref('');
 /** По умолчанию — по дате публикации в источнике */
 const sortBy = ref<'sourcePublishedAt' | 'createdAt'>('sourcePublishedAt');
 const page = ref(1);
@@ -248,6 +270,8 @@ const items = ref<
     createdAt: string;
     sourcePublishedAt?: string | null;
     region?: string;
+    contentClass?: string | null;
+    legalReviewStatus?: string | null;
   }[]
 >([]);
 const total = ref(0);
@@ -354,6 +378,8 @@ async function load() {
     const params = new URLSearchParams();
     if (statusFilter.value) params.set('status', statusFilter.value);
     if (regionFilter.value) params.set('region', regionFilter.value);
+    if (contentClassFilter.value) params.set('contentClass', contentClassFilter.value);
+    if (legalReviewFilter.value) params.set('legalReviewStatus', legalReviewFilter.value);
     params.set('sort', sortBy.value);
     params.set('page', String(page.value));
     params.set('limit', String(limit));
@@ -368,8 +394,8 @@ async function load() {
   }
 }
 
-watch([statusFilter, regionFilter, sortBy], () => { page.value = 1; });
-watch([statusFilter, regionFilter, sortBy, page], load);
+watch([statusFilter, regionFilter, contentClassFilter, legalReviewFilter, sortBy], () => { page.value = 1; });
+watch([statusFilter, regionFilter, contentClassFilter, legalReviewFilter, sortBy, page], load);
 load();
 
 async function onStatusChange(item: { id: string; status: string }, e: Event) {

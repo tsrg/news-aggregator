@@ -5,9 +5,11 @@ import { randomUUID } from 'crypto';
 import { mkdir, writeFile } from 'fs/promises';
 import { prisma } from '../../config/prisma.js';
 import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
-import { factCheckNews, aiEdit, generateCoverImagePreview } from '../../services/ai.js';
+import { factCheckNews, aiEdit, generateCoverImagePreview, rewriteNewsBodyBySourceRules, synthesizeMergedNewsFromSources } from '../../services/ai.js';
+import { enrichSnapshotsForOverview } from '../../services/overviewSources.js';
 import { resolveStorageProvider, uploadFileBySettings } from '../../services/storage.js';
 import { rewriteStorageUrlForBrowser } from '../../services/s3.js';
+import { runLegalComplianceChecks } from '../../services/legalCompliance.js';
 
 const router = Router();
 router.use(requireAuth);
@@ -21,9 +23,95 @@ const coverUpload = multer({
 router.post('/ai/edit', async (req, res) => {
   try {
     const { newsId, text, field = 'body', action } = req.body;
-    if (!action || !text) return res.status(400).json({ error: 'action and text required' });
-    const allowed = ['improve', 'shorten', 'expand', 'generate-title', 'generate-summary'];
+    if (!action) return res.status(400).json({ error: 'action required' });
+    const allowed = [
+      'improve',
+      'shorten',
+      'expand',
+      'generate-title',
+      'generate-summary',
+      'rewrite-copyright-safe',
+      'generate-overview',
+      'legal-precheck',
+    ];
     if (!allowed.includes(action)) return res.status(400).json({ error: 'invalid action' });
+    if (action === 'legal-precheck') {
+      if (!newsId) return res.status(400).json({ error: 'newsId required' });
+      const item = await prisma.newsItem.findUnique({
+        where: { id: newsId },
+        include: { source: { include: { usageRule: true } } },
+      });
+      if (!item) return res.status(404).json({ error: 'Not found' });
+      const snapshots = Array.isArray(item.sourceSnapshots)
+        ? item.sourceSnapshots
+        : [{
+            sourceId: item.sourceId,
+            sourceName: item.source?.name || 'Источник',
+            url: item.url || null,
+          }];
+      const sourceIds = snapshots
+        .map((s) => (s && typeof s.sourceId === 'string' ? s.sourceId : null))
+        .filter(Boolean);
+      const list = sourceIds.length
+        ? await prisma.source.findMany({
+            where: { id: { in: sourceIds } },
+            select: { id: true, usageRule: true },
+          })
+        : [];
+      const ruleById = new Map(list.map((s) => [s.id, s.usageRule]));
+      const rules = sourceIds.map((id) => ruleById.get(id)).filter(Boolean);
+      const legal = runLegalComplianceChecks({
+        title: item.title,
+        summary: item.summary || '',
+        body: typeof text === 'string' && text.trim() ? text : item.body || '',
+        sourceSnapshots: snapshots,
+        sourceRules: rules,
+        declaredContentClass: item.contentClass,
+      });
+      return res.json(legal);
+    }
+    if (action === 'generate-overview') {
+      if (!newsId) return res.status(400).json({ error: 'newsId required' });
+      const item = await prisma.newsItem.findUnique({
+        where: { id: newsId },
+        include: { source: true },
+      });
+      if (!item) return res.status(404).json({ error: 'Not found' });
+      const snapshots = Array.isArray(item.sourceSnapshots) && item.sourceSnapshots.length > 0
+        ? item.sourceSnapshots
+        : [{
+            sourceId: item.sourceId,
+            sourceName: item.source?.name || 'Источник',
+            url: item.url,
+            originalTitle: item.title,
+            summary: item.summary,
+            body: item.body,
+          }];
+      const sourceIds = snapshots
+        .map((s) => (s && typeof s.sourceId === 'string' ? s.sourceId : null))
+        .filter(Boolean);
+      const list = sourceIds.length
+        ? await prisma.source.findMany({
+            where: { id: { in: sourceIds } },
+            select: { id: true, usageRule: true },
+          })
+        : [];
+      const ruleById = new Map(list.map((s) => [s.id, s.usageRule]));
+      const baseRules = sourceIds.map((id) => ruleById.get(id)).filter(Boolean);
+      const enriched = await enrichSnapshotsForOverview(item, snapshots);
+      const rules = [...baseRules, ...enriched.newRules];
+      const result = await synthesizeMergedNewsFromSources(
+        { sources: enriched.snapshots },
+        { sourceRules: rules },
+      );
+      return res.json({ ...result, overviewMeta: enriched.meta });
+    }
+    if (action === 'rewrite-copyright-safe') {
+      if (!newsId) return res.status(400).json({ error: 'newsId required' });
+      const result = await rewriteNewsBodyBySourceRules(newsId, text);
+      return res.json(result);
+    }
+    if (!text) return res.status(400).json({ error: 'text required' });
     const result = await aiEdit(text, action, field);
     return res.json(result);
   } catch (e) {

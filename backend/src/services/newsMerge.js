@@ -1,7 +1,8 @@
 import { prisma } from '../config/prisma.js';
 import { getGeneralSettings, getAISettings } from './settings.js';
-import { synthesizeMergedNewsFromSources } from './ai.js';
+import { synthesizeMergedNewsFromSources, combineSourceUsageRules } from './ai.js';
 import { normalizeTitleForIndex } from './titleNormalize.js';
+import { runLegalComplianceChecks } from './legalCompliance.js';
 
 /** Окно поиска «того же события» по времени создания записи */
 const MERGE_TIME_WINDOW_MS = 72 * 60 * 60 * 1000;
@@ -195,12 +196,36 @@ export async function maybeMergeNewsItem(newsItemId) {
   }
 
   const snapshots = mergeSnapshots(canonicalFull, incoming, canonicalFull.source, incoming.source);
+  const sourceIds = Array.from(
+    new Set(
+      snapshots
+        .map((s) => (s && typeof s.sourceId === 'string' ? s.sourceId : null))
+        .filter(Boolean),
+    ),
+  );
+  const sourcesWithRules = sourceIds.length > 0
+    ? await prisma.source.findMany({
+        where: { id: { in: sourceIds } },
+        select: { id: true, usageRule: true, name: true },
+      })
+    : [];
+  const usageRules = sourcesWithRules.map((s) => s.usageRule).filter(Boolean);
+  const combinedRule = combineSourceUsageRules(usageRules);
+  if (!combinedRule.allowMerge) {
+    return { merged: false, reason: 'rules_conflict' };
+  }
 
   let synthesized;
   try {
-    synthesized = await synthesizeMergedNewsFromSources({ sources: snapshots });
+    synthesized = await synthesizeMergedNewsFromSources(
+      { sources: snapshots },
+      { sourceRules: usageRules },
+    );
   } catch (e) {
     console.error('[newsMerge] AI synthesis failed:', e.message);
+    if (e.message === 'Merge is forbidden by source usage rules') {
+      return { merged: false, reason: 'rules_conflict' };
+    }
     return { merged: false, reason: 'ai_error', error: e.message };
   }
 
@@ -229,7 +254,10 @@ export async function maybeMergeNewsItem(newsItemId) {
           body: synthesized.body,
           summary: synthesized.summary || synthesized.title.slice(0, 280),
           sourceSnapshots: snapshots,
+          confirmedFacts: Array.isArray(synthesized.confirmedFacts) ? synthesized.confirmedFacts : undefined,
+          differences: Array.isArray(synthesized.differences) ? synthesized.differences : undefined,
           titleNormalized: normalizeTitleForIndex(synthesized.title),
+          contentClass: synthesized.contentClass || 'UNKNOWN',
         },
       });
 
@@ -247,6 +275,23 @@ export async function maybeMergeNewsItem(newsItemId) {
     }
     throw e;
   }
+
+  const legal = runLegalComplianceChecks({
+    title: synthesized.title,
+    summary: synthesized.summary || '',
+    body: synthesized.body || '',
+    sourceSnapshots: snapshots,
+    sourceRules: usageRules,
+    declaredContentClass: synthesized.contentClass || 'UNKNOWN',
+  });
+  await prisma.newsItem.update({
+    where: { id: canonicalFull.id },
+    data: {
+      legalReviewStatus: legal.legalReviewStatus,
+      legalReviewNotes: legal.legalReviewNotes,
+      contentClass: legal.contentClass,
+    },
+  });
 
   const sim = titleSimilarity(canonicalFull.title, incoming.title);
   console.log(`[newsMerge] merged ${incoming.id} into ${canonicalFull.id}`);

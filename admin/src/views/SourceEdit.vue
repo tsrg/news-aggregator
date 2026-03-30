@@ -67,6 +67,90 @@
         </div>
       </div>
 
+      <!-- Правила использования материалов -->
+      <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
+        <div class="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
+          <h2 class="font-semibold text-lg text-gray-900">Правила использования материалов</h2>
+          <button
+            type="button"
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white border border-blue-200 text-blue-700 text-sm font-medium rounded-xl hover:bg-blue-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            :disabled="generatingUsageRule"
+            @click="openUsageRuleGeneratorModal"
+          >
+            <span>Сгенерировать по правилам источника</span>
+          </button>
+        </div>
+        <div class="flex flex-col gap-6 max-w-3xl">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Инструкции для переписывания</label>
+            <textarea
+              v-model="form.usageRule.rewriteInstructions"
+              rows="4"
+              class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all resize-y"
+              placeholder="Например: избегать дословного цитирования, указывать источник в конце материала..."
+            />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Максимальная доля цитат, %</label>
+            <input
+              v-model.number="form.usageRule.quoteLimitPercent"
+              type="number"
+              min="0"
+              max="100"
+              class="w-full max-w-xs bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+            />
+          </div>
+          <div class="flex flex-col gap-3">
+            <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input v-model="form.usageRule.requireAttribution" type="checkbox" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-100" />
+              Требовать обязательную атрибуцию источника
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input v-model="form.usageRule.forbidVerbatimCopy" type="checkbox" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-100" />
+              Запретить дословное копирование
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input v-model="form.usageRule.allowMerge" type="checkbox" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-100" />
+              Разрешить объединение с другими источниками
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input v-model="form.usageRule.requiresDirectLinkAtTop" type="checkbox" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-100" />
+              Требовать прямую ссылку на источник в начале материала
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input v-model="form.usageRule.allowAnalyticalReuse" type="checkbox" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-100" />
+              Разрешить использование аналитических и авторских материалов
+            </label>
+            <label class="inline-flex items-center gap-2 text-sm font-medium text-gray-700">
+              <input v-model="form.usageRule.requiresManualApprovalForAnalytical" type="checkbox" class="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-100" />
+              Требовать ручное одобрение для аналитических материалов
+            </label>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Класс материалов по умолчанию</label>
+            <select
+              v-model="form.usageRule.contentClassDefault"
+              class="w-full max-w-sm bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+            >
+              <option value="UNKNOWN">Не определен</option>
+              <option value="NEWS">Новость</option>
+              <option value="REPORT">Репортаж</option>
+              <option value="ANALYSIS">Аналитика</option>
+              <option value="OPINION">Мнение</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Примечание для объединения новостей</label>
+            <textarea
+              v-model="form.usageRule.mergeNotes"
+              rows="3"
+              class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all resize-y"
+              placeholder="Опишите дополнительные условия, которые нужно учитывать при объединении материалов."
+            />
+          </div>
+        </div>
+      </div>
+
       <!-- Фильтры -->
       <div class="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-gray-100">
         <div class="flex items-center justify-between mb-6">
@@ -206,6 +290,70 @@
         </div>
       </div>
     </div>
+
+    <div
+      v-if="showUsageRuleGeneratorModal"
+      class="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+    >
+      <button
+        type="button"
+        class="absolute inset-0 bg-gray-900/50"
+        @click="closeUsageRuleGeneratorModal"
+        aria-label="Закрыть модальное окно"
+      />
+      <div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-xl border border-gray-100 p-6 md:p-7">
+        <div class="flex items-start justify-between gap-4 mb-4">
+          <div>
+            <h3 class="text-lg font-semibold text-gray-900">Генерация правил использования</h3>
+            <p class="text-sm text-gray-500 mt-1">
+              Вставьте текст правил источника, и система заполнит поля ниже автоматически.
+            </p>
+          </div>
+          <button
+            type="button"
+            class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            @click="closeUsageRuleGeneratorModal"
+            aria-label="Закрыть"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Правила источника (свободный текст)</label>
+            <textarea
+              v-model="sourceRulesPrompt"
+              rows="10"
+              class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all resize-y"
+              placeholder="Вставьте здесь правила использования материалов с сайта-источника..."
+            />
+          </div>
+          <div class="flex items-center justify-end gap-3">
+            <button
+              type="button"
+              class="px-4 py-2 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 transition-colors"
+              :disabled="generatingUsageRule"
+              @click="closeUsageRuleGeneratorModal"
+            >
+              Отмена
+            </button>
+            <button
+              type="button"
+              class="px-4 py-2 bg-blue-600 text-white font-medium rounded-xl hover:bg-blue-700 focus:ring-4 focus:ring-blue-100 focus:outline-none transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+              :disabled="generatingUsageRule"
+              @click="generateUsageRuleFromPrompt"
+            >
+              {{ generatingUsageRule ? 'Генерация...' : 'Сгенерировать и подставить' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -229,6 +377,18 @@ interface SourceData {
   name: string;
   url: string;
   params?: Record<string, unknown> | null;
+  usageRule?: {
+    rewriteInstructions?: string | null;
+    quoteLimitPercent?: number;
+    requireAttribution?: boolean;
+    forbidVerbatimCopy?: boolean;
+    allowMerge?: boolean;
+    requiresDirectLinkAtTop?: boolean;
+    allowAnalyticalReuse?: boolean;
+    requiresManualApprovalForAnalytical?: boolean;
+    contentClassDefault?: 'NEWS' | 'REPORT' | 'ANALYSIS' | 'OPINION' | 'UNKNOWN';
+    mergeNotes?: string | null;
+  } | null;
   isActive: boolean;
   lastFetchedAt?: string;
   filters: SourceFilter[];
@@ -245,6 +405,18 @@ const form = ref({
   url: '',
   defaultRegion: '',
   rawParams: {} as Record<string, unknown>,
+  usageRule: {
+    rewriteInstructions: '',
+    quoteLimitPercent: 20,
+    requireAttribution: true,
+    forbidVerbatimCopy: true,
+    allowMerge: true,
+    requiresDirectLinkAtTop: false,
+    allowAnalyticalReuse: false,
+    requiresManualApprovalForAnalytical: true,
+    contentClassDefault: 'UNKNOWN' as 'NEWS' | 'REPORT' | 'ANALYSIS' | 'OPINION' | 'UNKNOWN',
+    mergeNotes: '',
+  },
   isActive: true,
   filters: [] as SourceFilter[],
 });
@@ -253,6 +425,22 @@ const loadError = ref('');
 const saveLoading = ref(false);
 const deleteLoading = ref(false);
 const availableRegions = ref<string[]>([]);
+const showUsageRuleGeneratorModal = ref(false);
+const sourceRulesPrompt = ref('');
+const generatingUsageRule = ref(false);
+
+interface SourceUsageRulePayload {
+  rewriteInstructions: string;
+  quoteLimitPercent: number;
+  requireAttribution: boolean;
+  forbidVerbatimCopy: boolean;
+  allowMerge: boolean;
+  requiresDirectLinkAtTop: boolean;
+  allowAnalyticalReuse: boolean;
+  requiresManualApprovalForAnalytical: boolean;
+  contentClassDefault: 'NEWS' | 'REPORT' | 'ANALYSIS' | 'OPINION' | 'UNKNOWN';
+  mergeNotes: string;
+}
 
 const fieldLabels: Record<string, string> = {
   title: 'заголовок',
@@ -305,6 +493,114 @@ function normalizeRegion(value: unknown): string {
   return typeof value === 'string' ? value.trim() : '';
 }
 
+function openUsageRuleGeneratorModal() {
+  showUsageRuleGeneratorModal.value = true;
+}
+
+function closeUsageRuleGeneratorModal() {
+  if (generatingUsageRule.value) return;
+  showUsageRuleGeneratorModal.value = false;
+}
+
+function parseBool(v: unknown, fallback: boolean): boolean {
+  if (v === true || v === false) return v;
+  if (v === 'true') return true;
+  if (v === 'false') return false;
+  return fallback;
+}
+
+function normalizeUsageRuleFromApi(raw: unknown): SourceUsageRulePayload {
+  const root = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
+  const inner =
+    root.usageRule && typeof root.usageRule === 'object'
+      ? (root.usageRule as Record<string, unknown>)
+      : root;
+
+  const str = (a: unknown, b: unknown) => {
+    const v = a !== undefined && a !== null ? a : b;
+    return typeof v === 'string' ? v.trim() : '';
+  };
+
+  const quoteRaw =
+    inner.quoteLimitPercent ??
+    inner.quote_limit_percent ??
+    inner.quoteLimit;
+  const quoteLimitRaw = Number(quoteRaw);
+  const quoteLimitPercent = Number.isFinite(quoteLimitRaw)
+    ? Math.max(0, Math.min(100, Math.round(quoteLimitRaw)))
+    : 20;
+
+  return {
+    rewriteInstructions: str(inner.rewriteInstructions, inner.rewrite_instructions),
+    quoteLimitPercent,
+    requireAttribution: parseBool(
+      inner.requireAttribution ?? inner.require_attribution,
+      true,
+    ),
+    forbidVerbatimCopy: parseBool(
+      inner.forbidVerbatimCopy ?? inner.forbid_verbatim_copy,
+      true,
+    ),
+    allowMerge: parseBool(inner.allowMerge ?? inner.allow_merge, true),
+    requiresDirectLinkAtTop: parseBool(
+      inner.requiresDirectLinkAtTop ?? inner.requires_direct_link_at_top,
+      false,
+    ),
+    allowAnalyticalReuse: parseBool(
+      inner.allowAnalyticalReuse ?? inner.allow_analytical_reuse,
+      false,
+    ),
+    requiresManualApprovalForAnalytical: parseBool(
+      inner.requiresManualApprovalForAnalytical ?? inner.requires_manual_approval_for_analytical,
+      true,
+    ),
+    contentClassDefault: (
+      typeof (inner.contentClassDefault ?? inner.content_class_default) === 'string'
+        ? String(inner.contentClassDefault ?? inner.content_class_default).toUpperCase()
+        : 'UNKNOWN'
+    ) as 'NEWS' | 'REPORT' | 'ANALYSIS' | 'OPINION' | 'UNKNOWN',
+    mergeNotes: str(inner.mergeNotes, inner.merge_notes),
+  };
+}
+
+function applyUsageRuleToForm(usageRule: SourceUsageRulePayload) {
+  form.value.usageRule = {
+    ...form.value.usageRule,
+    rewriteInstructions: usageRule.rewriteInstructions || '',
+    quoteLimitPercent: usageRule.quoteLimitPercent,
+    requireAttribution: usageRule.requireAttribution,
+    forbidVerbatimCopy: usageRule.forbidVerbatimCopy,
+    allowMerge: usageRule.allowMerge,
+    requiresDirectLinkAtTop: usageRule.requiresDirectLinkAtTop,
+    allowAnalyticalReuse: usageRule.allowAnalyticalReuse,
+    requiresManualApprovalForAnalytical: usageRule.requiresManualApprovalForAnalytical,
+    contentClassDefault: usageRule.contentClassDefault,
+    mergeNotes: usageRule.mergeNotes || '',
+  };
+}
+
+async function generateUsageRuleFromPrompt() {
+  const sourceRulesText = sourceRulesPrompt.value.trim();
+  if (sourceRulesText.length < 10) {
+    alert('Введите текст правил источника (минимум 10 символов)');
+    return;
+  }
+  generatingUsageRule.value = true;
+  try {
+    const raw = await api().post<unknown>(
+      '/api/admin/sources/ai/generate-usage-rule',
+      { sourceRulesText },
+    );
+    const usageRule = normalizeUsageRuleFromApi(raw);
+    applyUsageRuleToForm(usageRule);
+    showUsageRuleGeneratorModal.value = false;
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Ошибка генерации правил');
+  } finally {
+    generatingUsageRule.value = false;
+  }
+}
+
 async function loadAvailableRegions() {
   try {
     const data = await api().get<{ regions: string[] }>('/api/admin/settings/regions');
@@ -326,6 +622,18 @@ async function loadSource() {
       url: data.url,
       defaultRegion: typeof data.params?.region === 'string' ? data.params.region : '',
       rawParams: (data.params && typeof data.params === 'object') ? { ...data.params } : {},
+      usageRule: {
+        rewriteInstructions: data.usageRule?.rewriteInstructions || '',
+        quoteLimitPercent: typeof data.usageRule?.quoteLimitPercent === 'number' ? data.usageRule.quoteLimitPercent : 20,
+        requireAttribution: data.usageRule?.requireAttribution !== false,
+        forbidVerbatimCopy: data.usageRule?.forbidVerbatimCopy !== false,
+        allowMerge: data.usageRule?.allowMerge !== false,
+        requiresDirectLinkAtTop: data.usageRule?.requiresDirectLinkAtTop === true,
+        allowAnalyticalReuse: data.usageRule?.allowAnalyticalReuse === true,
+        requiresManualApprovalForAnalytical: data.usageRule?.requiresManualApprovalForAnalytical !== false,
+        contentClassDefault: data.usageRule?.contentClassDefault || 'UNKNOWN',
+        mergeNotes: data.usageRule?.mergeNotes || '',
+      },
       isActive: data.isActive ?? true,
       filters: (data.filters || []).map(f => ({
         id: f.id,
@@ -379,6 +687,11 @@ function validate(): boolean {
       return false;
     }
   }
+  const quoteLimit = Number(form.value.usageRule.quoteLimitPercent);
+  if (!Number.isFinite(quoteLimit) || quoteLimit < 0 || quoteLimit > 100) {
+    alert('Доля цитат должна быть в диапазоне 0–100');
+    return false;
+  }
 
   return true;
 }
@@ -399,6 +712,18 @@ async function save() {
       name: form.value.name.trim(),
       url: form.value.url.trim(),
       params: mergedParams,
+      usageRule: {
+        rewriteInstructions: form.value.usageRule.rewriteInstructions.trim() || null,
+        quoteLimitPercent: Number(form.value.usageRule.quoteLimitPercent),
+        requireAttribution: Boolean(form.value.usageRule.requireAttribution),
+        forbidVerbatimCopy: Boolean(form.value.usageRule.forbidVerbatimCopy),
+        allowMerge: Boolean(form.value.usageRule.allowMerge),
+        requiresDirectLinkAtTop: Boolean(form.value.usageRule.requiresDirectLinkAtTop),
+        allowAnalyticalReuse: Boolean(form.value.usageRule.allowAnalyticalReuse),
+        requiresManualApprovalForAnalytical: Boolean(form.value.usageRule.requiresManualApprovalForAnalytical),
+        contentClassDefault: form.value.usageRule.contentClassDefault,
+        mergeNotes: form.value.usageRule.mergeNotes.trim() || null,
+      },
       isActive: form.value.isActive,
       filters: form.value.filters.map(f => ({
         type: f.type,

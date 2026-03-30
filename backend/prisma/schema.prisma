@@ -82,6 +82,16 @@ model NewsItem {
 
   /// Снимки материалов по каждому источнику (агрегированная новость)
   sourceSnapshots Json?     @map("source_snapshots")
+  /// Подтвержденные факты для обзорной подачи
+  confirmedFacts Json? @map("confirmed_facts")
+  /// Зафиксированные расхождения между источниками
+  differences Json? @map("differences")
+  /// Класс материала для юридической валидации и UI-маркировки
+  contentClass ContentClass @default(UNKNOWN) @map("content_class")
+  /// Состояние юридической проверки перед публикацией
+  legalReviewStatus LegalReviewStatus @default(NOT_REQUIRED) @map("legal_review_status")
+  /// Причина/комментарий юридической проверки (если есть)
+  legalReviewNotes String? @map("legal_review_notes") @db.Text
 
   history     NewsItemHistory[]
   factChecks  NewsItemFactCheck[]
@@ -97,6 +107,22 @@ enum NewsStatus {
   REJECTED
   /// Поглощённая запись при объединении дубликатов (mergedIntoId задан)
   MERGED
+}
+
+enum ContentClass {
+  NEWS
+  REPORT
+  ANALYSIS
+  OPINION
+  UNKNOWN
+}
+
+enum LegalReviewStatus {
+  NOT_REQUIRED
+  PENDING
+  NEEDS_REVIEW
+  APPROVED
+  REJECTED
 }
 
 model NewsItemHistory {
@@ -135,8 +161,33 @@ model Source {
 
   newsItems NewsItem[]
   filters   SourceFilter[]
+  usageRule SourceUsageRule?
 
   @@map("sources")
+}
+
+model SourceUsageRule {
+  id                 String   @id @default(cuid())
+  sourceId           String   @unique @map("source_id")
+  source             Source   @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  rewriteInstructions String? @map("rewrite_instructions") @db.Text
+  quoteLimitPercent  Int      @default(20) @map("quote_limit_percent")
+  requireAttribution Boolean  @default(true) @map("require_attribution")
+  forbidVerbatimCopy Boolean  @default(true) @map("forbid_verbatim_copy")
+  allowMerge         Boolean  @default(true) @map("allow_merge")
+  /// Для некоторых источников ссылка на оригинал должна быть в начале текста
+  requiresDirectLinkAtTop Boolean @default(false) @map("requires_direct_link_at_top")
+  /// Разрешено ли использование аналитических/авторских материалов
+  allowAnalyticalReuse Boolean @default(false) @map("allow_analytical_reuse")
+  /// Требуется ли ручное одобрение для аналитических материалов
+  requiresManualApprovalForAnalytical Boolean @default(true) @map("requires_manual_approval_for_analytical")
+  /// Класс материалов по умолчанию для источника
+  contentClassDefault ContentClass @default(UNKNOWN) @map("content_class_default")
+  mergeNotes         String?  @map("merge_notes") @db.Text
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("source_usage_rules")
 }
 
 model SourceFilter {

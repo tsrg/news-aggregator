@@ -126,6 +126,8 @@ export async function getAISettings() {
     model: process.env.AI_MODEL || 'gpt-4o-mini',
     temperature: parseFloat(process.env.AI_TEMPERATURE || '0.7'),
     maxTokens: parseInt(process.env.AI_MAX_TOKENS || '2000'),
+    /** Tavily Search — доп. источники при «обзоре события» (можно задать в админке или TAVILY_API_KEY) */
+    tavilyApiKey: process.env.TAVILY_API_KEY || '',
   };
 
   const dbSettings = await getSettings('ai_config');
@@ -200,5 +202,6 @@ export async function updateSettings(key, value) {
     if (value.model) process.env.AI_MODEL = value.model;
     if (value.temperature !== undefined) process.env.AI_TEMPERATURE = String(value.temperature);
     if (value.maxTokens !== undefined) process.env.AI_MAX_TOKENS = String(value.maxTokens);
+    if (value.tavilyApiKey !== undefined) process.env.TAVILY_API_KEY = value.tavilyApiKey || '';
   }
 }

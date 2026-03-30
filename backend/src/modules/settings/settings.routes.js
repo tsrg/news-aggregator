@@ -47,6 +47,7 @@ const defaultAISettings = {
   model: 'gpt-4o-mini',
   temperature: 0.7,
   maxTokens: 2000,
+  tavilyApiKey: '',
 };
 
 const defaultGeneralSettings = {
@@ -175,10 +176,11 @@ router.get('/ai', async (req, res) => {
   try {
     const settings = await getAISettings();
 
-    // Возвращаем настройки с маскированным apiKey
+    const maskKey = (k) => (k ? '••••••••' + String(k).slice(-4) : '');
     return res.json({
       ...settings,
-      apiKey: settings.apiKey ? '••••••••' + settings.apiKey.slice(-4) : '',
+      apiKey: maskKey(settings.apiKey),
+      tavilyApiKey: maskKey(settings.tavilyApiKey),
     });
   } catch (e) {
     console.error(e);
@@ -189,10 +191,15 @@ router.get('/ai', async (req, res) => {
 // Обновить настройки AI
 router.put('/ai', async (req, res) => {
   try {
-    const { aiProvider, apiKey, baseUrl, model, temperature, maxTokens } = req.body;
+    const { aiProvider, apiKey, baseUrl, model, temperature, maxTokens, tavilyApiKey } = req.body;
 
     // Получаем текущие настройки
     const currentSettings = await getAISettings();
+
+    const tavilyUpdate =
+      tavilyApiKey !== undefined && !String(tavilyApiKey).startsWith('••••')
+        ? { tavilyApiKey: String(tavilyApiKey).trim() }
+        : {};
 
     // Обновляем только переданные поля
     const updatedSettings = {
@@ -203,6 +210,7 @@ router.put('/ai', async (req, res) => {
       ...(model && { model }),
       ...(temperature !== undefined && { temperature }),
       ...(maxTokens !== undefined && { maxTokens }),
+      ...tavilyUpdate,
     };
 
     // Сохраняем в БД и сбрасываем кэш
@@ -213,9 +221,11 @@ router.put('/ai', async (req, res) => {
       model: updatedSettings.model,
     });
 
+    const maskKey = (k) => (k ? '••••••••' + String(k).slice(-4) : '');
     return res.json({
       ...updatedSettings,
-      apiKey: updatedSettings.apiKey ? '••••••••' + updatedSettings.apiKey.slice(-4) : '',
+      apiKey: maskKey(updatedSettings.apiKey),
+      tavilyApiKey: maskKey(updatedSettings.tavilyApiKey),
     });
   } catch (e) {
     console.error(e);

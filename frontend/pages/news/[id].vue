@@ -69,7 +69,11 @@
         />
       </div>
 
-      <div v-if="data.body" class="prose prose-lg prose-blue max-w-none text-gray-700 leading-relaxed marker:text-blue-600" v-html="sanitizedBody"></div>
+      <div
+        v-if="data.body"
+        class="article-overview prose prose-lg prose-blue max-w-none text-gray-700 leading-relaxed marker:text-blue-600"
+        v-html="sanitizedBody"
+      />
 
       <section
         v-if="sourceSnapshotsList.length"
@@ -138,6 +142,7 @@ const sourceSnapshotsList = computed((): SourceSnapshot[] => {
 const displayPublishedAt = computed(() =>
   data.value?.sourcePublishedAt || data.value?.publishedAt || data.value?.createdAt || null,
 );
+
 
 // SEO Meta Tags
 useHead(() => {
@@ -226,6 +231,29 @@ function formatDateTime(iso: string) {
 </script>
 
 <style>
+/* Обзор из нескольких источников: читаемые подзаголовки и абзацы */
+.article-overview.prose p {
+  line-height: 1.75;
+  margin-bottom: 1.15em;
+}
+.article-overview.prose p:has(> strong:only-child) {
+  margin-top: 2rem;
+  margin-bottom: 0.65rem;
+}
+.article-overview.prose p:has(> strong:only-child) > strong {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+.article-overview.prose ul {
+  margin-top: 0.5em;
+  margin-bottom: 1.35em;
+}
+.article-overview.prose li {
+  margin-bottom: 0.65em;
+  line-height: 1.7;
+}
 /* Base typography styling for the article body since we don't have typography plugin */
 .prose p {
   margin-bottom: 1.5em;

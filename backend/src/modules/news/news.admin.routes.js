@@ -7,6 +7,8 @@ import { articleQueue } from '../../jobs/queue.js';
 import { runDuplicateMergeBatch } from '../../services/newsMerge.js';
 import { normalizeTitleForIndex } from '../../services/titleNormalize.js';
 import { rewriteStorageUrlForBrowser } from '../../services/s3.js';
+import { runLegalComplianceChecks } from '../../services/legalCompliance.js';
+import { sanitizeNewsStrings } from '../../utils/newsInputSanitize.js';
 
 const router = Router();
 
@@ -19,6 +21,12 @@ function withPublicImageUrl(item) {
 router.use(requireAuth);
 router.use(requirePermission('news'));
 
+/** Пустая строка из HTML-select ломает FK в Prisma — приводим к null */
+const optionalSectionId = z
+  .union([z.string().min(1), z.literal(''), z.null()])
+  .optional()
+  .transform((val) => (val === '' ? null : val));
+
 const createSchema = z.object({
   sourceId: z.string().optional(),
   title: z.string().min(1),
@@ -27,12 +35,35 @@ const createSchema = z.object({
   url: z.string().optional(),
   imageUrl: z.string().optional(),
   region: z.string().optional(),
-  sectionId: z.string().optional(),
+  sectionId: optionalSectionId,
+  contentClass: z.enum(['NEWS', 'REPORT', 'ANALYSIS', 'OPINION', 'UNKNOWN']).optional(),
   /** Дата/время публикации в оригинальном источнике (ISO-строка или null для сброса) */
-  sourcePublishedAt: z.union([z.coerce.date(), z.null()]).optional(),
+  sourcePublishedAt: z.preprocess(
+    (v) => (v === '' ? null : v),
+    z
+      .union([
+        z.null(),
+        z.coerce.date().refine((d) => !Number.isNaN(d.getTime()), {
+          message: 'Некорректная дата публикации в источнике',
+        }),
+      ])
+      .optional(),
+  ),
 });
 
-const updateSchema = createSchema.partial();
+const updateSchema = createSchema.partial().merge(
+  z.object({
+    legalReviewStatus: z
+      .enum(['NOT_REQUIRED', 'PENDING', 'NEEDS_REVIEW', 'APPROVED', 'REJECTED'])
+      .optional(),
+    legalReviewNotes: z.union([z.string(), z.null()]).optional(),
+  }),
+);
+
+function normText(s) {
+  if (s == null) return '';
+  return String(s).trim();
+}
 
 function snapshot(item) {
   return {
@@ -46,12 +77,14 @@ function snapshot(item) {
 
 router.get('/', async (req, res) => {
   try {
-    const { status, sectionId, region, page = '1', limit = '20', sort } = req.query;
+    const { status, sectionId, region, contentClass, legalReviewStatus, page = '1', limit = '20', sort } = req.query;
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const where = { mergedIntoId: null };
     if (status) where.status = status;
     if (sectionId) where.sectionId = sectionId;
     if (region) where.region = region;
+    if (contentClass) where.contentClass = contentClass;
+    if (legalReviewStatus) where.legalReviewStatus = legalReviewStatus;
 
     let orderBy;
     if (sort === 'createdAt') {
@@ -139,7 +172,7 @@ router.get('/:id/history', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const data = createSchema.parse(req.body);
+    const data = sanitizeNewsStrings(createSchema.parse(req.body));
     let sourceId = data.sourceId;
     if (!sourceId) {
       const draft = await prisma.source.findFirst({ where: { name: 'Ручной ввод' } });
@@ -152,6 +185,7 @@ router.post('/', async (req, res) => {
         sourceId,
         externalId: data.externalId || undefined,
         titleNormalized: normalizeTitleForIndex(data.title),
+        legalReviewStatus: 'PENDING',
       },
       include: { section: true, source: true },
     });
@@ -162,6 +196,12 @@ router.post('/', async (req, res) => {
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: e.errors });
     console.error(e);
+    if (e.code === 'P2003') {
+      return res.status(400).json({
+        error: 'Указан несуществующий раздел или нарушена связь с источником.',
+        code: e.code,
+      });
+    }
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -170,10 +210,26 @@ router.put('/:id', async (req, res) => {
   try {
     const existing = await prisma.newsItem.findUnique({ where: { id: req.params.id } });
     if (!existing) return res.status(404).json({ error: 'Not found' });
-    const data = updateSchema.parse(req.body);
-    const patch = { ...data };
-    if (data.title !== undefined) {
-      patch.titleNormalized = normalizeTitleForIndex(data.title);
+    const data = sanitizeNewsStrings(updateSchema.parse(req.body));
+    const {
+      legalReviewStatus: incomingLegal,
+      legalReviewNotes: incomingNotes,
+      ...rest
+    } = data;
+    const patch = { ...rest };
+    if (patch.title !== undefined) {
+      patch.titleNormalized = normalizeTitleForIndex(patch.title);
+    }
+    const contentChanged =
+      (patch.title !== undefined && normText(patch.title) !== normText(existing.title)) ||
+      (patch.summary !== undefined && normText(patch.summary) !== normText(existing.summary ?? '')) ||
+      (patch.body !== undefined && normText(patch.body) !== normText(existing.body ?? ''));
+    if (contentChanged) {
+      patch.legalReviewStatus = 'PENDING';
+      patch.legalReviewNotes = null;
+    } else {
+      if (incomingLegal !== undefined) patch.legalReviewStatus = incomingLegal;
+      if (incomingNotes !== undefined) patch.legalReviewNotes = incomingNotes;
     }
     const item = await prisma.newsItem.update({
       where: { id: req.params.id },
@@ -194,7 +250,19 @@ router.put('/:id', async (req, res) => {
     return res.json(withPublicImageUrl(item));
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: e.errors });
-    console.error(e);
+    console.error('[news PUT]', e);
+    if (e.code === 'P2003') {
+      return res.status(400).json({
+        error: 'Указан несуществующий раздел или нарушена связь с источником. Выберите раздел заново.',
+        code: e.code,
+      });
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      return res.status(500).json({
+        error: e.message || 'Internal server error',
+        code: e.code,
+      });
+    }
     return res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -205,11 +273,64 @@ router.patch('/:id/status', async (req, res) => {
     if (!['PENDING', 'PUBLISHED', 'REJECTED'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
     }
+    const existing = await prisma.newsItem.findUnique({
+      where: { id: req.params.id },
+      include: { source: { include: { usageRule: true } } },
+    });
+    if (!existing) return res.status(404).json({ error: 'Not found' });
+
+    if (status === 'PUBLISHED') {
+      const snapshots = Array.isArray(existing.sourceSnapshots)
+        ? existing.sourceSnapshots
+        : [{
+            sourceId: existing.sourceId,
+            sourceName: existing.source?.name || 'Источник',
+            url: existing.url || null,
+          }];
+      const sourceIds = snapshots
+        .map((s) => (s && typeof s.sourceId === 'string' ? s.sourceId : null))
+        .filter(Boolean);
+      const sources = sourceIds.length
+        ? await prisma.source.findMany({
+            where: { id: { in: sourceIds } },
+            select: { id: true, usageRule: true },
+          })
+        : [];
+      const ruleById = new Map(sources.map((s) => [s.id, s.usageRule]));
+      const rules = sourceIds.map((id) => ruleById.get(id)).filter(Boolean);
+      const legal = runLegalComplianceChecks({
+        title: existing.title,
+        summary: existing.summary || '',
+        body: existing.body || '',
+        sourceSnapshots: snapshots,
+        sourceRules: rules,
+        declaredContentClass: existing.contentClass,
+      });
+      if (legal.legalReviewStatus === 'REJECTED') {
+        return res.status(400).json({ error: legal.legalReviewNotes || 'Публикация запрещена legal-правилами.' });
+      }
+      if (legal.legalReviewStatus === 'NEEDS_REVIEW') {
+        const patched = await prisma.newsItem.update({
+          where: { id: req.params.id },
+          data: {
+            legalReviewStatus: 'NEEDS_REVIEW',
+            legalReviewNotes: legal.legalReviewNotes,
+            contentClass: legal.contentClass,
+          },
+        });
+        return res.status(400).json({
+          error: patched.legalReviewNotes || 'Требуется ручная юридическая проверка перед публикацией.',
+          code: 'needs_review',
+        });
+      }
+    }
+
     const item = await prisma.newsItem.update({
       where: { id: req.params.id },
       data: {
         status,
         ...(status === 'PUBLISHED' ? { publishedAt: new Date() } : {}),
+        ...(status === 'PUBLISHED' ? { legalReviewStatus: 'APPROVED' } : {}),
       },
       include: { section: true, source: true },
     });

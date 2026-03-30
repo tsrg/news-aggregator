@@ -1,4 +1,5 @@
 import { getAISettings, getImageGenSettings } from './settings.js';
+import { prisma } from '../config/prisma.js';
 import {
   looksLikeLatinTransliteratedRussianTitle,
   reverseTransliterateLatinToCyrillic,
@@ -65,7 +66,10 @@ async function callOpenAI(prompt, options = {}) {
     max_tokens: options.max_tokens || settings.maxTokens || 2000,
     temperature: settings.temperature ?? 0.7,
   };
-  
+  if (options.responseFormatJson) {
+    body.response_format = { type: 'json_object' };
+  }
+
   return callOpenAICompatible(url, key, body, options);
 }
 
@@ -277,55 +281,450 @@ ${t.slice(0, 500)}`;
 /**
  * Синтез одной новости из нескольких источников (агрегация дубликатов).
  * @param {{ sources: Array<Record<string, unknown>> }} payload — массив снимков источников
+ * @param {{ sourceRules?: Array<Record<string, unknown>> }} [options]
  * @returns {{ title: string, body: string, summary: string }}
  */
-export async function synthesizeMergedNewsFromSources(payload) {
+export async function synthesizeMergedNewsFromSources(payload, options = {}) {
   const settings = await getAISettings();
   if (!settings.apiKey) {
     throw new Error('API Key not configured');
   }
 
-  const jsonIn = JSON.stringify(payload.sources ?? payload, null, 0);
-  const prompt = `Ты редактор новостного агрегатора. Ниже JSON-массив «sources»: несколько версий одной темы из разных СМИ (поля sourceName, url, title, summary, body и т.д.).
+  const combinedRule = combineSourceUsageRules(options.sourceRules || []);
+  if (!combinedRule.allowMerge) {
+    throw new Error('Merge is forbidden by source usage rules');
+  }
 
-Задача:
-1) Составь ОДИН связный материал на русском языке: факты только из переданных текстов, ничего не выдумывай.
-2) Заголовок — информативный, без кликбейта.
-3) Поле body — HTML: допускаются только теги p, strong, em, a, ul, li, br. В тексте обязательно вставь осмысленные ссылки <a href="полный_URL" rel="noopener noreferrer" target="_blank">название источника</a> так, чтобы были представлены ВСЕ источники из входа (по полю url). Можно добавить в конце блок <p><strong>Источники:</strong></p><ul><li>...</li></ul> со ссылками.
-4) Поле summary — короткий лид из 1–3 предложений, написанный по содержанию уже согласованного body (без новых фактов).
+  const jsonIn = JSON.stringify(payload.sources ?? payload, null, 0);
+  const quoteLine = combinedRule.forbidVerbatimCopy
+    ? `Прямые цитаты минимальны; суммарно не более ${combinedRule.quoteLimitPercent}% текста.`
+    : `Суммарная доля прямых цитат не более ${combinedRule.quoteLimitPercent}% текста.`;
+  const attributionLine = combinedRule.requireAttribution
+    ? 'Обязательна атрибуция источников внутри текста и в блоке «Источники».'
+    : 'Атрибуция источников желательна, но не обязательна.';
+  const topLinkLine = combinedRule.requiresDirectLinkAtTop
+    ? 'Если это возможно по структуре, поставь минимум одну прямую ссылку на первоисточник в первом абзаце.'
+    : 'Ссылки можно распределять по тексту и в конце.';
+  const prompt = `Ты опытный редактор регионального медиа. Ниже JSON-массив «sources»: несколько версий одной темы из разных СМИ (поля sourceName, url, title, summary, body и т.д.).
+
+Стиль и тон:
+- Пиши живым, человечным языком: связные абзацы, логичные переходы, без «сухого справочника» и без односложных тезисов без контекста.
+- Сохраняй нейтральность и точность: факты только из переданных текстов, ничего не выдумывай.
+- Избегай канцелярита и штампов («в настоящее время», «в рамках данного вопроса»). Предложения должны быть естественными для чтения вслух.
+- Заголовок — информативный, без кликбейта.
+
+Поле body — HTML (только теги: p, strong, em, a, ul, li, br). Объём до ~2000 символов без учёта HTML.
+
+Структура body (обязательно сохрани этот порядок блоков, но внутри блоков отдавай предпочтение связному тексту, а не спискам):
+1) Ввод: 2–3 абзаца <p> — кратко и понятно, что произошло и почему это важно читателю; где уместно, вплетай ссылки на источники в тексте.
+2) Блок «Что подтверждено»: сначала подзаголовок <p><strong>Что подтверждено</strong></p>, затем 1–2 абзаца <p> связным текстом (не перечень фактов). Если без списка никак — допустим короткий <ul> с 2–4 пунктами, но каждый пункт — полноценное предложение, не обрывки.
+3) Блок «Где источники расходятся»: <p><strong>Где источники расходятся</strong></p>, затем 1–2 абзаца <p>. Если расхождений нет — один абзац: нейтрально, что существенных расхождений в сообщениях не видно.
+4) Блок «Источники»: <p><strong>Источники</strong></p><ul><li>...</li></ul> — каждый источник с <a href="полный_URL" rel="noopener noreferrer" target="_blank">название</a> и представь ВСЕ источники из входа (по полю url).
+
+В body обязательно вставь осмысленные ссылки <a href="полный_URL" rel="noopener noreferrer" target="_blank">...</a> на все источники.
+
+Массивы confirmedFacts и differences — короткие формулировки (по 3–6 строк) для служебного использования, дублируй смысл из body, формулируй их цельными фразами, не телеграфным стилем.
+
+Определи contentClass: NEWS | REPORT | ANALYSIS | OPINION | UNKNOWN.
+${topLinkLine}
+Поле summary — живой лид из 2–4 предложений по уже согласованному body (без новых фактов).
+${quoteLine}
+${attributionLine}
+
+Дополнительные ограничения от правообладателей:
+${combinedRule.rewriteInstructions || 'Нет'}
+${combinedRule.mergeNotes || ''}
 
 Входные данные:
 ${jsonIn.slice(0, 100000)}
 
 Ответь ТОЛЬКО одним JSON-объектом без пояснений и без обёртки markdown:
-{"title":"...","body":"...","summary":"..."}`;
+{"title":"...","body":"...","summary":"...","confirmedFacts":["..."],"differences":["..."],"contentClass":"NEWS"}`;
 
   const raw = await callAI(prompt, {
     max_tokens: Math.min(8000, (settings.maxTokens || 2000) * 4),
-    temperature: 0.35,
+    temperature: 0.48,
     timeout: 120000,
   });
 
   let parsed;
-  const trimmed = raw.trim();
-  const jsonMatch = trimmed.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    try {
-      parsed = JSON.parse(jsonMatch[0]);
-    } catch {
-      throw new Error('Не удалось разобрать JSON ответа ИИ');
-    }
-  } else {
-    throw new Error('Пустой или неверный ответ ИИ');
+  try {
+    parsed = parseJsonObjectFromAiText(raw);
+  } catch (e) {
+    throw new Error(e?.message || 'Не удалось разобрать JSON ответа ИИ');
   }
 
   const title = typeof parsed.title === 'string' ? parsed.title.trim() : '';
   const body = typeof parsed.body === 'string' ? parsed.body.trim() : '';
   const summary = typeof parsed.summary === 'string' ? parsed.summary.trim() : '';
+  const confirmedFacts = Array.isArray(parsed.confirmedFacts)
+    ? parsed.confirmedFacts.filter((x) => typeof x === 'string').map((x) => x.trim()).filter(Boolean).slice(0, 8)
+    : [];
+  const differences = Array.isArray(parsed.differences)
+    ? parsed.differences.filter((x) => typeof x === 'string').map((x) => x.trim()).filter(Boolean).slice(0, 8)
+    : [];
+  const contentClassRaw = typeof parsed.contentClass === 'string' ? parsed.contentClass.trim().toUpperCase() : 'UNKNOWN';
+  const contentClass = ['NEWS', 'REPORT', 'ANALYSIS', 'OPINION', 'UNKNOWN'].includes(contentClassRaw)
+    ? contentClassRaw
+    : 'UNKNOWN';
   if (!title || !body) {
     throw new Error('ИИ вернул неполные поля title/body');
   }
-  return { title, body, summary };
+  return { title, body, summary, confirmedFacts, differences, contentClass };
+}
+
+function normalizeSourceUsageRule(rule) {
+  const quoteLimit = Number.isFinite(Number(rule?.quoteLimitPercent))
+    ? Math.max(0, Math.min(100, Number(rule.quoteLimitPercent)))
+    : 20;
+  return {
+    quoteLimitPercent: quoteLimit,
+    requireAttribution: rule?.requireAttribution !== false,
+    forbidVerbatimCopy: rule?.forbidVerbatimCopy !== false,
+    allowMerge: rule?.allowMerge !== false,
+    requiresDirectLinkAtTop: rule?.requiresDirectLinkAtTop === true,
+    allowAnalyticalReuse: rule?.allowAnalyticalReuse === true,
+    requiresManualApprovalForAnalytical: rule?.requiresManualApprovalForAnalytical !== false,
+    contentClassDefault: typeof rule?.contentClassDefault === 'string' ? rule.contentClassDefault : 'UNKNOWN',
+    rewriteInstructions: typeof rule?.rewriteInstructions === 'string' ? rule.rewriteInstructions.trim() : '',
+    mergeNotes: typeof rule?.mergeNotes === 'string' ? rule.mergeNotes.trim() : '',
+  };
+}
+
+export function combineSourceUsageRules(rules = []) {
+  if (!Array.isArray(rules) || rules.length === 0) {
+    return normalizeSourceUsageRule({});
+  }
+  const normalized = rules.map((r) => normalizeSourceUsageRule(r));
+  return {
+    quoteLimitPercent: Math.min(...normalized.map((r) => r.quoteLimitPercent)),
+    requireAttribution: normalized.some((r) => r.requireAttribution),
+    forbidVerbatimCopy: normalized.some((r) => r.forbidVerbatimCopy),
+    allowMerge: normalized.every((r) => r.allowMerge),
+    requiresDirectLinkAtTop: normalized.some((r) => r.requiresDirectLinkAtTop),
+    allowAnalyticalReuse: normalized.every((r) => r.allowAnalyticalReuse),
+    requiresManualApprovalForAnalytical: normalized.some((r) => r.requiresManualApprovalForAnalytical),
+    contentClassDefault: normalized.find((r) => r.contentClassDefault && r.contentClassDefault !== 'UNKNOWN')?.contentClassDefault || 'UNKNOWN',
+    rewriteInstructions: normalized.map((r) => r.rewriteInstructions).filter(Boolean).join('\n\n'),
+    mergeNotes: normalized.map((r) => r.mergeNotes).filter(Boolean).join('\n\n'),
+  };
+}
+
+/**
+ * Первый сбалансированный JSON-объект `{...}` с учётом строк в двойных кавычках.
+ * @param {string} s
+ * @returns {string|null}
+ */
+function extractFirstBalancedJsonObject(s) {
+  const text = String(s || '');
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i++) {
+    const c = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (c === '\\') {
+        escape = true;
+      } else if (c === '"') {
+        inString = false;
+      }
+    } else if (c === '"') {
+      inString = true;
+    } else if (c === '{') {
+      depth += 1;
+    } else if (c === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+  return null;
+}
+
+/**
+ * Извлекает JSON из ответа модели: markdown ```json```, префиксный текст, сбалансированный объект.
+ * @param {string} raw
+ * @returns {object}
+ */
+function parseJsonObjectFromAiText(raw) {
+  const text = String(raw || '').trim();
+  if (!text) {
+    throw new Error('Пустой ответ ИИ');
+  }
+
+  const candidates = [];
+
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fence) {
+    candidates.push(fence[1].trim());
+  }
+  candidates.push(text);
+
+  for (const chunk of candidates) {
+    if (!chunk) continue;
+    try {
+      const parsed = JSON.parse(chunk);
+      const obj = unwrapJsonObject(parsed);
+      if (obj) return obj;
+    } catch {
+      /* next */
+    }
+  }
+
+  const balanced = extractFirstBalancedJsonObject(text);
+  if (balanced) {
+    try {
+      const parsed = JSON.parse(balanced);
+      const obj = unwrapJsonObject(parsed);
+      if (obj) return obj;
+    } catch {
+      /* fall through */
+    }
+  }
+
+  throw new Error('ИИ вернул неверный формат ответа');
+}
+
+/**
+ * @param {unknown} parsed
+ * @returns {object|null}
+ */
+function unwrapJsonObject(parsed) {
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    return parsed;
+  }
+  if (Array.isArray(parsed) && parsed[0] && typeof parsed[0] === 'object' && !Array.isArray(parsed[0])) {
+    return parsed[0];
+  }
+  return null;
+}
+
+/**
+ * Нормализует ответ модели: camelCase/snake_case, вложенный usageRule.
+ * @param {unknown} parsed
+ */
+function normalizeGeneratedUsageRuleObject(parsed) {
+  const root = parsed && typeof parsed === 'object' ? parsed : {};
+  const inner =
+    root.usageRule && typeof root.usageRule === 'object'
+      ? root.usageRule
+      : root;
+
+  const str = (a, b) => {
+    const v = a !== undefined && a !== null ? a : b;
+    return typeof v === 'string' ? v.trim() : '';
+  };
+
+  const quoteRaw =
+    inner.quoteLimitPercent ??
+    inner.quote_limit_percent ??
+    inner.quoteLimit;
+  const quoteLimitRaw = Number(quoteRaw);
+  const quoteLimitPercent = Number.isFinite(quoteLimitRaw)
+    ? Math.max(0, Math.min(100, Math.round(quoteLimitRaw)))
+    : 20;
+
+  const bool = (v, def) => {
+    if (v === true || v === false) return v;
+    if (v === 'true') return true;
+    if (v === 'false') return false;
+    return def;
+  };
+
+  const contentClassRaw =
+    typeof (inner.contentClassDefault ?? inner.content_class_default) === 'string'
+      ? String(inner.contentClassDefault ?? inner.content_class_default).toUpperCase()
+      : 'UNKNOWN';
+  const contentClassDefault = ['NEWS', 'REPORT', 'ANALYSIS', 'OPINION', 'UNKNOWN'].includes(contentClassRaw)
+    ? contentClassRaw
+    : 'UNKNOWN';
+
+  return {
+    rewriteInstructions: str(inner.rewriteInstructions, inner.rewrite_instructions),
+    quoteLimitPercent,
+    requireAttribution: bool(
+      inner.requireAttribution ?? inner.require_attribution,
+      true,
+    ),
+    forbidVerbatimCopy: bool(
+      inner.forbidVerbatimCopy ?? inner.forbid_verbatim_copy,
+      true,
+    ),
+    allowMerge: bool(inner.allowMerge ?? inner.allow_merge, true),
+    requiresDirectLinkAtTop: bool(
+      inner.requiresDirectLinkAtTop ?? inner.requires_direct_link_at_top,
+      false,
+    ),
+    allowAnalyticalReuse: bool(
+      inner.allowAnalyticalReuse ?? inner.allow_analytical_reuse,
+      false,
+    ),
+    requiresManualApprovalForAnalytical: bool(
+      inner.requiresManualApprovalForAnalytical ?? inner.requires_manual_approval_for_analytical,
+      true,
+    ),
+    contentClassDefault,
+    mergeNotes: str(inner.mergeNotes, inner.merge_notes),
+  };
+}
+
+/**
+ * Генерирует структурированные правила использования материалов источника из свободного текста.
+ * @param {string} sourceRulesText
+ * @returns {Promise<{
+ *  rewriteInstructions: string,
+ *  quoteLimitPercent: number,
+ *  requireAttribution: boolean,
+ *  forbidVerbatimCopy: boolean,
+ *  allowMerge: boolean,
+ *  mergeNotes: string,
+ *  requiresDirectLinkAtTop: boolean,
+ *  allowAnalyticalReuse: boolean,
+ *  requiresManualApprovalForAnalytical: boolean,
+ *  contentClassDefault: string
+ * }>}
+ */
+export async function generateSourceUsageRuleFromText(sourceRulesText) {
+  const text = String(sourceRulesText || '').trim();
+  if (!text) {
+    throw new Error('Введите текст правил источника');
+  }
+
+  const prompt = `Ты редактор новостного агрегатора. Ниже дан свободный текст правил использования материалов источника.
+Преобразуй его в строгую JSON-структуру для настроек системы.
+
+Правила вывода:
+1) Ответь ТОЛЬКО одним JSON-объектом.
+2) Никакого markdown, пояснений и лишнего текста.
+3) Если в исходном тексте нет явного ограничения, используй безопасные значения по умолчанию:
+   - quoteLimitPercent: 20
+   - requireAttribution: true
+   - forbidVerbatimCopy: true
+   - allowMerge: true
+   - requiresDirectLinkAtTop: false
+   - allowAnalyticalReuse: false
+   - requiresManualApprovalForAnalytical: true
+   - contentClassDefault: UNKNOWN
+4) quoteLimitPercent должен быть целым числом от 0 до 100.
+5) rewriteInstructions и mergeNotes — строки (можно пустые).
+6) Имена полей в JSON — строго в camelCase: rewriteInstructions, quoteLimitPercent, requireAttribution, forbidVerbatimCopy, allowMerge, requiresDirectLinkAtTop, allowAnalyticalReuse, requiresManualApprovalForAnalytical, contentClassDefault, mergeNotes.
+
+Верни объект ровно такого формата:
+{"rewriteInstructions":"...","quoteLimitPercent":20,"requireAttribution":true,"forbidVerbatimCopy":true,"allowMerge":true,"requiresDirectLinkAtTop":false,"allowAnalyticalReuse":false,"requiresManualApprovalForAnalytical":true,"contentClassDefault":"UNKNOWN","mergeNotes":"..."}
+
+Текст правил источника:
+${text.slice(0, 12000)}`;
+
+  const aiSettings = await getAISettings();
+  const provider = String(aiSettings.aiProvider || 'openai').toLowerCase();
+  const callOpts = {
+    max_tokens: 2000,
+    temperature: 0.2,
+    timeout: 90000,
+  };
+  if (provider === 'openai' || provider === 'custom') {
+    callOpts.responseFormatJson = true;
+  }
+
+  let raw;
+  try {
+    raw = await callAI(prompt, callOpts);
+  } catch (e) {
+    if (callOpts.responseFormatJson) {
+      const { responseFormatJson: _, ...retryOpts } = callOpts;
+      raw = await callAI(prompt, retryOpts);
+    } else {
+      throw e;
+    }
+  }
+
+  const parsed = parseJsonObjectFromAiText(raw);
+  return normalizeGeneratedUsageRuleObject(parsed);
+}
+
+function words(text) {
+  return String(text || '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .split(/\s+/)
+    .filter((w) => w.length > 3);
+}
+
+function isTooSimilar(inputText, outputText, threshold = 0.82) {
+  const a = new Set(words(inputText));
+  const b = new Set(words(outputText));
+  if (a.size === 0 || b.size === 0) return false;
+  let intersection = 0;
+  for (const token of a) {
+    if (b.has(token)) intersection += 1;
+  }
+  const score = intersection / Math.min(a.size, b.size);
+  return score >= threshold;
+}
+
+export async function rewriteNewsBodyBySourceRules(newsId, bodyText = '') {
+  const item = await prisma.newsItem.findUnique({
+    where: { id: newsId },
+    include: { source: { include: { usageRule: true } } },
+  });
+  if (!item) throw new Error('News item not found');
+
+  const sourceRule = normalizeSourceUsageRule(item.source?.usageRule || {});
+  const sourceName = item.source?.name || 'Источник';
+  const sourceUrl = item.url || item.source?.url || '';
+  const original = String(bodyText || item.body || '').trim();
+  if (!original) throw new Error('Нет текста для переписывания');
+
+  const strictLine = sourceRule.forbidVerbatimCopy
+    ? `Запрещено дословное копирование длинных фрагментов. Доля прямых цитат не выше ${sourceRule.quoteLimitPercent}%.`
+    : `Доля прямых цитат не выше ${sourceRule.quoteLimitPercent}%.`;
+  const attributionLine = sourceRule.requireAttribution
+    ? `В конце добавь абзац с атрибуцией: "По данным ${sourceName}" и ссылкой на источник.`
+    : 'Атрибуция желательна, если это уместно по контексту.';
+
+  const prompt = `Перепиши новостной материал на русском языке для публикации в агрегаторе, строго соблюдая ограничения:
+1) Сохрани только исходные факты, без добавления новых.
+2) ${strictLine}
+3) ${attributionLine}
+4) Используй HTML с тегами: p, strong, em, a, ul, li, br.
+5) Сделай текст уникальным, юридически безопасным и естественным для чтения: связные абзацы, живой язык без канцелярита и сухого перечисления, без потери нейтральности.
+
+Дополнительные требования источника:
+${sourceRule.rewriteInstructions || 'Нет дополнительных требований.'}
+
+Источник: ${sourceName}${sourceUrl ? ` (${sourceUrl})` : ''}
+Исходный текст:
+${original.slice(0, 20000)}
+
+Ответь только итоговым HTML-текстом без пояснений.`;
+
+  const firstPass = await callAI(prompt, { max_tokens: 2600, temperature: 0.42, timeout: 90000 });
+  const firstText = String(firstPass || '').trim();
+  if (!sourceRule.forbidVerbatimCopy || !isTooSimilar(original, firstText)) {
+    return { text: firstText, variants: [] };
+  }
+
+  const secondPrompt = `Нужно еще сильнее переформулировать текст без потери фактов.
+Ограничения:
+- не копируй исходные фразы;
+- сохрани фактическую точность;
+- доля цитат не выше ${sourceRule.quoteLimitPercent}%;
+- формат HTML (p, strong, em, a, ul, li, br).
+
+Исходник:
+${original.slice(0, 20000)}
+
+Твой прошлый вариант:
+${firstText.slice(0, 20000)}
+
+Ответь только улучшенным HTML.`;
+  const secondPass = await callAI(secondPrompt, { max_tokens: 2600, temperature: 0.45, timeout: 90000 });
+  return { text: String(secondPass || '').trim(), variants: [] };
 }
 
 /**

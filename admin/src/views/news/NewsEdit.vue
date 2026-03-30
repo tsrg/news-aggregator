@@ -72,7 +72,7 @@
             <label class="block text-sm font-medium text-gray-700 mb-2">Раздел</label>
             <div class="relative">
               <select v-model="form.sectionId" class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all appearance-none pr-10">
-                <option :value="undefined">— Без раздела —</option>
+                <option value="">— Без раздела —</option>
                 <option v-for="s in sections" :key="s.id" :value="s.id">{{ s.title }}</option>
               </select>
               <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-gray-500">
@@ -93,6 +93,22 @@
                 <svg class="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"/></svg>
               </div>
             </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Класс материала</label>
+            <select v-model="form.contentClass" class="w-full max-w-md bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all">
+              <option value="UNKNOWN">Не определен</option>
+              <option value="NEWS">Новость</option>
+              <option value="REPORT">Репортаж</option>
+              <option value="ANALYSIS">Аналитика</option>
+              <option value="OPINION">Мнение</option>
+            </select>
+          </div>
+
+          <div v-if="id && legalReviewStatus" class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <p><strong>Юридическая проверка:</strong> {{ legalReviewStatus }}</p>
+            <p v-if="legalReviewNotes" class="mt-1">{{ legalReviewNotes }}</p>
           </div>
 
           <div>
@@ -226,6 +242,15 @@
             <button class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50" :disabled="aiLoading" @click="factCheck">Проверить факты</button>
             <button class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50" :disabled="aiLoading" @click="aiAction('improve')">Улучшить текст</button>
             <button class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50" :disabled="aiLoading" @click="aiAction('shorten')">Сократить текст</button>
+            <button class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50" :disabled="aiLoading || !id || currentStatus === 'MERGED'" @click="aiAction('generate-overview')">Сформировать обзор события</button>
+            <button
+              class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50"
+              :disabled="aiLoading || !id || currentStatus === 'MERGED'"
+              @click="aiAction('rewrite-copyright-safe')"
+            >
+              Переписать новость (без нарушений)
+            </button>
+            <button class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50" :disabled="aiLoading || !id || currentStatus === 'MERGED'" @click="aiAction('legal-precheck')">Проверить юридические риски</button>
             <button class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50" :disabled="aiLoading" @click="aiAction('generate-title')">Придумать заголовок</button>
             <button class="w-full text-left px-4 py-2.5 bg-white border border-indigo-100 rounded-xl text-sm font-medium text-gray-700 hover:border-indigo-300 hover:text-indigo-700 transition-all shadow-sm disabled:opacity-50" :disabled="aiLoading" @click="aiAction('generate-summary')">Сгенерировать лид</button>
             <button
@@ -245,7 +270,14 @@
           <div v-if="aiResult" class="mt-4 pt-4 border-t border-indigo-100">
             <h4 class="text-xs font-bold text-indigo-900 uppercase tracking-wider mb-2">Результат ИИ</h4>
             <div class="bg-white rounded-xl p-3 border border-indigo-100 text-sm text-gray-700 mb-3 max-h-[300px] overflow-y-auto font-mono whitespace-pre-wrap leading-relaxed">{{ aiResult }}</div>
-            <button class="w-full py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors" @click="applyAiResult">Подставить в поле</button>
+            <button
+              v-if="aiResultApplyable"
+              type="button"
+              class="w-full py-2 bg-indigo-600 text-white text-xs font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+              @click="applyAiResult"
+            >
+              Подставить в поле
+            </button>
           </div>
           
           <div v-if="factCheckResult" class="mt-4 pt-4 border-t border-indigo-100">
@@ -373,18 +405,23 @@ const form = ref({
   summary: '',
   body: '',
   imageUrl: '' as string,
-  sectionId: undefined as string | undefined,
+  sectionId: '' as string,
   region: '' as string,
   /** Значение для input[type=datetime-local] (локальное время браузера) */
   sourcePublishedAtLocal: '' as string,
+  contentClass: 'UNKNOWN' as 'NEWS' | 'REPORT' | 'ANALYSIS' | 'OPINION' | 'UNKNOWN',
 });
 
 const currentStatus = ref<'PENDING' | 'PUBLISHED' | 'REJECTED' | 'MERGED' | null>(null);
 const mergedIntoCanonicalId = ref<string | null>(null);
+const legalReviewStatus = ref<string | null>(null);
+const legalReviewNotes = ref<string>('');
 
 const sections = ref<{ id: string; title: string }[]>([]);
 const history = ref<{ id: string; createdAt: string }[]>([]);
 const aiLoading = ref(false);
+/** false для юр-проверки и обзора — результат не подставляется в заголовок/лид/текст */
+const aiResultApplyable = ref(true);
 const aiResult = ref('');
 const showAiVariantsModal = ref(false);
 const aiVariantOptions = ref<string[]>([]);
@@ -454,17 +491,23 @@ onMounted(async () => {
         status?: string;
         mergedIntoId?: string | null;
         sourcePublishedAt?: string | null;
+        contentClass?: 'NEWS' | 'REPORT' | 'ANALYSIS' | 'OPINION' | 'UNKNOWN';
+        legalReviewStatus?: string | null;
+        legalReviewNotes?: string | null;
       }>(`/api/admin/news/${id.value}`);
       form.value = {
         title: item.title || '',
         summary: item.summary || '',
         body: item.body || '',
         imageUrl: item.imageUrl || '',
-        sectionId: item.sectionId || undefined,
+        sectionId: item.sectionId || '',
         region: item.region || '',
         sourcePublishedAtLocal: isoToDatetimeLocal(item.sourcePublishedAt),
+        contentClass: item.contentClass || 'UNKNOWN',
       };
       mergedIntoCanonicalId.value = item.mergedIntoId ?? null;
+      legalReviewStatus.value = item.legalReviewStatus || null;
+      legalReviewNotes.value = item.legalReviewNotes || '';
       if (item.status === 'PUBLISHED' || item.status === 'REJECTED' || item.status === 'MERGED') {
         currentStatus.value = item.status as 'PUBLISHED' | 'REJECTED' | 'MERGED';
       } else {
@@ -494,6 +537,7 @@ async function saveAsPending() {
       body: form.value.body,
       sectionId: form.value.sectionId,
       region: form.value.region,
+      contentClass: form.value.contentClass,
     };
     const trimmedCover = form.value.imageUrl.trim();
     if (trimmedCover) body.imageUrl = trimmedCover;
@@ -518,7 +562,9 @@ async function save() {
       imageUrl: form.value.imageUrl.trim(),
       sectionId: form.value.sectionId, 
       region: form.value.region,
+      contentClass: form.value.contentClass,
       sourcePublishedAt: sourcePublishedAtPayload(),
+      ...legalReviewPayload(),
     });
     router.push('/news');
   } catch (e) {
@@ -541,7 +587,9 @@ async function publish() {
       imageUrl: form.value.imageUrl.trim(),
       sectionId: form.value.sectionId, 
       region: form.value.region,
+      contentClass: form.value.contentClass,
       sourcePublishedAt: sourcePublishedAtPayload(),
+      ...legalReviewPayload(),
     });
     // Затем меняем статус на PUBLISHED
     await api().patch(`/api/admin/news/${id.value}/status`, { status: 'PUBLISHED' });
@@ -567,7 +615,9 @@ async function reject() {
       imageUrl: form.value.imageUrl.trim(),
       sectionId: form.value.sectionId, 
       region: form.value.region,
+      contentClass: form.value.contentClass,
       sourcePublishedAt: sourcePublishedAtPayload(),
+      ...legalReviewPayload(),
     });
     // Затем меняем статус на REJECTED
     await api().patch(`/api/admin/news/${id.value}/status`, { status: 'REJECTED' });
@@ -605,8 +655,22 @@ async function factCheck() {
   }
 }
 
+function legalReviewPayload() {
+  const o: { legalReviewStatus?: string; legalReviewNotes?: string | null } = {};
+  if (legalReviewStatus.value != null && legalReviewStatus.value !== '') {
+    o.legalReviewStatus = legalReviewStatus.value;
+  }
+  o.legalReviewNotes = legalReviewNotes.value ? legalReviewNotes.value : null;
+  return o;
+}
+
 async function aiAction(action: string) {
+  if (action === 'rewrite-copyright-safe' && !id.value) {
+    alert('Сначала сохраните новость');
+    return;
+  }
   aiResult.value = '';
+  aiResultApplyable.value = true;
   const field = action === 'generate-title' ? 'title' : action === 'generate-summary' ? 'summary' : 'body';
   lastAiField.value = field;
   
@@ -620,7 +684,7 @@ async function aiAction(action: string) {
     text = field === 'title' ? form.value.title : field === 'summary' ? form.value.summary : form.value.body;
   }
   
-  if (!text && (action === 'improve' || action === 'shorten')) {
+  if (!text && (action === 'improve' || action === 'shorten' || action === 'rewrite-copyright-safe')) {
     alert('Введите текст для обработки');
     return;
   }
@@ -632,12 +696,37 @@ async function aiAction(action: string) {
   
   aiLoading.value = true;
   try {
-    const r = await api().post<{ text: string; variants?: string[] }>('/api/admin/news/ai/edit', {
+    const r = await api().post<Record<string, unknown>>('/api/admin/news/ai/edit', {
       newsId: id.value || undefined,
       text,
       field,
       action,
     });
+    if (action === 'generate-overview') {
+      form.value.title = String(r.title || form.value.title);
+      form.value.body = String(r.body || form.value.body);
+      form.value.summary = String(r.summary || form.value.summary);
+      const cls = String(r.contentClass || '').toUpperCase();
+      if (['NEWS', 'REPORT', 'ANALYSIS', 'OPINION', 'UNKNOWN'].includes(cls)) {
+        form.value.contentClass = cls as 'NEWS' | 'REPORT' | 'ANALYSIS' | 'OPINION' | 'UNKNOWN';
+      }
+      const om = r.overviewMeta as { addedFromDb?: number; addedFromWeb?: number; skippedDisallowMerge?: number } | undefined;
+      const parts: string[] = [];
+      if (om?.addedFromDb) parts.push(`доп. источников из базы: ${om.addedFromDb}`);
+      if (om?.addedFromWeb) parts.push(`доп. из веб-поиска: ${om.addedFromWeb}`);
+      if (om?.skippedDisallowMerge) parts.push(`пропущено по правилам источников: ${om.skippedDisallowMerge}`);
+      const suffix = parts.length ? ` ${parts.join('; ')}.` : '';
+      aiResult.value = `Обзор события сформирован и подставлен в форму.${suffix}`;
+      aiResultApplyable.value = false;
+      return;
+    }
+    if (action === 'legal-precheck') {
+      legalReviewStatus.value = String(r.legalReviewStatus || legalReviewStatus.value || 'UNKNOWN');
+      legalReviewNotes.value = String(r.legalReviewNotes || '');
+      aiResult.value = '';
+      aiResultApplyable.value = false;
+      return;
+    }
     const variants = Array.isArray(r.variants) ? r.variants.filter((v) => typeof v === 'string' && v.trim()) : [];
     if (variants.length > 0) {
       aiVariantOptions.value = variants;
@@ -646,7 +735,7 @@ async function aiAction(action: string) {
     } else {
       showAiVariantsModal.value = false;
       aiVariantOptions.value = [];
-      aiResult.value = r.text || '';
+      aiResult.value = String(r.text || '');
     }
   } catch (e) {
     showAiVariantsModal.value = false;
@@ -672,6 +761,7 @@ function applyAiVariant(variant: string) {
 }
 
 function applyAiResult() {
+  if (!aiResultApplyable.value) return;
   if (lastAiField.value === 'title') form.value.title = aiResult.value;
   else if (lastAiField.value === 'summary') form.value.summary = aiResult.value;
   else form.value.body = aiResult.value;
