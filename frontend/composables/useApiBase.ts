@@ -1,6 +1,8 @@
+import { resolveClientPublicOrigin } from './useSocketOrigin';
+
 /**
- * API base URL: on server (SSR) uses apiBaseServer when set (e.g. Docker: http://backend:3000),
- * on client uses public.apiBase only (e.g. http://localhost:3000).
+ * API base URL: SSR — apiBaseServer (Docker: http://backend:3000).
+ * Клиент — NUXT_PUBLIC_API_BASE; если в билде остался localhost, а сайт на прод-домене — origin страницы.
  */
 export function useApiBase(): string {
   const config = useRuntimeConfig();
@@ -8,5 +10,9 @@ export function useApiBase(): string {
     const serverBase = config.apiBaseServer;
     if (serverBase) return serverBase;
   }
-  return (config.public.apiBase as string) || 'http://localhost:3000';
+  const baked = (config.public.apiBase as string) || 'http://localhost:3000';
+  if (import.meta.client) {
+    return resolveClientPublicOrigin(baked);
+  }
+  return baked;
 }

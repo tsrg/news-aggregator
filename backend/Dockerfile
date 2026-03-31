@@ -27,6 +27,8 @@ COPY --from=builder /app/src ./src
 COPY --from=builder /app/package.json ./
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
+# COPY оставляет root:root — без этого prisma (migrate/generate) от пользователя app падает с EACCES
+RUN chown -R app:nodejs /app
 USER app
 EXPOSE 3000
 ENTRYPOINT ["/docker-entrypoint.sh"]

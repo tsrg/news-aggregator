@@ -96,6 +96,17 @@ export function rewriteStorageUrlForBrowser(url) {
   const ep = (config.s3.endpoint || '').trim().replace(/\/$/, '');
   const bucket = (config.s3.bucket || '').trim();
 
+  // URL сохранён с dev-дефолтом compose (localhost:9000) — переписать на публичный base
+  if (publicBaseRaw && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\//i.test(trimmed)) {
+    try {
+      const u = new URL(trimmed);
+      const pb = new URL(publicBaseRaw.includes('://') ? publicBaseRaw : `http://${publicBaseRaw}`);
+      return `${pb.origin}${u.pathname}${u.search}${u.hash}`;
+    } catch {
+      /* fall through */
+    }
+  }
+
   // Совпадение origin с S3_ENDPOINT (надёжнее строкового префикса при path-style URL)
   if (publicBaseRaw && ep) {
     try {

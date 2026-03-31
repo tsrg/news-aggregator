@@ -4,7 +4,8 @@ WORKDIR /app
 COPY package.json ./
 RUN npm install
 COPY . .
-ARG VITE_API_BASE_URL=http://localhost:3000
+# Пусто → в prod-сборке same-origin /api/… (nginx на admin-хосте). Локально в compose задайте build-arg.
+ARG VITE_API_BASE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL
 RUN npm run build
 

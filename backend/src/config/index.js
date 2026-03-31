@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import { parseCorsOriginsEnv } from './cors-origins.js';
 
 dotenv.config();
 
@@ -30,12 +31,8 @@ export const config = {
     zaiApiKey: process.env.ZAI_API_KEY,
   },
   cors: {
-    // Comma-separated origins, e.g. https://ivanovo.online,https://admin.ivanovo.online. Empty = allow all.
-    origins: (() => {
-      const v = (process.env.CORS_ORIGINS || '').trim();
-      if (!v) return null;
-      return v.split(',').map((s) => s.trim()).filter(Boolean);
-    })(),
+    // Comma-separated origins. Empty = allow all. Parsed in cors-origins.js (quotes, slashes, case).
+    origins: parseCorsOriginsEnv(process.env.CORS_ORIGINS),
   },
   s3: {
     endpoint: process.env.S3_ENDPOINT || null,

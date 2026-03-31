@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { config } from './config/index.js';
+import { toExpressCorsOrigin } from './config/cors-origins.js';
 import authRoutes from './modules/auth/auth.routes.js';
 import newsPublic from './modules/news/news.public.routes.js';
 import newsAdmin from './modules/news/news.admin.routes.js';
@@ -28,7 +29,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 app.use(
   cors({
-    origin: config.cors.origins === null ? true : config.cors.origins,
+    origin: toExpressCorsOrigin(config.cors.origins),
     credentials: true,
   })
 );

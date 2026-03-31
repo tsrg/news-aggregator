@@ -1,5 +1,6 @@
 import { ref, onUnmounted } from 'vue';
 import { io } from 'socket.io-client';
+import { resolveClientPublicOrigin } from './useSocketOrigin';
 
 /**
  * Ref that increments when a news:published or news:updated event is received.
@@ -31,17 +32,19 @@ export function useNewsLive() {
   if (import.meta.server) return { refreshTrigger };
 
   const apiBase = useApiBase();
+  const socketOrigin = resolveClientPublicOrigin(apiBase);
 
   let socket: ReturnType<typeof io> | null = null;
 
   function connect() {
     try {
-      socket = io(apiBase, {
+      socket = io(socketOrigin, {
         path: '/socket.io',
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 10,
         reconnectionDelay: 1000,
+        timeout: 20000,
       });
 
       socket.on('news:published', handleNewsEvent);

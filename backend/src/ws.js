@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { config } from './config/index.js';
+import { toSocketIoCorsOrigin } from './config/cors-origins.js';
 import { rewriteStorageUrlForBrowser } from './services/s3.js';
 
 let io = null;
@@ -9,11 +10,11 @@ let io = null;
  * @param {import('http').Server} httpServer
  */
 export function attachSocketServer(httpServer) {
-  const corsOrigin = config.cors.origins === null ? true : config.cors.origins;
   io = new Server(httpServer, {
     cors: {
-      origin: corsOrigin,
+      origin: toSocketIoCorsOrigin(config.cors.origins),
       methods: ['GET', 'POST'],
+      credentials: true,
     },
   });
   return io;

@@ -36,6 +36,7 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { apiUrl } from '../api-base';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -48,8 +49,7 @@ async function submit() {
   error.value = '';
   loading.value = true;
   try {
-    const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
-    const r = await fetch(`${base}/api/auth/login`, {
+    const r = await fetch(apiUrl('/api/auth/login'), {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },

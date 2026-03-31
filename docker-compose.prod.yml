@@ -1,20 +1,27 @@
-# Production: docker compose up --build
-# Dev: docker compose -f docker-compose.yml -f docker-compose.dev.yml up
+# Production без исходников: только образы из registry.
+# На сервере: .env с JWT_SECRET, паролями БД, NUXT_PUBLIC_API_BASE, VITE_API_BASE_URL, CORS_ORIGINS и т.д.
+#
+# Поднять:
+#   docker compose -f docker-compose.prod.yml pull
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Образы по умолчанию (переопределите при необходимости):
+#   BACKEND_IMAGE, FRONTEND_IMAGE, ADMIN_IMAGE
 
 services:
   postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: app
-      POSTGRES_PASSWORD: appsecret
-      POSTGRES_DB: news_aggregator
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-appsecret}
+      POSTGRES_DB: ${POSTGRES_DB:-news_aggregator}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d news_aggregator"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-news_aggregator}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -50,14 +57,12 @@ services:
       start_period: 10s
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    image: ${BACKEND_IMAGE:-tsrg/backend:latest}
     restart: unless-stopped
     environment:
       NODE_ENV: production
       PORT: 3000
-      DATABASE_URL: postgresql://app:appsecret@postgres:5432/news_aggregator?schema=public
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-appsecret}@postgres:5432/${POSTGRES_DB:-news_aggregator}?schema=public
       REDIS_URL: redis://redis:6379
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://ivanovo.online,https://www.ivanovo.online,https://admin.ivanovo.online}
@@ -69,8 +74,8 @@ services:
       S3_REGION: ${S3_REGION:-us-east-1}
       AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
       AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
-      # Локально: localhost:9000. На проде — публичный URL (например https://домен/news-aggregator), см. nginx и .env.docker.example
-      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-http://localhost:9000/news-aggregator}
+      # Обязательно задайте публичный URL для браузера (не localhost). Пример: https://ivanovo.online/news-aggregator
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL:-}
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -79,11 +84,7 @@ services:
       - "3002:3000"
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        NUXT_PUBLIC_API_BASE: ${NUXT_PUBLIC_API_BASE:-http://localhost:3002}
+    image: ${FRONTEND_IMAGE:-tsrg/frontend:latest}
     restart: unless-stopped
     environment:
       NUXT_PUBLIC_API_BASE: ${NUXT_PUBLIC_API_BASE:-http://localhost:3002}
@@ -92,11 +93,7 @@ services:
       - "3001:3000"
 
   admin:
-    build:
-      context: ./admin
-      dockerfile: Dockerfile
-      args:
-        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3002}
+    image: ${ADMIN_IMAGE:-tsrg/admin:latest}
     restart: unless-stopped
     ports:
       - "5080:80"

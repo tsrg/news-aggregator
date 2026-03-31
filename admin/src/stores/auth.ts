@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { apiUrl } from '../api-base';
 
 export interface User {
   id: string;
@@ -9,8 +10,6 @@ export interface User {
   isFullAccess?: boolean;
   permissions?: string[];
 }
-
-const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -38,7 +37,7 @@ export const useAuthStore = defineStore('auth', {
     },
     async logout() {
       try {
-        await fetch(`${apiBase}/api/auth/logout`, {
+        await fetch(apiUrl('/api/auth/logout'), {
           method: 'POST',
           credentials: 'include',
         });
@@ -50,7 +49,7 @@ export const useAuthStore = defineStore('auth', {
       if (this.initialized) return;
       this.initialized = true;
       try {
-        const r = await fetch(`${apiBase}/api/auth/me`, { credentials: 'include' });
+        const r = await fetch(apiUrl('/api/auth/me'), { credentials: 'include' });
         if (r.ok) {
           const user = await r.json();
           this.user = user;
