@@ -29,6 +29,7 @@ Thumbs.db
 .vscode/
 *.swp
 *.swo
+.cursor/
 
 # Prisma
 backend/prisma/*.db
