@@ -2,5 +2,6 @@
   "name": "news-aggregator",
   "private": true,
   "description": "News aggregator monorepo",
+  "license": "CC-BY-NC-4.0",
   "workspaces": ["backend", "frontend", "admin"]
 }
