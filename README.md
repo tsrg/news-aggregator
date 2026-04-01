@@ -1,132 +1,166 @@
 # Агрегатор новостей
 
-Монорепозиторий: backend (Express), frontend (Nuxt 3), admin (Vue 3 + Vite).
+Монорепозиторий (npm workspaces): **backend** (Express + Prisma), **frontend** (Nuxt 3), **admin** (Vue 3 + Vite). Публичный сайт, отдельная админ-панель и REST API; фоновые задачи (RSS, парсинг статей, очистка черновиков) через **Redis** и **Bull**.
+
+Подробная логическая спецификация (модель данных, API, потоки): [`SPEC.md`](SPEC.md).
+
+## Возможности
+
+- Импорт из **RSS** и **sitemap**, фильтры по полям источника; периодический опрос (по умолчанию каждые 15 минут).
+- Модерация: статусы новости, история версий, объединение дубликатов (при включённых настройках и ИИ).
+- **Разделы**, **меню** (в т.ч. иерархия), **статические страницы** CMS.
+- **Регионы** (список в настройках), привязка материалов к региону.
+- **Правила использования контента по источнику** и юридические проверки перед публикацией.
+- **ИИ**: правка текста, фактчек, обложки, обзорные материалы (OpenAI или z.ai; ключи в env или в настройках в БД).
+- **RBAC**: роли с полным доступом или набором разрешений (`news`, `sources`, `settings`, …), не только «админ / редактор».
+- Загрузки: локальная папка `backend/uploads`, **S3-совместимое хранилище** (в Docker — MinIO) или **CDN API** по настройкам в админке.
+- Публичный сайт подписывается на **WebSocket** (Socket.io): события при публикации и обновлении новостей.
 
 ## Требования
 
-- Node.js 20+
-- PostgreSQL
-- Redis (для очередей Bull, опционально на старте)
+- **Node.js 20+**
+- **PostgreSQL 16** (или совместимая версия)
+- **Redis 7** — нужен для очередей (RSS, парсинг тел статьи, почасовая очистка черновиков). Без Redis API поднимается, но планировщик и очереди не стартуют.
 
-## Backend
+## Структура репозитория
+
+```
+news-aggregator/
+├── backend/          # API, Prisma, jobs, WebSocket
+├── frontend/         # Nuxt 3 — публичный сайт
+├── admin/            # Vue 3 — панель редактора
+├── nginx/            # Пример конфигурации reverse proxy (прод)
+├── docker-compose.yml
+├── docker-compose.dev.yml
+├── .env.docker.example
+├── SPEC.md
+└── LICENSE
+```
+
+## Локальная разработка (без Docker)
+
+Из корня можно поставить зависимости во всех пакетах:
+
+```bash
+npm install
+```
+
+### Backend
 
 ```bash
 cd backend
 cp .env.example .env
-# Заполните DATABASE_URL, JWT_SECRET. Для ИИ: OPENAI_API_KEY или ZAI_API_KEY, AI_PROVIDER=openai|zai
+# Заполните DATABASE_URL, JWT_SECRET, REDIS_URL=redis://localhost:6379
+# ИИ: AI_PROVIDER=openai|zai, OPENAI_API_KEY или ZAI_API_KEY
 npm install
-npx prisma migrate dev   # создание таблиц
-npx prisma db seed       # админ admin@example.com / admin123, редактор editor@example.com / editor123
+npx prisma migrate dev
+npx prisma db seed   # пользователи и начальные данные
 npm run dev
 ```
 
-API: `http://localhost:3000`. Публичные эндпоинты: `/api/news`, `/api/sections`, `/api/menus/:key`, `/api/pages/:slug`. Админ: `/api/auth/login`, `/api/admin/*` (JWT). На сайте отображаются только новости со статусом **Опубликовано** (в админке нужно нажать «Опубликовать» по каждой новости).
+API по умолчанию: **http://localhost:3000**.
 
-## Frontend (Nuxt 3)
+Публичные маршруты включают: `/api/health`, `/api/news`, `/api/sections`, `/api/menus`, `/api/pages`, `/api/regions`. Админские: `/api/auth/*`, `/api/admin/*` (сессия через cookie `admin_session` или заголовок `Authorization: Bearer`).
+
+На сайте отображаются только новости со статусом **Опубликовано** (в админке нужно опубликовать материал).
+
+### Frontend (Nuxt 3)
 
 ```bash
 cd frontend
 npm install
-# Создайте .env или задайте NUXT_PUBLIC_API_BASE=http://localhost:3000
+# NUXT_PUBLIC_API_BASE=http://localhost:3000 — URL API для браузера
+# Для SSR в Docker используется NUXT_API_BASE_SERVER (см. примеры в docker-compose)
 npm run dev
 ```
 
-Сайт: `http://localhost:3001` (или порт из Nuxt).
+Локально Nuxt по умолчанию слушает **http://localhost:3000** (если порт занят — другой, см. вывод в терминале). В Docker фронт проброшен на хост как **http://localhost:3001**.
 
-## Admin (Vue 3)
+### Admin (Vue 3)
 
 ```bash
 cd admin
 npm install
-# Опционально .env: VITE_API_BASE_URL=http://localhost:3000
+# VITE_API_BASE_URL=http://localhost:3000
 npm run dev
 ```
 
-Админка: `http://localhost:5174`. Вход: admin@example.com / admin123 (полный доступ), editor@example.com / editor123 (только новости).
+Админка по умолчанию: **http://localhost:5174**.
 
-В **Настройки → Основные** можно включить автоудаление неопубликованных новостей (статусы «На модерации» и «Отклонённые») с датой создания в системе старше 48 часов; задача в фоне выполняется раз в час и требует **Redis** (как и импорт RSS).
+Учётные записи после seed (можно изменить в БД): `admin@example.com` / `admin123` (полный доступ), `editor@example.com` / `editor123` (типично только новости).
 
-В **Настройки → Хранилище** можно переключать способ загрузки файлов:
-- **MinIO (S3)** — используется текущая S3-конфигурация из `.env` (`S3_ENDPOINT`, `S3_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `S3_PUBLIC_BASE_URL`).
-- **CDN API** — загрузка идёт через HTTP endpoint, параметры контракта (endpoint, method, имена полей, пути к URL в ответе) настраиваются в админке и применяются в рантайме без перезапуска.
-- Если настройки хранилища в БД отсутствуют, backend использует env как fallback (MinIO при наличии S3-конфига, иначе локальная папка `backend/uploads`).
+### Настройки в админке
 
-## ИИ (проверка фактов и редактирование)
+- **Основные** — автоудаление старых неопубликованных материалов, объединение дубликатов (задача очистки раз в час, нужен Redis).
+- **Хранилище** — MinIO/S3, CDN API или fallback на env / локальную папку (см. [`AGENTS.md`](AGENTS.md)).
+- **Регионы**, **ИИ**, **пользователи и роли** — по соответствующим разделам.
 
-В `.env` backend: `AI_PROVIDER=openai`, `OPENAI_API_KEY=sk-...`. Для z.ai: `AI_PROVIDER=zai`, `ZAI_API_KEY=...`. На странице редактирования новости в админке доступна панель «Редактирование с помощью ИИ».
+## ИИ
 
-## Деплой
+В `.env` backend или в **Настройки → ИИ** (значения в БД): провайдер и ключи. На странице новости — панель «Редактирование с помощью ИИ» и связанные действия.
 
-- Backend: `npm start` (или PM2/systemd).
-- Frontend: `npm run build` затем `npm run preview` или раздача `output/public` (SSG).
-- Admin: `npm run build`, раздача `dist/` по пути `/admin` или поддомену.
+## Docker
 
-## Docker (dev и production)
-
-Требования: Docker и Docker Compose.
+Нужны Docker и Docker Compose. В compose поднимаются PostgreSQL, Redis, MinIO, backend, frontend и admin.
 
 ### Production
 
 ```bash
-# Из корня проекта
 export JWT_SECRET=your-secret   # обязательно в проде
 docker compose up -d --build
 ```
 
-- API: http://localhost:3000  
-- Сайт: http://localhost:3001  
-- Админка: порт назначается автоматически. После `up` выполните:
-  `docker compose port admin 80` (prod) или `docker compose -f docker-compose.yml -f docker-compose.dev.yml port admin 5174` (dev) — в выводе будет хост:порт, откройте http://localhost:ПОРТ  
+Порты на хосте (см. `docker-compose.yml`):
 
-Первый запуск: применить миграции и seed (пока backend уже поднят). Выполнять от root, иначе Prisma не сможет писать в `node_modules`:
+| Сервис   | URL (по умолчанию)        |
+|----------|---------------------------|
+| API      | http://localhost:3002     |
+| Сайт     | http://localhost:3001     |
+| Админка  | http://localhost:5080     |
+| MinIO    | http://localhost:9000 (консоль 9001) |
+
+Первый запуск — миграции и seed (backend должен быть запущен):
 
 ```bash
 docker compose exec -u root backend npx prisma migrate deploy
 docker compose exec -u root backend npx prisma db seed
 ```
 
-Переменные окружения (можно задать в `.env` в корне или передать в `docker compose`): `JWT_SECRET`, `CORS_ORIGINS`, `NUXT_PUBLIC_API_BASE`, `VITE_API_BASE_URL`, `AI_PROVIDER`, `OPENAI_API_KEY`, `ZAI_API_KEY`. Пример: `.env.docker.example`. Для админки указывайте **только origin** (например `https://ivanovo.online`), без `/api` — пути вида `/api/auth/login` и `/api/admin/*` админка дописывает сама.
+Переменные: см. **`.env.docker.example`** и комментарии в `docker-compose.yml`. Часто задают `JWT_SECRET`, `CORS_ORIGINS`, `NUXT_PUBLIC_API_BASE`, `VITE_API_BASE_URL`, `S3_PUBLIC_BASE_URL`, ключи ИИ. Для админки в `VITE_API_BASE_URL` указывайте **origin API** (например `https://ivanovo.online` при проксировании `/api` на тот же хост), без суффикса `/api`.
 
-### Dev-окружение (с hot-reload)
+### Dev (hot-reload)
 
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
-После первого запуска один раз выполните миграции и seed в контейнере backend (от root):
+Порты: backend **3002**, frontend **3001**, admin **5174**. Затем миграции и seed — аналогично, с тем же набором файлов compose.
 
-```bash
-docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -u root backend npx prisma migrate deploy
-docker compose -f docker-compose.yml -f docker-compose.dev.yml exec -u root backend npx prisma db seed
-```
+## Nginx (продакшен)
 
-Порты: API 3000, сайт 3001. Админка — случайный порт, см. выше.
+Пример конфигурации для основного сайта, www и поддомена админки — в каталоге [`nginx/`](nginx/README.md).
 
-## Инициализация репозитория и публикация
+## Сборка для выкладки
 
-Из корня проекта в терминале:
+- **Backend:** `cd backend && npm start` (или PM2/systemd).
+- **Frontend:** `cd frontend && npm run build` — статика в `.output/public` (см. документацию Nuxt для вашего режима).
+- **Admin:** `cd admin && npm run build` — каталог `dist/` за обратным прокси или на поддомене.
+
+## Лицензия
+
+Проект распространяется под **Creative Commons Attribution-NonCommercial 4.0** ([`LICENSE`](LICENSE)): некоммерческое использование с указанием авторства; **коммерческое использование** — только по отдельному согласованию с правообладателем.
+
+## Публикация в новый Git-репозиторий
+
+Если копируете проект как шаблон:
 
 ```bash
 git init
 git add .
-git commit -m "Initial commit: news aggregator (Express, Nuxt 3, Vue 3 admin)"
+git commit -m "Initial commit: news aggregator"
 git branch -M main
-```
-
-**Публикация на GitHub:**
-
-1. Создайте пустой репозиторий на [github.com/new](https://github.com/new) (без README и .gitignore).
-2. Подключите remote и отправьте код:
-
-```bash
-git remote add origin https://github.com/VASH_LOGIN/news-aggregator.git
+git remote add origin https://github.com/USER/news-aggregator.git
 git push -u origin main
 ```
 
-Либо с [GitHub CLI](https://cli.github.com/):
-
-```bash
-gh repo create news-aggregator --private --source=. --push
-# или --public для публичного репозитория
-```
-
+Для существующего клона достаточно `git clone` и шагов разработки выше.
