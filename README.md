@@ -150,17 +150,3 @@ docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 
 Проект распространяется под **Creative Commons Attribution-NonCommercial 4.0** ([`LICENSE`](LICENSE)): некоммерческое использование с указанием авторства; **коммерческое использование** — только по отдельному согласованию с правообладателем.
 
-## Публикация в новый Git-репозиторий
-
-Если копируете проект как шаблон:
-
-```bash
-git init
-git add .
-git commit -m "Initial commit: news aggregator"
-git branch -M main
-git remote add origin https://github.com/USER/news-aggregator.git
-git push -u origin main
-```
-
-Для существующего клона достаточно `git clone` и шагов разработки выше.
