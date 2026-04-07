@@ -25,7 +25,7 @@ function pickRssContentHtml(entry) {
   return typeof c === 'string' ? c : '';
 }
 
-function matchesFilter(value, operator, filterValue) {
+export function matchesFilter(value, operator, filterValue) {
   if (!value) return false;
   const str = String(value).toLowerCase();
   const filter = String(filterValue).toLowerCase();
@@ -53,7 +53,7 @@ function matchesFilter(value, operator, filterValue) {
   }
 }
 
-function shouldIncludeItem(entry, filters) {
+export function shouldIncludeItem(entry, filters) {
   if (!filters || filters.length === 0) return true;
 
   const activeFilters = filters.filter(f => f.isActive !== false);
