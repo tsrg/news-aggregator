@@ -11,6 +11,24 @@ function withPublicImageUrl(item) {
   return o;
 }
 
+function toAdjacentPreview(item) {
+  if (!item) return null;
+  return withPublicImageUrl({
+    id: item.id,
+    title: item.title,
+    summary: item.summary,
+    imageUrl: item.imageUrl,
+    publishedAt: item.publishedAt,
+    createdAt: item.createdAt,
+    section: item.section
+      ? {
+          slug: item.section.slug,
+          title: item.section.title,
+        }
+      : null,
+  });
+}
+
 router.get('/', async (req, res) => {
   try {
     const { region, noRegion, section, dateFrom, dateTo, page = '1', limit = '20' } = req.query;
@@ -58,7 +76,60 @@ router.get('/:id', async (req, res) => {
       include: { section: true, source: true },
     });
     if (!item) return res.status(404).json({ error: 'Not found' });
-    return res.json(withPublicImageUrl(item));
+
+    // Public feed is ordered by publishedAt DESC. For older records with nullable
+    // publishedAt, fallback to createdAt to keep navigation deterministic.
+    const currentSortDate = item.publishedAt ?? item.createdAt;
+    const currentSortField = item.publishedAt ? 'publishedAt' : 'createdAt';
+
+    const [previousItem, nextItem] = await Promise.all([
+      prisma.newsItem.findFirst({
+        where: {
+          status: 'PUBLISHED',
+          mergedIntoId: null,
+          OR: [
+            { [currentSortField]: { gt: currentSortDate } },
+            { [currentSortField]: currentSortDate, id: { gt: item.id } },
+          ],
+        },
+        orderBy: [{ [currentSortField]: 'asc' }, { id: 'asc' }],
+        select: {
+          id: true,
+          title: true,
+          summary: true,
+          imageUrl: true,
+          publishedAt: true,
+          createdAt: true,
+          section: { select: { slug: true, title: true } },
+        },
+      }),
+      prisma.newsItem.findFirst({
+        where: {
+          status: 'PUBLISHED',
+          mergedIntoId: null,
+          OR: [
+            { [currentSortField]: { lt: currentSortDate } },
+            { [currentSortField]: currentSortDate, id: { lt: item.id } },
+          ],
+        },
+        orderBy: [{ [currentSortField]: 'desc' }, { id: 'desc' }],
+        select: {
+          id: true,
+          title: true,
+          summary: true,
+          imageUrl: true,
+          publishedAt: true,
+          createdAt: true,
+          section: { select: { slug: true, title: true } },
+        },
+      }),
+    ]);
+
+    return res.json({
+      ...withPublicImageUrl(item),
+      prev: toAdjacentPreview(previousItem),
+      next: toAdjacentPreview(nextItem),
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Internal server error' });

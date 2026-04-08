@@ -1,8 +1,32 @@
 <template>
-  <div class="max-w-3xl mx-auto">
-    <AppBreadcrumbs v-if="data" :items="breadcrumbItems" class="mb-8" />
-    
-    <div v-if="pending" class="animate-pulse space-y-8">
+  <div class="w-full 2xl:px-6 overflow-x-hidden">
+    <AppBreadcrumbs v-if="data" :items="breadcrumbItems" class="mb-8 max-w-3xl mx-auto" />
+    <div class="2xl:grid 2xl:grid-cols-[minmax(0,1fr)_48rem_minmax(0,1fr)] 2xl:gap-6 2xl:items-start">
+      <aside class="hidden 2xl:block">
+        <NuxtLink
+          v-if="data?.prev"
+          :to="`/news/${data.prev.id}`"
+          class="block bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm opacity-60 hover:opacity-80 transition-opacity"
+          aria-label="Перейти к предыдущей новости"
+        >
+          <div class="mb-6">
+            <div class="flex items-center gap-3 text-sm font-medium text-blue-600 mb-4 flex-wrap">
+              <span class="px-3 py-1 bg-blue-50 rounded-full">Предыдущая новость</span>
+              <span v-if="previewDate(data.prev)" class="text-gray-400">{{ previewDate(data.prev) }}</span>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900 leading-tight tracking-tight mb-4">{{ data.prev.title }}</h2>
+            <p v-if="data.prev.summary" class="text-base text-gray-500 leading-relaxed font-medium line-clamp-4">
+              {{ data.prev.summary }}
+            </p>
+          </div>
+          <div v-if="data.prev.imageUrl" class="rounded-2xl overflow-hidden shadow-sm aspect-video bg-gray-100">
+            <img :src="data.prev.imageUrl" :alt="data.prev.title" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+          </div>
+        </NuxtLink>
+      </aside>
+
+      <div class="max-w-3xl mx-auto w-full 2xl:max-w-none">
+        <div v-if="pending" class="animate-pulse space-y-8">
       <div class="h-10 bg-gray-200 rounded-xl w-3/4"></div>
       <div class="h-4 bg-gray-200 rounded w-1/4"></div>
       <div class="h-64 bg-gray-200 rounded-3xl w-full"></div>
@@ -13,17 +37,17 @@
       </div>
     </div>
     
-    <div v-else-if="error" class="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-100 flex flex-col items-center justify-center text-center">
+        <div v-else-if="error" class="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-100 flex flex-col items-center justify-center text-center">
       <div class="text-3xl mb-2">😕</div>
       <h3 class="font-bold text-lg mb-1">Ой, произошла ошибка</h3>
       <p class="text-sm opacity-80">{{ error.message }}</p>
     </div>
     
-    <div v-else-if="!data" class="bg-gray-50 text-gray-500 p-12 rounded-3xl text-center border border-gray-100">
+        <div v-else-if="!data" class="bg-gray-50 text-gray-500 p-12 rounded-3xl text-center border border-gray-100">
       <p class="font-medium text-lg">Новость не найдена</p>
     </div>
     
-    <article v-else class="bg-white p-6 md:p-10 rounded-[2rem] border border-gray-100 shadow-sm">
+        <article v-else class="bg-white p-6 md:p-10 rounded-[2rem] border border-gray-100 shadow-sm">
       <div class="mb-8">
         <div class="flex items-center gap-3 text-sm font-medium text-blue-600 mb-4 flex-wrap">
           <NuxtLink v-if="data.section" :to="`/section/${data.section.slug}`" class="px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded-full transition-colors">
@@ -95,6 +119,84 @@
         </ul>
       </section>
     </article>
+
+        <section v-if="data && (data.prev || data.next)" class="mt-6 md:mt-8 grid grid-cols-1 md:grid-cols-2 gap-4 2xl:hidden">
+      <NuxtLink
+        v-if="data.prev"
+        :to="`/news/${data.prev.id}`"
+        class="group relative h-40 rounded-2xl overflow-hidden border border-gray-200 bg-gray-100"
+        aria-label="Перейти к предыдущей новости"
+      >
+        <img
+          v-if="data.prev.imageUrl"
+          :src="data.prev.imageUrl"
+          :alt="data.prev.title"
+          class="w-full h-full object-cover blur-[2px] scale-105 transition-transform duration-300 group-hover:scale-110"
+          loading="lazy"
+          decoding="async"
+        />
+        <div v-else class="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300" />
+        <div class="absolute inset-0 bg-black/35" />
+        <div class="absolute inset-0 p-4 flex flex-col justify-between text-white">
+          <span class="text-xs font-semibold uppercase tracking-wide opacity-90">Предыдущая новость</span>
+          <div>
+            <p class="text-sm md:text-base font-semibold line-clamp-2">{{ data.prev.title }}</p>
+            <p v-if="previewDate(data.prev)" class="mt-1 text-xs text-white/85">{{ previewDate(data.prev) }}</p>
+          </div>
+        </div>
+      </NuxtLink>
+      <div v-else class="hidden md:block" />
+
+      <NuxtLink
+        v-if="data.next"
+        :to="`/news/${data.next.id}`"
+        class="group relative h-40 rounded-2xl overflow-hidden border border-gray-200 bg-gray-100"
+        aria-label="Перейти к следующей новости"
+      >
+        <img
+          v-if="data.next.imageUrl"
+          :src="data.next.imageUrl"
+          :alt="data.next.title"
+          class="w-full h-full object-cover blur-[2px] scale-105 transition-transform duration-300 group-hover:scale-110"
+          loading="lazy"
+          decoding="async"
+        />
+        <div v-else class="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300" />
+        <div class="absolute inset-0 bg-black/35" />
+        <div class="absolute inset-0 p-4 flex flex-col justify-between text-white text-right">
+          <span class="text-xs font-semibold uppercase tracking-wide opacity-90">Следующая новость</span>
+          <div>
+            <p class="text-sm md:text-base font-semibold line-clamp-2">{{ data.next.title }}</p>
+            <p v-if="previewDate(data.next)" class="mt-1 text-xs text-white/85">{{ previewDate(data.next) }}</p>
+          </div>
+        </div>
+      </NuxtLink>
+        </section>
+      </div>
+
+      <aside class="hidden 2xl:block">
+        <NuxtLink
+          v-if="data?.next"
+          :to="`/news/${data.next.id}`"
+          class="block bg-white p-6 md:p-8 rounded-[2rem] border border-gray-100 shadow-sm opacity-60 hover:opacity-80 transition-opacity"
+          aria-label="Перейти к следующей новости"
+        >
+          <div class="mb-6">
+            <div class="flex items-center justify-end gap-3 text-sm font-medium text-blue-600 mb-4 flex-wrap">
+              <span v-if="previewDate(data.next)" class="text-gray-400">{{ previewDate(data.next) }}</span>
+              <span class="px-3 py-1 bg-blue-50 rounded-full">Следующая новость</span>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-900 leading-tight tracking-tight mb-4 text-right">{{ data.next.title }}</h2>
+            <p v-if="data.next.summary" class="text-base text-gray-500 leading-relaxed font-medium line-clamp-4 text-right">
+              {{ data.next.summary }}
+            </p>
+          </div>
+          <div v-if="data.next.imageUrl" class="rounded-2xl overflow-hidden shadow-sm aspect-video bg-gray-100">
+            <img :src="data.next.imageUrl" :alt="data.next.title" class="w-full h-full object-cover" loading="lazy" decoding="async" />
+          </div>
+        </NuxtLink>
+      </aside>
+    </div>
   </div>
 </template>
 
@@ -112,6 +214,15 @@ type SourceSnapshot = {
   originalTitle?: string;
 };
 
+type AdjacentNewsPreview = {
+  id: string;
+  title: string;
+  summary?: string;
+  imageUrl?: string;
+  publishedAt?: string;
+  createdAt?: string;
+};
+
 const { data, pending, error } = await useFetch<{
   id: string;
   title: string;
@@ -125,6 +236,8 @@ const { data, pending, error } = await useFetch<{
   source?: { name: string };
   section?: { slug: string; title: string } | null;
   sourceSnapshots?: SourceSnapshot[] | null;
+  prev?: AdjacentNewsPreview | null;
+  next?: AdjacentNewsPreview | null;
 }>(() => `${apiBase}/api/news/${route.params.id}`, { key: `news-${route.params.id}` });
 
 const sourceSnapshotsList = computed((): SourceSnapshot[] => {
@@ -227,6 +340,12 @@ function formatDateTime(iso: string) {
     minute: '2-digit',
     timeZone: 'Europe/Moscow',
   });
+}
+
+function previewDate(item: AdjacentNewsPreview) {
+  const date = item.publishedAt || item.createdAt;
+  if (!date) return '';
+  return formatDateTime(date);
 }
 </script>
 

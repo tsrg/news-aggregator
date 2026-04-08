@@ -54,7 +54,10 @@
       </div>
     </Transition>
 
-    <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+    <main
+      class="flex-1 w-full mx-auto py-8 md:py-12"
+      :class="isNewsPage ? 'max-w-full' : 'max-w-7xl px-4 sm:px-6 lg:px-8'"
+    >
       <slot />
     </main>
 
@@ -92,11 +95,14 @@
 /// <reference path="../global.d.ts" />
 import type { Ref } from 'vue';
 import { ref, computed } from 'vue';
+import { useRoute } from '#app';
 
 type Section = { id: string; slug: string; title: string };
 
 const apiBase = useApiBase();
 const menuOpen = ref(false);
+const route = useRoute();
+const isNewsPage = computed(() => /^\/news\/[^/]+$/.test(route.path));
 
 // Non-blocking: lazy so layout renders immediately; menu/footer fill in when data arrives
 type FetchResult<T> = { data: Ref<T | null>; pending: Ref<boolean>; error: Ref<Error | null>; refresh: () => Promise<void> };
