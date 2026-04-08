@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Продуктовая стратегия — ivanovo.online</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#F1F5F9;color:#1E293B;font-family:'Inter',system-ui,sans-serif;font-size:15px;line-height:1.6}
+.sidebar{background:#1E293B;color:#F1F5F9;width:260px;position:fixed;height:100vh;overflow-y:auto;top:0;left:0;z-index:100}
+.sidebar-logo{padding:20px 20px 12px;border-bottom:1px solid #334155}
+.sidebar-logo h2{font-size:14px;font-weight:700;color:#F1F5F9;line-height:1.3}
+.sidebar-logo p{font-size:11px;color:#94A3B8;margin-top:4px}
+.nav-group{padding:12px 12px 4px;font-size:10px;font-weight:700;color:#64748B;letter-spacing:.08em;text-transform:uppercase}
+.nav-item{padding:7px 16px;cursor:pointer;border-radius:6px;color:#CBD5E1;font-size:13px;margin:1px 8px;display:block;transition:all .15s}
+.nav-item:hover{background:#334155;color:#F1F5F9}
+.nav-item.active{background:#3B82F6;color:#FFFFFF}
+.nav-item.special{color:#FBBF24}
+.nav-item.special.active{background:#D97706}
+.main{margin-left:260px;padding:32px 40px;max-width:1060px}
+.section{display:none}
+.section.active{display:block}
+.page-title{font-size:22px;font-weight:700;color:#0F172A;margin-bottom:6px}
+.page-sub{font-size:14px;color:#64748B;margin-bottom:24px}
+.block{background:#FFFFFF;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 1px 3px rgba(0,0,0,.07);border:1px solid #E2E8F0}
+.block h3{font-size:15px;font-weight:700;color:#0F172A;margin-bottom:14px}
+.block h4{font-size:13px;font-weight:600;color:#334155;margin:14px 0 8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:14px;margin-bottom:4px}
+.card{background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;padding:16px}
+.card-icon{font-size:22px;margin-bottom:8px}
+.card-val{font-size:20px;font-weight:800;color:#0F172A;margin-bottom:2px}
+.card-label{font-size:12px;color:#64748B;line-height:1.4}
+.card-src{font-size:10px;color:#94A3B8;margin-top:6px}
+.card.blue{border-left:3px solid #3B82F6}
+.card.green{border-left:3px solid #10B981}
+.card.orange{border-left:3px solid #F59E0B}
+.card.red{border-left:3px solid #EF4444}
+.card.purple{border-left:3px solid #8B5CF6}
+.tbl{width:100%;border-collapse:collapse;font-size:13px}
+.tbl th{background:#1E293B;color:#FFFFFF;padding:10px 14px;text-align:left;font-weight:600}
+.tbl th:first-child{border-radius:6px 0 0 0}
+.tbl th:last-child{border-radius:0 6px 0 0}
+.tbl td{padding:9px 14px;border-bottom:1px solid #F1F5F9;color:#1E293B;vertical-align:top}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#F8FAFC}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.badge.green{background:#D1FAE5;color:#065F46}
+.badge.red{background:#FEE2E2;color:#991B1B}
+.badge.orange{background:#FEF3C7;color:#92400E}
+.badge.blue{background:#DBEAFE;color:#1E40AF}
+.badge.purple{background:#EDE9FE;color:#5B21B6}
+.badge.gray{background:#F1F5F9;color:#475569}
+.insight{border-radius:8px;padding:14px 16px;margin:12px 0;font-size:13px}
+.insight.blue{background:#EFF6FF;border-left:3px solid #3B82F6;color:#1E40AF}
+.insight.green{background:#F0FDF4;border-left:3px solid #10B981;color:#065F46}
+.insight.yellow{background:#FFFBEB;border-left:3px solid #F59E0B;color:#92400E}
+.insight.red{background:#FFF1F2;border-left:3px solid #EF4444;color:#9F1239}
+.highlight-box{background:linear-gradient(135deg,#1E293B 0%,#334155 100%);border-radius:12px;padding:24px 28px;color:#F1F5F9;margin-bottom:20px}
+.highlight-box h2{font-size:18px;font-weight:800;color:#FFFFFF;margin-bottom:10px}
+.highlight-box p{font-size:14px;color:#CBD5E1;line-height:1.7}
+.highlight-box .accent{color:#60A5FA;font-weight:700}
+.roadmap{position:relative;padding-left:28px}
+.roadmap-item{position:relative;margin-bottom:20px}
+.roadmap-item::before{content:'';position:absolute;left:-20px;top:6px;width:10px;height:10px;border-radius:50%;background:#3B82F6;border:2px solid #fff;box-shadow:0 0 0 2px #3B82F6}
+.roadmap-item.orange::before{background:#F59E0B;box-shadow:0 0 0 2px #F59E0B}
+.roadmap-item.purple::before{background:#8B5CF6;box-shadow:0 0 0 2px #8B5CF6}
+.roadmap::before{content:'';position:absolute;left:8px;top:0;bottom:0;width:2px;background:#E2E8F0}
+.roadmap-period{font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+.roadmap-title{font-size:14px;font-weight:700;color:#0F172A;margin-bottom:3px}
+.roadmap-desc{font-size:13px;color:#475569}
+.roadmap-kpi{font-size:12px;color:#3B82F6;font-weight:600;margin-top:4px}
+.focus-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.focus-card{border-radius:10px;padding:18px;color:#fff}
+.focus-card.red{background:linear-gradient(135deg,#EF4444,#DC2626)}
+.focus-card.orange{background:linear-gradient(135deg,#F59E0B,#D97706)}
+.focus-card.purple{background:linear-gradient(135deg,#8B5CF6,#7C3AED)}
+.focus-card .phase{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;opacity:.8;margin-bottom:6px}
+.focus-card h4{font-size:14px;font-weight:800;margin-bottom:6px}
+.focus-card p{font-size:12px;opacity:.9;line-height:1.5}
+.focus-card .effect{margin-top:10px;font-size:11px;background:rgba(255,255,255,.2);border-radius:6px;padding:6px 10px}
+.persona{border:1px solid #E2E8F0;border-radius:10px;padding:18px;margin-bottom:16px}
+.persona-header{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.persona-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.persona-avatar.blue{background:#DBEAFE}
+.persona-avatar.green{background:#D1FAE5}
+.persona-avatar.orange{background:#FEF3C7}
+.persona-avatar.purple{background:#EDE9FE}
+.persona-avatar.red{background:#FEE2E2}
+.persona-name{font-size:15px;font-weight:700;color:#0F172A}
+.persona-sub{font-size:12px;color:#64748B}
+.persona-pains{background:#FFF1F2;border-radius:8px;padding:12px 14px;margin:10px 0;font-size:13px;color:#7F1D1D}
+.persona-jtbd{background:#EFF6FF;border-radius:8px;padding:12px 14px;font-size:13px;color:#1E3A8A;font-style:italic}
+.quiz-block{border:1px solid #E2E8F0;border-radius:8px;margin:10px 0;overflow:hidden}
+.quiz-q{padding:10px 14px;background:#F8FAFC;font-size:13px;font-weight:600;color:#334155;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.quiz-q:hover{background:#F1F5F9}
+.quiz-a{display:none;padding:12px 14px;font-size:13px;color:#475569;border-top:1px solid #E2E8F0}
+.quiz-a.open{display:block}
+.quiz-diagnosis{margin-top:8px;font-size:12px;font-weight:600;color:#3B82F6}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:900px){.two-col{grid-template-columns:1fr}.main{margin-left:0;padding:16px}.sidebar{display:none}}
+.vision-box{border:2px solid;border-radius:12px;padding:20px;height:100%}
+.vision-box.v1{border-color:#3B82F6;background:#EFF6FF}
+.vision-box.v2{border-color:#8B5CF6;background:#F5F3FF}
+.vision-tag{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;margin-bottom:10px}
+.vision-tag.v1{background:#3B82F6;color:#fff}
+.vision-tag.v2{background:#8B5CF6;color:#fff}
+.tag-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.source-ref{font-size:11px;color:#94A3B8;margin-top:2px}
+.checklist li{list-style:none;padding:5px 0;font-size:13px;color:#475569}
+.checklist li::before{content:'○ ';color:#CBD5E1}
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <h2>📰 ivanovo.online</h2>
+    <p>Продуктовая стратегия · 6 месяцев · апрель 2026</p>
+  </div>
+  <div class="nav-group">Контекст</div>
+  <span class="nav-item active" onclick="show('market',this)">1. Рынок и тренды</span>
+  <span class="nav-item" onclick="show('jtbd',this)">2. JTBD и пользователи</span>
+  <span class="nav-item" onclick="show('competitors',this)">3. Конкуренты</span>
+  <span class="nav-item" onclick="show('asis',this)">4. Продукт сегодня</span>
+  <div class="nav-group">Стратегия</div>
+  <span class="nav-item" onclick="show('vision',this)">5. Видение и ставка</span>
+  <span class="nav-item" onclick="show('focus',this)">6. Стратегические фокусы</span>
+  <span class="nav-item" onclick="show('roadmap',this)">7. Дорожная карта 6 мес</span>
+  <span class="nav-item" onclick="show('metrics',this)">8. Метрики и успех</span>
+  <div class="nav-group">Первичные данные</div>
+  <span class="nav-item special" onclick="show('casdev',this)">★ Касдев &amp; Наблюдения</span>
+  <span class="nav-item special" onclick="show('aicasdev',this)">★★ AI-Касдев</span>
+  <div class="nav-group">Стратегический выбор</div>
+  <span class="nav-item" onclick="show('ainew',this)">A. AI-игроки и тренды</span>
+  <span class="nav-item" onclick="show('visions',this)">B. Два вижина</span>
+</div>
+
+<div class="main">
+
+<!-- ============================================================ -->
+<!-- SECTION 1: РЫНОК -->
+<!-- ============================================================ -->
+<div id="section-market" class="section active">
+  <div class="page-title">Рынок и тренды</div>
+  <div class="page-sub">Контекст: региональные онлайн-СМИ России, Ивановская область, 2025–2026</div>
+
+  <div class="cards">
+    <div class="card blue">
+      <div class="card-icon">🌐</div>
+      <div class="card-val">981,6 млрд ₽</div>
+      <div class="card-label">Общий рекламный рынок России 2025. Интернет — >360 млрд ₽, рост 8,5%</div>
+      <div class="card-src">АКАР / AdIndex, ноябрь 2025</div>
+    </div>
+    <div class="card green">
+      <div class="card-icon">🗺️</div>
+      <div class="card-val">125,4 млрд ₽</div>
+      <div class="card-label">Региональный рекламный рынок России 2025 (без Москвы), +1–2% г/г</div>
+      <div class="card-src">АКАР Северо-Запад / AdIndex, 2026</div>
+    </div>
+    <div class="card orange">
+      <div class="card-icon">👥</div>
+      <div class="card-val">~898 тыс.</div>
+      <div class="card-label">Население Ивановской области (2025), из них ~738 тыс. — городские жители</div>
+      <div class="card-src">Росстат, gogov.ru, 2025</div>
+    </div>
+    <div class="card red">
+      <div class="card-icon">⚠️</div>
+      <div class="card-val">3% сбор</div>
+      <div class="card-label">Новый налог на интернет-рекламу с 1 апреля 2025 — снижает маржу всех площадок</div>
+      <div class="card-src">Российское законодательство, 2025</div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Ключевые тренды рынка региональных СМИ</h3>
+    <div class="cards">
+      <div class="card blue">
+        <div class="card-icon">🤖</div>
+        <div class="card-val">AI-редакция</div>
+        <div class="card-label">Ведущие региональные порталы начинают использовать AI для рерайта, фактчека и генерации обложек. Это снижает операционные расходы на 30–50%.</div>
+      </div>
+      <div class="card green">
+        <div class="card-icon">📱</div>
+        <div class="card-val">77% мобайл</div>
+        <div class="card-label">Доля мобильного потребления контента в России. SSR и скорость загрузки — критичны для SEO и удержания.</div>
+        <div class="card-src">Mediascope, 2024</div>
+      </div>
+      <div class="card purple">
+        <div class="card-icon">🔍</div>
+        <div class="card-val">GEO-оптимизация</div>
+        <div class="card-label">AI-поисковики (Яндекс Нейро, Perplexity) цитируют структурированный контент. llms.txt и Schema.org становятся стандартом.</div>
+      </div>
+      <div class="card orange">
+        <div class="card-icon">📡</div>
+        <div class="card-val">Telegram-каналы</div>
+        <div class="card-label">Авторы Telegram заработали 1,7 млрд ₽ через Яндекс в 2024 году. Региональные каналы — сильный конкурент за внимание аудитории.</div>
+        <div class="card-src">ComNews, январь 2025</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Целевой рынок: Ивановская область</h3>
+    <table class="tbl">
+      <thead><tr><th>Параметр</th><th>Данные</th><th>Возможность для ivanovo.online</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Население</strong></td><td>~898 тыс. чел. (2025)</td><td>Потенциальная аудитория ~400–500 тыс. интернет-пользователей</td></tr>
+        <tr><td><strong>Городское население</strong></td><td>~738 тыс. (82%)</td><td>Высокая концентрация ЦА в Иванове и городах-спутниках</td></tr>
+        <tr><td><strong>Проникновение интернета</strong></td><td>87% ежедневно по РФ</td><td>~350–400 тыс. потенциальных ежедневных читателей в регионе</td></tr>
+        <tr><td><strong>Конкурентная среда</strong></td><td>5–7 активных новостных сайтов</td><td>Рынок фрагментирован, лидера с большим отрывом нет</td></tr>
+        <tr><td><strong>Рекламный потенциал</strong></td><td>Региональные рекламодатели: ритейл, строительство, авто, медицина</td><td>Нативная реклама + РСЯ — основные каналы монетизации</td></tr>
+        <tr><td><strong>Число источников RSS</strong></td><td>15–20 активных СМИ региона</td><td>Агрегация даёт уникальное преимущество полноты картины</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h3>Сигнал-предупреждение</h3>
+    <div class="insight red">⚠️ <strong>Спад аудитории региона:</strong> Ивановская область — один из депрессивных регионов ЦФО с убывающим населением. Долгосрочный рост аудитории ограничен демографией. Стратегия должна опираться на увеличение доли рынка и ARPU, а не только рост числа читателей.</div>
+    <div class="insight yellow">📊 <strong>Замедление рекламного рынка:</strong> В 2025 году темп роста рекламного рынка снизился почти в 3 раза по сравнению с 2024-м (данные АКАР, март 2026). Новый 3% сбор с апреля 2025 дополнительно снижает маржу. Нативная реклама и прямые контракты становятся важнее РСЯ.</div>
+    <div class="insight blue">🔍 <strong>Шанс на SEO-доминирование:</strong> SEO Health Score ivanovo.online — 52/100 (SEO-план, март 2026). Конкуренты также не оптимизированы под AI-поисковики. Первый, кто внедрит llms.txt + NewsArticle Schema + Google News, получит органическое преимущество на 12–18 месяцев.</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: JTBD -->
+<!-- ============================================================ -->
+<div id="section-jtbd" class="section">
+  <div class="page-title">JTBD и пользователи</div>
+  <div class="page-sub">Jobs-to-be-done, персоны и симулятор интервью для аудитории ivanovo.online</div>
+
+  <div class="block">
+    <h3>Эволюция главного запроса читателя (2022–2026)</h3>
+    <table class="tbl">
+      <thead><tr><th>Период</th><th>Запрос аудитории</th><th>Как решался</th></tr></thead>
+      <tbody>
+        <tr><td>2022</td><td>«Хочу знать, что происходит в городе»</td><td>Один сайт — одна редакция, ручной контент</td></tr>
+        <tr><td>2023</td><td>«Хочу видеть новости из разных источников в одном месте»</td><td>Агрегаторы, Telegram-каналы, Яндекс.Новости</td></tr>
+        <tr><td>2024</td><td>«Хочу получить суть быстро, без рекламного мусора»</td><td>Telegram-каналы пересказывают, AI-резюме в браузерах</td></tr>
+        <tr><td>2026</td><td>«Хочу доверять источнику и понимать, что важно именно мне»</td><td>❌ Практически никто не закрывает в регионе</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h3>5 ключевых Jobs-to-be-Done</h3>
+    <table class="tbl">
+      <thead><tr><th>JTBD</th><th>Формулировка (от 1-го лица)</th><th>Кто испытывает</th><th>Закрытость</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge red">JTBD 1 ★</span></td>
+          <td>«Когда я открываю новости утром, я хочу за 2 минуты понять всё важное по Ивановской области, чтобы быть в курсе и не тратить час на обход 5 сайтов»</td>
+          <td>Все сегменты</td>
+          <td><span class="badge red">1/5 — плохо</span></td>
+        </tr>
+        <tr>
+          <td><span class="badge orange">JTBD 2</span></td>
+          <td>«Когда случается что-то важное (авария, ЧП, решение власти), я хочу узнать об этом первым, чтобы успеть отреагировать»</td>
+          <td>Активные горожане, предприниматели</td>
+          <td><span class="badge orange">2/5 — частично</span></td>
+        </tr>
+        <tr>
+          <td><span class="badge orange">JTBD 3</span></td>
+          <td>«Когда я ищу новость, я хочу найти несколько точек зрения из разных СМИ, чтобы составить собственное мнение»</td>
+          <td>Образованная аудитория 30–55 лет</td>
+          <td><span class="badge red">0/5 — никто</span></td>
+        </tr>
+        <tr>
+          <td><span class="badge blue">JTBD 4</span></td>
+          <td>«Когда мне нужна информация о местных событиях (концерты, ремонты, суды), я хочу найти её быстро без регистрации и платного доступа»</td>
+          <td>Широкая аудитория</td>
+          <td><span class="badge orange">3/5 — частично</span></td>
+        </tr>
+        <tr>
+          <td><span class="badge purple">JTBD 5</span></td>
+          <td>«Когда я занимаюсь бизнесом в регионе, я хочу понимать экономическую и политическую повестку, чтобы принимать обоснованные решения»</td>
+          <td>Предприниматели, топ-менеджеры</td>
+          <td><span class="badge red">1/5 — плохо</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="insight blue">★ JTBD 1 — главная незакрытая возможность рынка. Ни один ивановский сайт не предлагает качественный агрегированный дайджест. ivanovo.online с AI-сводкой может стать первым.</div>
+  </div>
+
+  <div class="block">
+    <h3>Персона 1 — Михаил, 42 года, менеджер среднего звена</h3>
+    <div class="persona">
+      <div class="persona-header">
+        <div class="persona-avatar blue">👔</div>
+        <div>
+          <div class="persona-name">Михаил Сергеев, 42</div>
+          <div class="persona-sub">Руководитель отдела · Иваново · Смартфон Samsung · Доход ~80 тыс. ₽/мес</div>
+        </div>
+      </div>
+      <p style="font-size:13px;color:#475569;margin-bottom:10px">Работает в производственной компании, утром в машине слушает новости, в обед просматривает сайты с телефона. Следит за городской политикой, ценами, дорогами.</p>
+      <div class="persona-pains">
+        😤 <strong>Боль 1:</strong> Открывает 3–4 разных сайта чтобы собрать картину дня — занимает 20–30 минут<br>
+        😤 <strong>Боль 2:</strong> Новости дублируются — одна и та же история на 5 сайтах с разными заголовками<br>
+        😤 <strong>Боль 3:</strong> Агрессивная реклама и всплывающие баннеры — закрывает сайт с раздражением
+      </div>
+      <div class="persona-jtbd">«Когда я утром собираюсь на работу, я хочу за 3 минуты понять главное в регионе, чтобы приехать в офис информированным человеком»</div>
+      <div class="quiz-block">
+        <div class="quiz-q" onclick="toggleQuiz(this)">Вопрос 1: Как выглядит ваша утренняя рутина с новостями? <span>▼</span></div>
+        <div class="quiz-a">«Открываю телефон — сначала Telegram, там пара ивановских каналов. Потом если есть 5 минут — захожу на kstati или ivanovonews. Честно, чаще всего не успеваю дочитать — уже надо ехать.»<div class="quiz-diagnosis">Диагноз: JTBD 1 — нет единой точки сборки информации. Боль: время дефицитно.</div></div>
+      </div>
+      <div class="quiz-block">
+        <div class="quiz-q" onclick="toggleQuiz(this)">Вопрос 2: Что раздражает сильнее всего? <span>▼</span></div>
+        <div class="quiz-a">«Когда открываешь новость — а там три абзаца воды и рекламный баннер на пол-экрана. Или одна и та же история — на трёх сайтах. Зачем мне читать это три раза?»<div class="quiz-diagnosis">Диагноз: дедупликация + AI-рерайт = прямое решение боли. Инсайт: качество контента важнее количества.</div></div>
+      </div>
+      <div class="quiz-block">
+        <div class="quiz-q" onclick="toggleQuiz(this)">Вопрос 3: Платили бы вы за новости без рекламы? <span>▼</span></div>
+        <div class="quiz-a">«Наверное нет... ну если бы это было как Яндекс Плюс, то есть часть большой подписки — может быть. Отдельно за новости — вряд ли, не та ценность.»<div class="quiz-diagnosis">Инсайт: платная подписка работает только как часть пакета или при очень высокой уникальности контента. Приоритет — рекламная модель.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Персона 2 — Елена, 34 года, учительница</h3>
+    <div class="persona">
+      <div class="persona-header">
+        <div class="persona-avatar green">👩‍🏫</div>
+        <div>
+          <div class="persona-name">Елена Морозова, 34</div>
+          <div class="persona-sub">Учительница · Шуя, Ивановская область · iPhone · Доход ~45 тыс. ₽/мес</div>
+        </div>
+      </div>
+      <p style="font-size:13px;color:#475569;margin-bottom:10px">Живёт в районном городе, интересуется региональной политикой и образованием. Активна в родительских чатах, делится новостями. Важен мобильный опыт.</p>
+      <div class="persona-pains">
+        😤 <strong>Боль 1:</strong> Новости о районных событиях практически нигде нет — всё про Иваново<br>
+        😤 <strong>Боль 2:</strong> Не доверяет провластным изданиям, хочет несколько точек зрения<br>
+        😤 <strong>Боль 3:</strong> Сайты медленно грузятся на мобильном, особенно в 3G-зонах
+      </div>
+      <div class="persona-jtbd">«Когда я хочу понять, что происходит в моём районе, я хочу найти новость за 30 секунд, чтобы сразу переслать в родительский чат»</div>
+      <div class="quiz-block">
+        <div class="quiz-q" onclick="toggleQuiz(this)">Вопрос 3: Что вы делаете, когда нет нужной новости на ивановских сайтах? <span>▼</span></div>
+        <div class="quiz-a">«Пишу в Telegram-чаты — там быстрее узнаёшь. Но там нет ссылок, нет нормального контекста. Иногда звоню знакомым в администрации.»<div class="quiz-diagnosis">Инсайт: Telegram — конкурент для срочных новостей, не для аналитики. Возможность: районная рубрикация + агрегация по всей области.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Персона 3 — Артём, 28 лет, предприниматель</h3>
+    <div class="persona">
+      <div class="persona-header">
+        <div class="persona-avatar orange">🧑‍💼</div>
+        <div>
+          <div class="persona-name">Артём Козлов, 28</div>
+          <div class="persona-sub">Владелец кафе · Иваново · iPhone Pro · Доход ~150 тыс. ₽/мес</div>
+        </div>
+      </div>
+      <div class="persona-pains">
+        😤 <strong>Боль 1:</strong> Нет агрегированной информации об изменениях в законах, налогах, проверках<br>
+        😤 <strong>Боль 2:</strong> Региональные новости для бизнеса разбросаны по разным изданиям<br>
+        😤 <strong>Боль 3:</strong> Слишком много «жёлтого» контента — отвлекает от важного
+      </div>
+      <div class="persona-jtbd">«Когда меняется что-то важное для моего бизнеса (налоги, проверки, разрешения), я хочу узнать об этом до, а не после того, как это случится»</div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Персона 4 — Валентина, 58 лет, пенсионерка</h3>
+    <div class="persona">
+      <div class="persona-header">
+        <div class="persona-avatar purple">👵</div>
+        <div>
+          <div class="persona-name">Валентина Иванова, 58</div>
+          <div class="persona-sub">Пенсионерка · Иваново · Android (бюджетный) · Активный читатель</div>
+        </div>
+      </div>
+      <div class="persona-pains">
+        😤 <strong>Боль 1:</strong> Сайты неудобны на маленьком экране — мелкий шрифт, неудобная навигация<br>
+        😤 <strong>Боль 2:</strong> Всплывающая реклама пугает, не понимает как закрыть<br>
+        😤 <strong>Боль 3:</strong> Сложно понять, какой источник правдивый
+      </div>
+      <div class="persona-jtbd">«Когда я читаю новости, я хочу понять что правда, а что ложь, чтобы не попасть в неловкую ситуацию рассказав чушь знакомым»</div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Персона 5 — Никита, 22 года, студент</h3>
+    <div class="persona">
+      <div class="persona-header">
+        <div class="persona-avatar red">🎓</div>
+        <div>
+          <div class="persona-name">Никита Смирнов, 22</div>
+          <div class="persona-sub">Студент ИГХТУ · Иваново · iPhone · Минимальный бюджет</div>
+        </div>
+      </div>
+      <div class="persona-pains">
+        😤 <strong>Боль 1:</strong> Традиционные новостные сайты выглядят устаревшими и скучными<br>
+        😤 <strong>Боль 2:</strong> Не следит за региональными новостями системно — случайно натыкается<br>
+        😤 <strong>Боль 3:</strong> Хочет коротко — длинные тексты не читает
+      </div>
+      <div class="persona-jtbd">«Когда что-то происходит в городе, я хочу быстро понять суть в 2–3 предложениях, чтобы быть в теме разговора с друзьями»</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: КОНКУРЕНТЫ -->
+<!-- ============================================================ -->
+<div id="section-competitors" class="section">
+  <div class="page-title">Конкуренты</div>
+  <div class="page-sub">Финансовая карта рынка, эшелоны игроков, матрица JTBD</div>
+
+  <div class="block">
+    <h3>Финансовая карта: ивановские новостные сайты</h3>
+    <table class="tbl">
+      <thead><tr><th>Сайт</th><th>Трафик/мес (ноябрь 2024)</th><th>Динамика</th><th>Монетизация</th><th>Слабость</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>i3vestno.ru</strong><br><span style="font-size:11px;color:#64748B">Известно.ру</span></td>
+          <td>~164 тыс. визитов</td>
+          <td><span class="badge green">Лидер</span></td>
+          <td>РСЯ, нативка</td>
+          <td>Нет агрегации, только своя редакция</td>
+        </tr>
+        <tr>
+          <td><strong>newsivanovo.ru</strong><br><span style="font-size:11px;color:#64748B">IvanovoNews</span></td>
+          <td>~159 тыс. визитов</td>
+          <td><span class="badge blue">Стабильный</span></td>
+          <td>РСЯ, баннеры</td>
+          <td>Перегруженный интерфейс, устаревший дизайн</td>
+        </tr>
+        <tr>
+          <td><strong>ivanovolive.ru</strong><br><span style="font-size:11px;color:#64748B">Иваново LIVE</span></td>
+          <td>~123 тыс. визитов</td>
+          <td><span class="badge blue">Стабильный</span></td>
+          <td>РСЯ</td>
+          <td>Авторский проект, непредсказуемый выход контента</td>
+        </tr>
+        <tr>
+          <td><strong>kstati.news</strong><br><span style="font-size:11px;color:#64748B">Кстати.NEWS</span></td>
+          <td>~93 тыс. визитов</td>
+          <td><span class="badge orange">Отстаёт</span></td>
+          <td>РСЯ, нативка</td>
+          <td>Технический долг (Bitrix, Win-1251), низкая скорость</td>
+        </tr>
+        <tr>
+          <td><strong>ivanovo.aif.ru</strong><br><span style="font-size:11px;color:#64748B">АиФ-Иваново</span></td>
+          <td>Часть федерального домена</td>
+          <td><span class="badge purple">Федеральный</span></td>
+          <td>Федеральная реклама</td>
+          <td>Мало региональной специфики, редакция в Москве</td>
+        </tr>
+        <tr>
+          <td><strong>ivanovo.online</strong><br><span style="font-size:11px;color:#64748B">Наш продукт</span></td>
+          <td>Запуск 2026</td>
+          <td><span class="badge gray">Новичок</span></td>
+          <td>В разработке</td>
+          <td>Нет аудитории пока, нет SEO-авторитета</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="source-ref">Источник: Similarweb данные ноября 2024, упоминается в рейтинге ivanovonews.ru от января 2025</div>
+  </div>
+
+  <div class="block">
+    <h3>Матрица JTBD × Конкурент</h3>
+    <table class="tbl">
+      <thead><tr><th>Job</th><th>i3vestno</th><th>newsivanovo</th><th>ivanovolive</th><th>kstati.news</th><th>ivanovo.online (цель)</th></tr></thead>
+      <tbody>
+        <tr><td>JTBD 1: Утренний дайджест за 2 мин</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td><span class="badge green">✅ AI-сводка</span></td></tr>
+        <tr><td>JTBD 2: Срочные новости первым</td><td>⚠️</td><td>⚠️</td><td>⚠️</td><td>⚠️</td><td><span class="badge blue">WebSocket RT</span></td></tr>
+        <tr><td>JTBD 3: Несколько точек зрения</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td><span class="badge green">✅ Агрегация 15+ СМИ</span></td></tr>
+        <tr><td>JTBD 4: Быстро найти местное событие</td><td>⚠️</td><td>✅</td><td>⚠️</td><td>⚠️</td><td><span class="badge blue">Разделы + поиск</span></td></tr>
+        <tr><td>JTBD 5: Бизнес-повестка региона</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td><span class="badge orange">Планируется</span></td></tr>
+      </tbody>
+    </table>
+    <div class="insight green">✅ JTBD 1 и JTBD 3 — абсолютно свободные ниши на рынке. Ни один конкурент не предлагает агрегированный дайджест с AI-обработкой и несколькими источниками. Это главное стратегическое окно.</div>
+  </div>
+
+  <div class="block">
+    <h3>Стратегический гэп конкурентов</h3>
+    <div class="cards">
+      <div class="card red">
+        <div class="card-icon">🐌</div>
+        <div class="card-val">Технический долг</div>
+        <div class="card-label">kstati.news работает на Bitrix с кодировкой Windows-1251. Медленная загрузка = плохие Core Web Vitals = потеря позиций в Google.</div>
+      </div>
+      <div class="card orange">
+        <div class="card-icon">🔗</div>
+        <div class="card-val">Отсутствие агрегации</div>
+        <div class="card-label">Все конкуренты — редакционные СМИ. Никто не агрегирует 15+ источников. Это не конкурентный вызов — это пустая ниша.</div>
+      </div>
+      <div class="card blue">
+        <div class="card-icon">🤖</div>
+        <div class="card-val">Нет AI-фич</div>
+        <div class="card-label">Ни один конкурент не использует AI для дедупликации, рерайта или генерации дайджестов. ivanovo.online уже имеет эту инфраструктуру.</div>
+      </div>
+      <div class="card purple">
+        <div class="card-icon">📊</div>
+        <div class="card-val">Слабый SEO</div>
+        <div class="card-label">Региональные конкуренты не оптимизированы под AI-поисковики (llms.txt, Schema.org). Первопроходец получит преимущество на 12–18 мес.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: ПРОДУКТ СЕГОДНЯ -->
+<!-- ============================================================ -->
+<div id="section-asis" class="section">
+  <div class="page-title">Продукт сегодня (as-is)</div>
+  <div class="page-sub">Сильные стороны, технический аудит, заготовка для касдева</div>
+
+  <div class="block">
+    <h3>Что уже есть и работает</h3>
+    <div class="cards">
+      <div class="card green">
+        <div class="card-icon">⚡</div>
+        <div class="card-val">Nuxt 3 + SSR</div>
+        <div class="card-label">Современный стек. Server-Side Rendering из коробки — критично для SEO и скорости загрузки</div>
+      </div>
+      <div class="card green">
+        <div class="card-icon">🤖</div>
+        <div class="card-val">AI-редакция</div>
+        <div class="card-label">Встроены: рерайт, фактчек, генерация обложек, обзорные материалы (OpenAI / z.ai). Конкуренты этого не имеют.</div>
+      </div>
+      <div class="card green">
+        <div class="card-icon">📡</div>
+        <div class="card-val">RSS + Sitemap</div>
+        <div class="card-label">Автоматический импорт из 15+ источников каждые 15 минут. Bull + Redis для надёжных очередей.</div>
+      </div>
+      <div class="card green">
+        <div class="card-icon">🔴</div>
+        <div class="card-val">Real-time</div>
+        <div class="card-label">WebSocket (Socket.io): новости появляются у читателей мгновенно после публикации без перезагрузки страницы.</div>
+      </div>
+      <div class="card green">
+        <div class="card-icon">🛡️</div>
+        <div class="card-val">Правовая защита</div>
+        <div class="card-label">SourceUsageRule + юридический фактчек перед публикацией. Защита от нарушения авторских прав источников.</div>
+      </div>
+      <div class="card green">
+        <div class="card-icon">👥</div>
+        <div class="card-val">RBAC</div>
+        <div class="card-label">Гибкие роли и права: можно нанять редактора с ограниченным доступом без риска для всей системы.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>SEO-аудит (состояние на март 2026)</h3>
+    <table class="tbl">
+      <thead><tr><th>Параметр</th><th>Сейчас</th><th>Цель</th><th>Приоритет</th></tr></thead>
+      <tbody>
+        <tr><td>SEO Health Score</td><td><span class="badge red">52/100</span></td><td>85/100</td><td><span class="badge red">Критично</span></td></tr>
+        <tr><td>robots.txt</td><td>❌ Отсутствует</td><td>✅ Настроен + AI-боты</td><td><span class="badge red">День 1</span></td></tr>
+        <tr><td>XML Sitemap (динамический)</td><td>❌ Отсутствует</td><td>✅ Sitemap + News Sitemap</td><td><span class="badge red">День 2–3</span></td></tr>
+        <tr><td>Security Headers</td><td>❌ Не настроены</td><td>✅ HSTS, CSP, XSS</td><td><span class="badge orange">Неделя 1</span></td></tr>
+        <tr><td>SSR Meta Tags + OG</td><td>⚠️ Частично</td><td>✅ На всех типах страниц</td><td><span class="badge orange">Неделя 1–2</span></td></tr>
+        <tr><td>Schema.org NewsArticle</td><td>❌ Отсутствует</td><td>✅ JSON-LD на каждой новости</td><td><span class="badge orange">Неделя 3</span></td></tr>
+        <tr><td>llms.txt (AI-оптимизация)</td><td>❌ Отсутствует</td><td>✅ Создан</td><td><span class="badge blue">Месяц 1</span></td></tr>
+        <tr><td>Авторы + E-E-A-T сигналы</td><td>❌ Нет</td><td>✅ Профили авторов</td><td><span class="badge blue">Месяц 1–2</span></td></tr>
+        <tr><td>Google News подача</td><td>❌ Нет</td><td>✅ Одобрено</td><td><span class="badge blue">Месяц 3</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h3>★ Блок касдева — личные наблюдения <span class="badge gray">Заполнить позже</span></h3>
+    <div class="insight yellow">Этот блок заполняется когда вы проведёте тестирование продукта. Пришлите наблюдения — я сразу интегрирую их в стратегию.</div>
+    <table class="tbl">
+      <thead><tr><th>Тема</th><th>Наблюдение</th><th>Диагноз</th></tr></thead>
+      <tbody>
+        <tr><td>Первое впечатление / дизайн</td><td style="color:#94A3B8;font-style:italic">— добавьте наблюдение —</td><td>—</td></tr>
+        <tr><td>Онбординг читателя</td><td style="color:#94A3B8;font-style:italic">— добавьте наблюдение —</td><td>—</td></tr>
+        <tr><td>Скорость загрузки</td><td style="color:#94A3B8;font-style:italic">— добавьте наблюдение —</td><td>—</td></tr>
+        <tr><td>Мобильный опыт</td><td style="color:#94A3B8;font-style:italic">— добавьте наблюдение —</td><td>—</td></tr>
+        <tr><td>Качество контента (AI-рерайт)</td><td style="color:#94A3B8;font-style:italic">— добавьте наблюдение —</td><td>—</td></tr>
+        <tr><td>Админ-панель (удобство редактора)</td><td style="color:#94A3B8;font-style:italic">— добавьте наблюдение —</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 5: ВИДЕНИЕ -->
+<!-- ============================================================ -->
+<div id="section-vision" class="section">
+  <div class="page-title">Видение и ставка</div>
+  <div class="page-sub">Главный тезис, концепция, доказательства рынка</div>
+
+  <div class="highlight-box">
+    <h2>Ставка: ivanovo.online — единая точка входа в повестку Ивановской области</h2>
+    <p>Пока все конкуренты соревнуются за то, чтобы <span class="accent">создавать</span> новости, ivanovo.online <span class="accent">агрегирует</span> их из 15+ источников, дедуплицирует с помощью AI и предоставляет читателю полную картину событий за 2 минуты. Это не редакция — это <span class="accent">инфраструктура регионального медиапространства</span>.</p>
+  </div>
+
+  <div class="block">
+    <h3>Концепция продукта — путь читателя</h3>
+    <div style="display:flex;gap:0;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+      <div style="background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:12px 16px;text-align:center;flex:1;min-width:100px">
+        <div style="font-size:20px">📰</div>
+        <div style="font-size:12px;font-weight:700;color:#1E40AF;margin-top:4px">15+ источников</div>
+        <div style="font-size:11px;color:#64748B">RSS каждые 15 мин</div>
+      </div>
+      <div style="color:#94A3B8;padding:0 8px;font-size:18px">→</div>
+      <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:12px 16px;text-align:center;flex:1;min-width:100px">
+        <div style="font-size:20px">🤖</div>
+        <div style="font-size:12px;font-weight:700;color:#065F46;margin-top:4px">AI-обработка</div>
+        <div style="font-size:11px;color:#64748B">Дедупликация + рерайт</div>
+      </div>
+      <div style="color:#94A3B8;padding:0 8px;font-size:18px">→</div>
+      <div style="background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:12px 16px;text-align:center;flex:1;min-width:100px">
+        <div style="font-size:20px">✍️</div>
+        <div style="font-size:12px;font-weight:700;color:#92400E;margin-top:4px">Модерация</div>
+        <div style="font-size:11px;color:#64748B">Редактор проверяет</div>
+      </div>
+      <div style="color:#94A3B8;padding:0 8px;font-size:18px">→</div>
+      <div style="background:#F5F3FF;border:1px solid #DDD6FE;border-radius:8px;padding:12px 16px;text-align:center;flex:1;min-width:100px">
+        <div style="font-size:20px">⚡</div>
+        <div style="font-size:12px;font-weight:700;color:#5B21B6;margin-top:4px">Публикация RT</div>
+        <div style="font-size:11px;color:#64748B">WebSocket мгновенно</div>
+      </div>
+      <div style="color:#94A3B8;padding:0 8px;font-size:18px">→</div>
+      <div style="background:#FFF1F2;border:1px solid #FECDD3;border-radius:8px;padding:12px 16px;text-align:center;flex:1;min-width:100px">
+        <div style="font-size:20px">👤</div>
+        <div style="font-size:12px;font-weight:700;color:#9F1239;margin-top:4px">Читатель</div>
+        <div style="font-size:11px;color:#64748B">Полная картина дня</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Доказательства рынка — почему это работает</h3>
+    <table class="tbl">
+      <thead><tr><th>Аргумент</th><th>Данные</th></tr></thead>
+      <tbody>
+        <tr><td>Фрагментированный рынок без лидера</td><td>Топ-4 сайта: 164K, 159K, 123K, 93K визитов — почти равный уровень. Нет доминирующего игрока с 50%+ долей.</td></tr>
+        <tr><td>Незакрытый JTBD 1 (агрегированный дайджест)</td><td>Ни один конкурент не предлагает агрегацию 15+ источников с дедупликацией — подтверждено матрицей JTBD.</td></tr>
+        <tr><td>AI-инфраструктура уже готова</td><td>ivanovo.online уже имеет AI-рерайт, фактчек, дедупликацию, обложки. Конкуренты — нет. Time-to-market 0.</td></tr>
+        <tr><td>Рост digital-рекламы в регионах</td><td>Региональный рынок +1–2% г/г (АКАР 2025). Малый бизнес переходит в digital: бюджеты от 30–300K ₽/мес.</td></tr>
+        <tr><td>SEO-вакуум в нише</td><td>Ни один конкурент не внедрил llms.txt и NewsArticle Schema. Первый занимает нишу в AI-поиске.</td></tr>
+        <tr><td>Модель агрегации снижает затраты</td><td>Нет собственных корреспондентов = меньше ФОТ. AI снижает расходы на редактуру на 30–50%.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h3>Дифференциатор vs конкурентов</h3>
+    <div class="insight green">
+      <strong>Гейм-чейнджер:</strong> AI-дайджест дня — автоматически генерируемая сводка из 15+ источников, которую читатель получает за 2 минуты. Это незакрытый JTBD 1, которого нет ни у одного конкурента. Технически возможен уже сейчас через функцию <code>generate-overview</code> в AI-сервисе продукта.
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 6: ФОКУСЫ -->
+<!-- ============================================================ -->
+<div id="section-focus" class="section">
+  <div class="page-title">Стратегические фокусы</div>
+  <div class="page-sub">Три фазы на 6 месяцев: быстрые победы → рост → масштаб</div>
+
+  <div class="block">
+    <h3>Этап 1 (Месяцы 1–2): Технический фундамент и SEO-старт</h3>
+    <div class="focus-grid">
+      <div class="focus-card red">
+        <div class="phase">Этап 1 · Срочно</div>
+        <h4>SEO-критические исправления</h4>
+        <p>robots.txt, sitemap.xml, security headers, SSR meta tags, canonical URLs. Без этого органический трафик не придёт.</p>
+        <div class="effect">📈 Цель: SEO Health Score 52 → 70+</div>
+      </div>
+      <div class="focus-card red">
+        <div class="phase">Этап 1 · Срочно</div>
+        <h4>Schema.org + llms.txt</h4>
+        <p>NewsArticle, Organization, BreadcrumbList JSON-LD на всех страницах. llms.txt для AI-поисковиков. Первый в регионе.</p>
+        <div class="effect">🔍 Видимость в Яндекс Нейро и AI-поиске</div>
+      </div>
+      <div class="focus-card red">
+        <div class="phase">Этап 1 · Важно</div>
+        <h4>Подключение источников (15+)</h4>
+        <p>Активировать RSS всех доступных ивановских СМИ. Настроить SourceUsageRule для юридической чистоты. Запустить регулярный опрос каждые 15 мин.</p>
+        <div class="effect">📰 50–100 новостей/день в базе</div>
+      </div>
+      <div class="focus-card red">
+        <div class="phase">Этап 1 · Важно</div>
+        <h4>Авторы и E-E-A-T</h4>
+        <p>Добавить таблицу Authors в БД. Создать профили редакторов с фото и bio. Страница «О проекте» с редакционной политикой.</p>
+        <div class="effect">🏆 Доверие Google и читателей</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Этап 2 (Месяцы 3–4): Рост аудитории и первая монетизация</h3>
+    <div class="focus-grid">
+      <div class="focus-card orange">
+        <div class="phase">Этап 2 · Рост</div>
+        <h4>AI-дайджест дня</h4>
+        <p>Автоматическая утренняя сводка из топ-10 новостей за ночь + день. Использовать функцию generate-overview. Публиковать как отдельный материал.</p>
+        <div class="effect">⭐ Закрывает JTBD 1 — главный незакрытый job</div>
+      </div>
+      <div class="focus-card orange">
+        <div class="phase">Этап 2 · Рост</div>
+        <h4>Подключение к Яндекс.Новостям</h4>
+        <p>Подать заявку на партнёрство. Требования: RSS, уникальные URL, авторство, контакты — всё уже будет готово к этому моменту.</p>
+        <div class="effect">🚀 +30–50% органического трафика бесплатно</div>
+      </div>
+      <div class="focus-card orange">
+        <div class="phase">Этап 2 · Монетизация</div>
+        <h4>Запуск РСЯ + нативная реклама</h4>
+        <p>Подключить Рекламную сеть Яндекса. Параллельно начать прямые переговоры с 3–5 локальными рекламодателями на нативные материалы.</p>
+        <div class="effect">💰 Первые 20–80K ₽/мес дохода</div>
+      </div>
+      <div class="focus-card orange">
+        <div class="phase">Этап 2 · Рост</div>
+        <h4>Google News + мобильная оптимизация</h4>
+        <p>Подать заявку в Google News. Core Web Vitals в зелёной зоне: LCP, CLS, FID. Мобильный опыт — приоритет (77% аудитории).</p>
+        <div class="effect">📱 Индексация + мобильный трафик</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Этап 3 (Месяцы 5–6): Масштаб и партнёрства с источниками</h3>
+    <div class="focus-grid">
+      <div class="focus-card purple">
+        <div class="phase">Этап 3 · Масштаб</div>
+        <h4>Revenue Share с источниками</h4>
+        <p>Предложить 3–5 ключевым источникам (i3vestno, 168.ru, NEWS1) партнёрский договор с долей от рекламного дохода. Официальная легитимизация контента.</p>
+        <div class="effect">🤝 Юридическая защита + лояльность СМИ</div>
+      </div>
+      <div class="focus-card purple">
+        <div class="phase">Этап 3 · Масштаб</div>
+        <h4>Telegram-канал + автопостинг</h4>
+        <p>Запустить канал с автоматическим постингом топ-новостей через бота. Telegram — конкурент за внимание, лучше сделать его союзником.</p>
+        <div class="effect">📡 Дополнительный канал дистрибуции</div>
+      </div>
+      <div class="focus-card purple">
+        <div class="phase">Этап 3 · Масштаб</div>
+        <h4>Аналитика и оптимизация монетизации</h4>
+        <p>Настроить Яндекс.Метрику, отслеживать CTR рекламных блоков, RPM. A/B тестировать позиционирование рекламы. Цель: RPM >80 ₽.</p>
+        <div class="effect">💎 Рост ARPU без роста трафика</div>
+      </div>
+      <div class="focus-card purple">
+        <div class="phase">Этап 3 · Масштаб</div>
+        <h4>Бизнес-рубрика и B2B-контент</h4>
+        <p>Запустить отдельную рубрику «Экономика и бизнес» — закрыть JTBD 5. Нативные материалы для бизнеса по цене выше стандартной рекламы.</p>
+        <div class="effect">🏢 Премиум-рекламодатели, ARPU ×2</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 7: ДОРОЖНАЯ КАРТА -->
+<!-- ============================================================ -->
+<div id="section-roadmap" class="section">
+  <div class="page-title">Дорожная карта 6 месяцев</div>
+  <div class="page-sub">Апрель — Сентябрь 2026 · Детализация по месяцам</div>
+
+  <div class="block">
+    <div class="roadmap">
+      <div class="roadmap-item">
+        <div class="roadmap-period">Месяц 1 · Апрель 2026</div>
+        <div class="roadmap-title">SEO-фундамент: robots.txt, sitemap, meta tags</div>
+        <div class="roadmap-desc">Исправить все критические SEO-проблемы из SEO-плана (фаза 1). Настроить robots.txt с разрешениями для AI-ботов. Динамический sitemap.xml + News Sitemap. SSR meta tags на всех страницах. Security headers в nginx.</div>
+        <div class="roadmap-kpi">KPI: SEO Health Score ≥ 65 · Google Search Console подключён · Все страницы индексируются</div>
+      </div>
+      <div class="roadmap-item">
+        <div class="roadmap-period">Месяц 1 · Апрель 2026</div>
+        <div class="roadmap-title">Источники: подключить 10+ RSS-лент</div>
+        <div class="roadmap-desc">Активировать RSS: i3vestno.ru, 168.ru, NEWS1, ivanovolive.ru, ГТРК Ивтелерадио, АиФ-Иваново, kstati.news, Рабочий край. Настроить SourceFilter и SourceUsageRule для каждого. Запустить очереди Bull.</div>
+        <div class="roadmap-kpi">KPI: 10+ активных источников · 50+ новостей/день · 0 юридических нарушений</div>
+      </div>
+      <div class="roadmap-item orange">
+        <div class="roadmap-period">Месяц 2 · Май 2026</div>
+        <div class="roadmap-title">Schema.org + llms.txt + Авторы</div>
+        <div class="roadmap-desc">JSON-LD разметка: NewsArticle, Organization, BreadcrumbList, WebSite+Search на всех типах страниц. Создать /llms.txt. Добавить таблицу Author, профили редакторов, страницу «О проекте» с редполитикой.</div>
+        <div class="roadmap-kpi">KPI: Rich Results в Google · E-E-A-T сигналы · llms.txt доступен по URL</div>
+      </div>
+      <div class="roadmap-item orange">
+        <div class="roadmap-period">Месяц 2 · Май 2026</div>
+        <div class="roadmap-title">AI-дайджест дня — первый в регионе</div>
+        <div class="roadmap-desc">Автоматическая утренняя сводка (7:00) из топ-10 новостей через generate-overview. Публикуется как отдельный материал с рубрикой «Дайджест». Закрывает JTBD 1 — незакрытый job всех конкурентов.</div>
+        <div class="roadmap-kpi">KPI: ежедневная публикация · время чтения <2 мин · возврат читателей +15%</div>
+      </div>
+      <div class="roadmap-item orange">
+        <div class="roadmap-period">Месяц 3 · Июнь 2026</div>
+        <div class="roadmap-title">Яндекс.Новости + первые доходы</div>
+        <div class="roadmap-desc">Подать заявку на партнёрство с Яндекс.Новостями. Подключить РСЯ на публичный сайт. Начать переговоры с 3 локальными рекламодателями о нативной рекламе. Подать заявку в Google News.</div>
+        <div class="roadmap-kpi">KPI: заявка подана · РСЯ работает · первый контракт на нативку · доход ≥10K ₽/мес</div>
+      </div>
+      <div class="roadmap-item orange">
+        <div class="roadmap-period">Месяц 3–4 · Июнь-Июль 2026</div>
+        <div class="roadmap-title">Core Web Vitals + мобильная оптимизация</div>
+        <div class="roadmap-desc">Preload критических изображений, font-display:swap, фиксированные размеры изображений (CLS), оптимизация TTFB через кэширование. Цель: LCP <2.5с, CLS <0.1.</div>
+        <div class="roadmap-kpi">KPI: PageSpeed Mobile ≥ 70 · CWV в зелёной зоне в Google Search Console</div>
+      </div>
+      <div class="roadmap-item purple">
+        <div class="roadmap-period">Месяц 4–5 · Июль-Август 2026</div>
+        <div class="roadmap-title">Партнёрства с источниками: Revenue Share</div>
+        <div class="roadmap-desc">Провести переговоры с i3vestno.ru, 168.ru, NEWS1. Предложить модель: «ваши новости — наш трафик — доля дохода». Цель: 3+ официальных соглашения. Шаблоны договоров из CONTENT-STRATEGY.md.</div>
+        <div class="roadmap-kpi">KPI: 3+ партнёрских соглашения · легитимный полный контент · снижение юридических рисков</div>
+      </div>
+      <div class="roadmap-item purple">
+        <div class="roadmap-period">Месяц 5 · Август 2026</div>
+        <div class="roadmap-title">Telegram-канал и автопостинг</div>
+        <div class="roadmap-desc">Создать Telegram-канал ivanovo.online. Настроить автоматическую публикацию топ-новостей через бот (3–5 постов/день). Кросс-промо между сайтом и каналом.</div>
+        <div class="roadmap-kpi">KPI: канал запущен · 500+ подписчиков за месяц · CTR обратно на сайт ≥ 8%</div>
+      </div>
+      <div class="roadmap-item purple">
+        <div class="roadmap-period">Месяц 6 · Сентябрь 2026</div>
+        <div class="roadmap-title">Аналитика, оптимизация монетизации, бизнес-рубрика</div>
+        <div class="roadmap-desc">Настроить детальную аналитику (Метрика + цели). A/B тест рекламных блоков. Запустить рубрику «Бизнес и экономика» с нативными материалами. Первый квартальный review метрик.</div>
+        <div class="roadmap-kpi">KPI: RPM ≥ 60 ₽ · доход ≥ 50K ₽/мес · бизнес-рубрика с 2+ нативными партнёрами</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 8: МЕТРИКИ -->
+<!-- ============================================================ -->
+<div id="section-metrics" class="section">
+  <div class="page-title">Метрики и успех</div>
+  <div class="page-sub">Целевые показатели на 6 месяцев с бенчмарками</div>
+
+  <div class="block">
+    <h3>Таблица метрик</h3>
+    <table class="tbl">
+      <thead><tr><th>Метрика</th><th>Сейчас (старт)</th><th>Бенчмарк (аналоги)</th><th>Цель 6 мес</th><th>Источник</th></tr></thead>
+      <tbody>
+        <tr><td>Ежемесячный трафик (визиты)</td><td>~0 (запуск)</td><td>kstati.news 93K, newsivanovo 159K</td><td>30–50K визитов</td><td>Similarweb, ноябрь 2024</td></tr>
+        <tr><td>SEO Health Score</td><td>52/100</td><td>Лидеры рынка: 70–85</td><td>≥ 75/100</td><td>SEO-план ivanovo.online</td></tr>
+        <tr><td>Число источников RSS</td><td>0 активных</td><td>—</td><td>15+ источников</td><td>CONTENT-STRATEGY.md</td></tr>
+        <tr><td>Новостей в день</td><td>0</td><td>50–200/день у конкурентов</td><td>80–120 новостей/день</td><td>Экспертная оценка</td></tr>
+        <tr><td>RPM (доход на 1000 показов)</td><td>0 ₽</td><td>РСЯ для новостей: 40–100 ₽</td><td>≥ 60 ₽</td><td>Яндекс, данные паблишеров</td></tr>
+        <tr><td>Доход в месяц</td><td>0 ₽</td><td>При 50K визитов и RPM 60 = 90K ₽</td><td>30–80K ₽/мес к м.6</td><td>Расчётная модель</td></tr>
+        <tr><td>Партнёрские соглашения с СМИ</td><td>0</td><td>—</td><td>3+ договора</td><td>Стратегия контента</td></tr>
+        <tr><td>Google/Яндекс News: подключён</td><td>❌</td><td>Стандарт рынка</td><td>✅ оба к м.4</td><td>SEO-план</td></tr>
+        <tr><td>Core Web Vitals (PageSpeed Mobile)</td><td>Неизвестно</td><td>≥ 70 для новостных сайтов</td><td>≥ 70</td><td>Google PageSpeed</td></tr>
+        <tr><td>Telegram-канал: подписчики</td><td>0</td><td>Ивановские каналы: 1–10K</td><td>500+ к м.6</td><td>Экспертная оценка</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h3>Финансовая модель (простая)</h3>
+    <div class="cards">
+      <div class="card blue">
+        <div class="card-icon">💰</div>
+        <div class="card-val">30–80K ₽</div>
+        <div class="card-label">Прогноз дохода к месяцу 6. РСЯ (~50%) + нативная реклама (~40%) + партнёрства (~10%)</div>
+      </div>
+      <div class="card orange">
+        <div class="card-icon">📉</div>
+        <div class="card-val">-3% сбор</div>
+        <div class="card-label">Новый налог на интернет-рекламу с апреля 2025 уменьшает эффективный RPM. Учтено в расчётах.</div>
+      </div>
+      <div class="card green">
+        <div class="card-icon">⚙️</div>
+        <div class="card-val">~20–30K ₽</div>
+        <div class="card-label">Операционные расходы: хостинг, AI API (OpenAI), 1 редактор part-time. Маржа при 50K+ трафике — положительная.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>Риски и контрмеры</h3>
+    <table class="tbl">
+      <thead><tr><th>Риск</th><th>Вероятность</th><th>Контрмера</th></tr></thead>
+      <tbody>
+        <tr><td>Источники откажут в праве на агрегацию</td><td><span class="badge orange">Средняя</span></td><td>Модель «краткий анонс + ссылка» юридически безопасна без договора. Договоры — дополнительный плюс, не обязательное условие.</td></tr>
+        <tr><td>Яндекс.Новости откажет в партнёрстве</td><td><span class="badge blue">Низкая</span></td><td>Требования стандартные и выполнимы. Бесплатно. Альтернатива: органический SEO-трафик без Яндекса.</td></tr>
+        <tr><td>AI генерирует некачественный рерайт</td><td><span class="badge orange">Средняя</span></td><td>Редактор проверяет перед публикацией. Настроить промпты под региональный стиль. Можно отключить AI и работать в ручном режиме.</td></tr>
+        <tr><td>Демографический спад аудитории региона</td><td><span class="badge green">Контролируемый</span></td><td>Фокус на увеличении доли рынка и ARPU, не абсолютного роста. Охватить диаспору — жителей области, уехавших в Москву.</td></tr>
+        <tr><td>Конкурент запускает агрегацию</td><td><span class="badge blue">Низкая</span></td><td>Технический долг конкурентов (Bitrix, Win-1251) делает быстрое копирование невозможным. Преимущество 12–18 месяцев.</td></tr>
+        <tr><td>Изменения алгоритмов Яндекса/Google</td><td><span class="badge orange">Средняя</span></td><td>Диверсификация трафика: SEO + Яндекс.Новости + Google News + Telegram. Зависимость от одного канала — риск.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION КАСДЕВ -->
+<!-- ============================================================ -->
+<div id="section-casdev" class="section">
+  <div class="page-title">★ Касдев &amp; Наблюдения</div>
+  <div class="page-sub">Первичные данные из тестирования, интервью и анализа отзывов</div>
+
+  <div class="highlight-box">
+    <h2>Этот раздел ждёт ваших данных</h2>
+    <p>Отправьте мне результаты тестирования продукта, наблюдения из интерфейса, или просто расскажите что заметили — я структурирую это в диагнозы и добавлю в стратегию. Пишите в свободной форме.</p>
+  </div>
+
+  <div class="block">
+    <h3>Шаблон: воронка доверия читателя</h3>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:140px;background:#FFF1F2;border:1px solid #FECDD3;border-radius:8px;padding:14px;text-align:center">
+        <div style="font-size:24px">🔍</div>
+        <div style="font-size:12px;font-weight:700;color:#9F1239;margin:6px 0 4px">Поиск/Яндекс</div>
+        <div style="font-size:11px;color:#7F1D1D">Первое касание</div>
+        <div style="font-size:11px;color:#64748B;margin-top:6px">Доверие: <strong>?</strong></div>
+      </div>
+      <div style="flex:1;min-width:140px;background:#FEF3C7;border:1px solid #FDE68A;border-radius:8px;padding:14px;text-align:center">
+        <div style="font-size:24px">🏠</div>
+        <div style="font-size:12px;font-weight:700;color:#92400E;margin:6px 0 4px">Главная страница</div>
+        <div style="font-size:11px;color:#78350F">Первое впечатление</div>
+        <div style="font-size:11px;color:#64748B;margin-top:6px">Доверие: <strong>?</strong></div>
+      </div>
+      <div style="flex:1;min-width:140px;background:#F0FDF4;border:1px solid #BBF7D0;border-radius:8px;padding:14px;text-align:center">
+        <div style="font-size:24px">📰</div>
+        <div style="font-size:12px;font-weight:700;color:#065F46;margin:6px 0 4px">Чтение новости</div>
+        <div style="font-size:11px;color:#064E3B">Ценность контента</div>
+        <div style="font-size:11px;color:#64748B;margin-top:6px">Доверие: <strong>?</strong></div>
+      </div>
+      <div style="flex:1;min-width:140px;background:#EFF6FF;border:1px solid #BFDBFE;border-radius:8px;padding:14px;text-align:center">
+        <div style="font-size:24px">🔗</div>
+        <div style="font-size:12px;font-weight:700;color:#1E40AF;margin:6px 0 4px">Источник</div>
+        <div style="font-size:11px;color:#1E3A8A">Атрибуция СМИ</div>
+        <div style="font-size:11px;color:#64748B;margin-top:6px">Доверие: <strong>?</strong></div>
+      </div>
+      <div style="flex:1;min-width:140px;background:#F5F3FF;border:1px solid #DDD6FE;border-radius:8px;padding:14px;text-align:center">
+        <div style="font-size:24px">🔄</div>
+        <div style="font-size:12px;font-weight:700;color:#5B21B6;margin:6px 0 4px">Возврат</div>
+        <div style="font-size:11px;color:#4C1D95">Стал ли читателем</div>
+        <div style="font-size:11px;color:#64748B;margin-top:6px">Доверие: <strong>?</strong></div>
+      </div>
+    </div>
+    <div class="insight yellow" style="margin-top:14px">Проверьте каждый шаг и сообщите мне оценку доверия (высокое / среднее / критично) — я обновлю документ.</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION AI-КАСДЕВ -->
+<!-- ============================================================ -->
+<div id="section-aicasdev" class="section">
+  <div class="page-title">★★ AI-Касдев</div>
+  <div class="page-sub">Синтетические интервью, анализ отзывов, проверка гипотез</div>
+
+  <div class="block">
+    <h3>Режим 1: Синтетическое интервью</h3>
+    <div class="insight blue">Напишите: <strong>«Проведи интервью с Михаилом»</strong> (или с другой персоной) — и я войду в роль и отвечу от первого лица. В конце дам синтез: топ-3 боли, JTBD, цитаты.</div>
+    <table class="tbl">
+      <thead><tr><th>Персона</th><th>Ключевой JTBD</th><th>Запрос для интервью</th></tr></thead>
+      <tbody>
+        <tr><td>Михаил, 42, менеджер</td><td>Утренний дайджест за 2 мин</td><td>«Проведи интервью с Михаилом»</td></tr>
+        <tr><td>Елена, 34, учительница</td><td>Районные новости + мобайл</td><td>«Проведи интервью с Еленой»</td></tr>
+        <tr><td>Артём, 28, предприниматель</td><td>Бизнес-повестка региона</td><td>«Проведи интервью с Артёмом»</td></tr>
+        <tr><td>Валентина, 58, пенсионерка</td><td>Доверие к источнику</td><td>«Проведи интервью с Валентиной»</td></tr>
+        <tr><td>Никита, 22, студент</td><td>Суть за 2 предложения</td><td>«Проведи интервью с Никитой»</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h3>Режим 2: Анализ отзывов</h3>
+    <div class="insight blue">Вставьте отзывы о конкурентах (из App Store, Яндекс.Картах, соцсетей) — напишите: <strong>«Проанализируй эти отзывы»</strong>. Я кластеризую боли и найду незакрытые JTBD.</div>
+  </div>
+
+  <div class="block">
+    <h3>Режим 3: Проверка гипотез</h3>
+    <div class="insight blue">Сформулируйте гипотезу по шаблону: <br><em>«Мы считаем что [персона] испытывает [проблему]. Если мы сделаем [решение] — они [поведение]. Мы поймём что правы если [метрика].»</em><br>Я проверю на каждой из 5 персон и дам вердикт.</div>
+  </div>
+
+  <div class="block">
+    <h3>AI-симуляция: ответы персон на ключевую гипотезу</h3>
+    <div class="insight yellow">⚠️ Данные ниже помечены тегом [AI-симуляция] — они основаны на профилях персон, а не реальных интервью.</div>
+    <p style="font-size:13px;margin-bottom:12px"><strong>Гипотеза:</strong> Если мы запустим ежедневный AI-дайджест в 7:00 утром — читатели будут возвращаться ежедневно.</p>
+    <table class="tbl">
+      <thead><tr><th>Персона</th><th>Реакция</th><th>Возражение</th><th>Что улучшить</th></tr></thead>
+      <tbody>
+        <tr><td>Михаил, 42</td><td><span class="badge green">✅ Примет</span></td><td>«А там всё главное или только интересное редакции?»</td><td>Показать разнообразие тем, не только политику <span class="badge gray">[AI-симуляция]</span></td></tr>
+        <tr><td>Елена, 34</td><td><span class="badge orange">⚠️ Нейтрально</span></td><td>«А там будут новости моего района или только Иваново?»</td><td>Региональная фильтрация в дайджесте <span class="badge gray">[AI-симуляция]</span></td></tr>
+        <tr><td>Артём, 28</td><td><span class="badge green">✅ Примет</span></td><td>«Там будет экономическая повестка или только общий срез?»</td><td>Тематический дайджест для бизнеса отдельно <span class="badge gray">[AI-симуляция]</span></td></tr>
+        <tr><td>Валентина, 58</td><td><span class="badge orange">⚠️ Нейтрально</span></td><td>«Это пишет компьютер? Можно ли ему доверять?»</td><td>Указывать «Проверено редактором» + источники <span class="badge gray">[AI-симуляция]</span></td></tr>
+        <tr><td>Никита, 22</td><td><span class="badge green">✅ Примет</span></td><td>«Можно получать это в Telegram, а не заходить на сайт?»</td><td>Telegram-версия дайджеста — приоритет <span class="badge gray">[AI-симуляция]</span></td></tr>
+      </tbody>
+    </table>
+    <div class="insight green">Вердикт [AI-симуляция]: гипотеза работает для 3/5 персон немедленно. Главный барьер для остальных — доверие к AI и географическая фильтрация. Рекомендация: добавить пометку «проверено редактором» и региональный фильтр в дайджест.</div>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION A: AI-ИГРОКИ -->
+<!-- ============================================================ -->
+<div id="section-ainew" class="section">
+  <div class="page-title">A. AI-игроки и медиатренды</div>
+  <div class="page-sub">Что происходит с новостными медиа под давлением AI, и как это использовать</div>
+
+  <div class="block">
+    <h3>Глобальные AI-игроки в новостном пространстве</h3>
+    <table class="tbl">
+      <thead><tr><th>Игрок</th><th>Модель</th><th>Угроза/возможность</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Яндекс Нейро</strong></td><td>AI-поиск с цитированием источников</td><td>⚠️ Угроза: забирает трафик. ✅ Возможность: правильная Schema.org делает ivanovo.online источником для цитирования.</td></tr>
+        <tr><td><strong>Perplexity AI</strong></td><td>AI-агрегатор новостей глобально</td><td>✅ Возможность: структурированный контент с llms.txt попадает в ответы Perplexity.</td></tr>
+        <tr><td><strong>Telegram AI-боты</strong></td><td>Пересказ новостей в мессенджере</td><td>⚠️ Угроза: читатели получают суть без перехода на сайт. Контрмера: собственный Telegram-канал.</td></tr>
+        <tr><td><strong>Яндекс Дзен / Новости</strong></td><td>Агрегатор и рекомендательная лента</td><td>✅ Возможность: партнёрство даёт +30–50% трафика бесплатно. Стандартный инструмент рынка.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <h3>Формула роста для регионального новостного сайта</h3>
+    <div class="focus-grid">
+      <div class="focus-card blue" style="background:linear-gradient(135deg,#3B82F6,#2563EB)">
+        <div class="phase">Паттерн 1</div>
+        <h4>Один суперсильный job</h4>
+        <p>Лучшие растущие медиа закрывают один job идеально, а не много jobs посредственно. Для нас: JTBD 1 — утренний дайджест. Всё остальное — сопутствующее.</p>
+      </div>
+      <div class="focus-card blue" style="background:linear-gradient(135deg,#10B981,#059669)">
+        <div class="phase">Паттерн 2</div>
+        <h4>SEO → Яндекс.Новости → прямые заходы</h4>
+        <p>Классическая воронка роста регионального СМИ: сначала органика, потом агрегаторы, потом лояльная аудитория которая заходит напрямую.</p>
+      </div>
+      <div class="focus-card blue" style="background:linear-gradient(135deg,#8B5CF6,#7C3AED)">
+        <div class="phase">Паттерн 3</div>
+        <h4>AI снижает себестоимость контента</h4>
+        <p>AI-рерайт + дедупликация = один редактор обрабатывает в 5× больше материала. Экономия идёт в маркетинг и развитие.</p>
+      </div>
+      <div class="focus-card blue" style="background:linear-gradient(135deg,#F59E0B,#D97706)">
+        <div class="phase">Паттерн 4</div>
+        <h4>Telegram как канал дистрибуции</h4>
+        <p>Успешные региональные медиа 2024–2025 строят Telegram параллельно с сайтом. Канал кормит сайт трафиком и строит прямую аудиторию.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3>GEO-оптимизация (Generative Engine Optimization)</h3>
+    <div class="insight blue">
+      <strong>Новый тренд 2025–2026:</strong> AI-поисковики (Яндекс Нейро, Perplexity, ChatGPT Search) цитируют источники в ответах. Региональные СМИ, которые первыми внедрят правильную структуру, будут цитироваться в AI-ответах на запросы об Ивановской области. Это бесплатный брендинг и трафик.
+    </div>
+    <table class="tbl">
+      <thead><tr><th>Действие</th><th>Эффект</th><th>Срок</th></tr></thead>
+      <tbody>
+        <tr><td>llms.txt на ivanovo.online</td><td>AI-боты знают структуру сайта</td><td>Месяц 2</td></tr>
+        <tr><td>NewsArticle JSON-LD на каждой новости</td><td>Rich Results + AI-цитирование</td><td>Месяц 2</td></tr>
+        <tr><td>Структурированные статьи (Q&A формат)</td><td>Попадание в featured snippets</td><td>Месяц 3–4</td></tr>
+        <tr><td>Авторы с профилями (E-E-A-T)</td><td>Google доверяет контенту больше</td><td>Месяц 2</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION B: ДВА ВИЖИНА -->
+<!-- ============================================================ -->
+<div id="section-visions" class="section">
+  <div class="page-title">B. Два вижина: какими быть</div>
+  <div class="page-sub">Стратегический выбор: нишевый инструмент vs региональная платформа</div>
+
+  <div class="two-col">
+    <div class="vision-box v1">
+      <span class="vision-tag v1">Вижин 1</span>
+      <h3 style="color:#1E40AF;margin-bottom:10px">Качественный агрегатор — «Яндекс.Новости для Иваново»</h3>
+      <p style="font-size:13px;color:#1E3A8A;margin-bottom:12px">Чистый, быстрый агрегатор новостей из 15+ источников. Без собственной редакции, только курация и AI-обработка. Максимальная полнота и скорость.</p>
+      <div class="tag-list">
+        <span class="badge blue">Простота</span>
+        <span class="badge blue">Низкие затраты</span>
+        <span class="badge blue">Быстрый запуск</span>
+      </div>
+      <h4 style="margin-top:14px;font-size:13px;color:#1E40AF">Плюсы</h4>
+      <p style="font-size:13px;color:#1E3A8A">Минимальная редакция (1 человек). Масштабируется автоматически. Чёткое ценностное предложение. Низкая себестоимость.</p>
+      <h4 style="margin-top:10px;font-size:13px;color:#1E40AF">Риски</h4>
+      <p style="font-size:13px;color:#1E3A8A">Зависимость от источников. Сложно с Google News (требует собственный контент). ARPU потолок — ~80–120K ₽/мес.</p>
+      <h4 style="margin-top:10px;font-size:13px;color:#1E40AF">ARPU потолок</h4>
+      <p style="font-size:13px;color:#1E3A8A">~80–150K ₽/мес при 100K визитов. Ограничен рекламной моделью без нативки.</p>
+    </div>
+    <div class="vision-box v2">
+      <span class="vision-tag v2">Вижин 2</span>
+      <h3 style="color:#5B21B6;margin-bottom:10px">Региональная медиаплатформа — главный вход в повестку области</h3>
+      <p style="font-size:13px;color:#4C1D95;margin-bottom:12px">Агрегация + собственные материалы (дайджесты, обзоры, бизнес-рубрика) + Telegram + партнёрства с источниками. Единое медиапространство региона.</p>
+      <div class="tag-list">
+        <span class="badge purple">Масштаб</span>
+        <span class="badge purple">Defensible moat</span>
+        <span class="badge purple">Высокий ARPU</span>
+      </div>
+      <h4 style="margin-top:14px;font-size:13px;color:#5B21B6">Плюсы</h4>
+      <p style="font-size:13px;color:#4C1D95">Собственный контент защищает от копирования. Нативная реклама даёт ARPU в 3–5× выше РСЯ. Telegram-аудитория — прямой канал. Google News одобряет.</p>
+      <h4 style="margin-top:10px;font-size:13px;color:#5B21B6">Риски</h4>
+      <p style="font-size:13px;color:#4C1D95">Нужна редакция (2–3 человека). Выше операционные затраты. Дольше выход на окупаемость.</p>
+      <h4 style="margin-top:10px;font-size:13px;color:#5B21B6">ARPU потолок</h4>
+      <p style="font-size:13px;color:#4C1D95">~400–650K ₽/мес при 200K визитов. Нативка + партнёрства + РСЯ + Telegram.</p>
+    </div>
+  </div>
+
+  <div class="block" style="margin-top:20px">
+    <h3>Сравнительная таблица вижинов</h3>
+    <table class="tbl">
+      <thead><tr><th>Параметр</th><th>Вижин 1: Агрегатор</th><th>Вижин 2: Платформа</th></tr></thead>
+      <tbody>
+        <tr><td>Время до первых доходов</td><td>2–3 месяца</td><td>3–4 месяца</td></tr>
+        <tr><td>ARPU потолок</td><td>~150K ₽/мес</td><td>~500–650K ₽/мес</td></tr>
+        <tr><td>Команда</td><td>1 редактор + девелопер</td><td>2–3 редактора + девелопер</td></tr>
+        <tr><td>Defensible moat</td><td>Технология (AI + агрегация)</td><td>Контент + аудитория + партнёрства</td></tr>
+        <tr><td>Риск от конкурента</td><td>Высокий (копируемо)</td><td>Низкий (контент + отношения)</td></tr>
+        <tr><td>Google News</td><td>Сложно (нужен оригинальный контент)</td><td>✅ Легко (свои материалы)</td></tr>
+        <tr><td>Telegram-канал</td><td>Дополнение</td><td>Ключевой канал дистрибуции</td></tr>
+        <tr><td>Аналогия</td><td>Яндекс.Новости для региона</td><td>The Bell / «Медуза» для Ивановской области</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="highlight-box">
+    <h2>Рекомендация: Вижин 2 — правильная долгосрочная ставка</h2>
+    <p>Вижин 1 — более быстрый старт, но ограниченный потолок и высокий риск копирования. Вижин 2 строит <span class="accent">defensible moat</span> через контент, аудиторию и партнёрства с источниками. При этом <span class="accent">Этап 1 стратегии одинаков для обоих вижинов</span>: SEO-фундамент, источники, AI-обработка. Выбор вижина на практике определяется тем, когда вы будете готовы нанять второго редактора — до или после Месяца 3.</p>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+function show(id, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  el.classList.add('active');
+  window.scrollTo(0, 0);
+}
+function toggleQuiz(el) {
+  const answer = el.nextElementSibling;
+  const isOpen = answer.classList.contains('open');
+  answer.classList.toggle('open', !isOpen);
+  el.querySelector('span').textContent = isOpen ? '▼' : '▲';
+}
+</script>
+</body>
+</html>
