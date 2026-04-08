@@ -3,11 +3,12 @@
     <header class="bg-white/95 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-200 shadow-sm transform-gpu">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
-          <NuxtLink to="/" class="font-bold text-xl tracking-tight text-gray-900 hover:text-blue-600 transition-colors flex items-center gap-2">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span class="text-white font-bold text-lg leading-none">N</span>
-            </div>
-            <span>News<span class="text-blue-600">App</span></span>
+          <NuxtLink to="/" class="flex items-center">
+            <img
+              src="/ivanovo-logo.png"
+              alt="Иваново Онлайн"
+              class="h-10 w-auto sm:h-12 object-contain"
+            />
           </NuxtLink>
           
           <button
@@ -65,10 +66,11 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-col md:flex-row items-center justify-between gap-6">
           <div class="flex items-center gap-2">
-            <div class="w-6 h-6 bg-gray-200 rounded-md flex items-center justify-center">
-              <span class="text-gray-500 font-bold text-xs leading-none">N</span>
-            </div>
-            <span class="font-bold text-gray-400">NewsApp</span>
+            <img
+              src="/ivanovo-logo.png"
+              alt="Иваново Онлайн"
+              class="h-8 w-auto object-contain opacity-80"
+            />
           </div>
           <div class="flex flex-wrap justify-center gap-x-6 gap-y-3">
             <NuxtLink
