@@ -13,6 +13,7 @@ const PERMISSION_CODES = [
   { code: 'users', name: 'Пользователи' },
   { code: 'roles', name: 'Роли' },
   { code: 'settings', name: 'Настройки' },
+  { code: 'ads', name: 'Реклама' },
 ];
 
 async function seedConfiguredSources() {
@@ -136,6 +137,37 @@ async function main() {
   }
 
   await seedConfiguredSources();
+
+  const adPlacementSeeds = [
+    {
+      code: 'home_below_top_block',
+      title: 'Главная — под блоком «Главное за сегодня»',
+      description: 'Полная ширина под первым рядом карточек',
+    },
+    {
+      code: 'article_below_adjacent',
+      title: 'Статья — под блоком «Предыдущая / Следующая»',
+      description: 'Под навигацией между материалами',
+    },
+    {
+      code: 'article_inline_1',
+      title: 'Текст новости — вставка 1',
+      description: 'Блок в теле материала (TipTap)',
+    },
+    {
+      code: 'article_inline_2',
+      title: 'Текст новости — вставка 2',
+      description: 'Второй слот в теле материала',
+    },
+  ];
+  for (const ap of adPlacementSeeds) {
+    const existing = await prisma.adPlacement.findUnique({ where: { code: ap.code } });
+    if (!existing) {
+      await prisma.adPlacement.create({
+        data: { code: ap.code, title: ap.title, description: ap.description },
+      });
+    }
+  }
 
   const sectionSlugs = [
     { slug: 'top', title: 'Главное', order: 0 },

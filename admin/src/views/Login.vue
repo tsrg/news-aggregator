@@ -12,11 +12,11 @@
       <form @submit.prevent="submit" class="flex flex-col gap-5">
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
-          <input v-model="email" type="email" placeholder="admin@example.com" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all" />
+          <input v-model="email" type="email" autocomplete="username" placeholder="admin@example.com" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all" />
         </div>
         <div>
           <label class="block text-sm font-medium text-gray-700 mb-1.5">Пароль</label>
-          <input v-model="password" type="password" placeholder="••••••••" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all" />
+          <input v-model="password" type="password" autocomplete="current-password" placeholder="••••••••" required class="w-full bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all" />
         </div>
         
         <div v-if="error" class="text-red-600 text-sm bg-red-50 p-4 rounded-xl border border-red-100 flex items-center gap-2">

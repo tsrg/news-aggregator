@@ -81,6 +81,21 @@
         </div>
         <h1 class="text-3xl md:text-5xl font-bold text-gray-900 leading-tight tracking-tight mb-6">{{ data.title }}</h1>
         <p v-if="data.summary" class="text-lg md:text-xl text-gray-500 leading-relaxed font-medium">{{ data.summary }}</p>
+        <div
+          v-if="data.isPromotional"
+          class="mt-6 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 leading-relaxed"
+        >
+          <span class="font-semibold">Реклама</span>
+          <template v-if="data.promoErid">
+            <span class="text-amber-800"> · erid: {{ data.promoErid }}</span>
+          </template>
+          <template v-if="data.promoAdvertiserName">
+            <span> · {{ data.promoAdvertiserName }}</span>
+          </template>
+          <template v-if="data.promoAdvertiserInn">
+            <span> · ИНН {{ data.promoAdvertiserInn }}</span>
+          </template>
+        </div>
       </div>
 
       <div v-if="data.imageUrl" class="mb-10 rounded-2xl overflow-hidden shadow-sm aspect-video bg-gray-100">
@@ -93,11 +108,20 @@
         />
       </div>
 
-      <div
-        v-if="data.body"
-        class="article-overview prose prose-lg prose-blue max-w-none text-gray-700 leading-relaxed marker:text-blue-600"
-        v-html="sanitizedBody"
-      />
+      <template v-if="data.body">
+        <template v-for="(part, bidx) in articleBodyParts" :key="bidx">
+          <div
+            v-if="part.kind === 'html' && part.html"
+            class="article-overview prose prose-lg prose-blue max-w-none text-gray-700 leading-relaxed marker:text-blue-600"
+            v-html="part.html"
+          />
+          <AdSlot
+            v-else-if="part.kind === 'ad'"
+            :placement-code="part.placementCode"
+            class="my-8"
+          />
+        </template>
+      </template>
 
       <section
         v-if="sourceSnapshotsList.length"
@@ -172,6 +196,8 @@
         </div>
       </NuxtLink>
         </section>
+
+        <AdSlot placement-code="article_below_adjacent" class="mt-6 md:mt-8" />
       </div>
 
       <aside class="hidden 2xl:block">
@@ -202,6 +228,30 @@
 
 <script setup lang="ts">
 import { computed, ref, watchEffect } from 'vue';
+
+type BodyPart =
+  | { kind: 'html'; html: string }
+  | { kind: 'ad'; placementCode: string };
+
+function splitBodyForAds(html: string): BodyPart[] {
+  if (!html.trim()) return [];
+  const re = /<div\b[^>]*\bdata-ad-placement="([^"]+)"[^>]*>\s*<\/div>/gi;
+  const parts: BodyPart[] = [];
+  let last = 0;
+  let m: RegExpExecArray | null;
+  const r = new RegExp(re.source, re.flags);
+  while ((m = r.exec(html)) !== null) {
+    if (m.index > last) {
+      parts.push({ kind: 'html', html: html.slice(last, m.index) });
+    }
+    parts.push({ kind: 'ad', placementCode: m[1] });
+    last = m.lastIndex;
+  }
+  if (last < html.length) {
+    parts.push({ kind: 'html', html: html.slice(last) });
+  }
+  return parts.length ? parts : [{ kind: 'html', html }];
+}
 import { useRoute, useNuxtApp } from '#app';
 
 const route = useRoute();
@@ -238,6 +288,11 @@ const { data, pending, error } = await useFetch<{
   sourceSnapshots?: SourceSnapshot[] | null;
   prev?: AdjacentNewsPreview | null;
   next?: AdjacentNewsPreview | null;
+  isPromotional?: boolean;
+  promoErid?: string | null;
+  promoAdvertiserName?: string | null;
+  promoAdvertiserInn?: string | null;
+  promoAdvertiserOgrn?: string | null;
 }>(() => `${apiBase}/api/news/${route.params.id}`, { key: `news-${route.params.id}` });
 
 const sourceSnapshotsList = computed((): SourceSnapshot[] => {
@@ -307,7 +362,7 @@ useBreadcrumbSchema(breadcrumbSchemaItems);
 
 const breadcrumbItems = computed(() => {
   if (!data.value) return [];
-  const items: { label: string; to?: string }[] = [{ label: 'Главная', to: '/' }];
+  const items: { label: string; to?: string }[] = [];
   if (data.value.section) {
     items.push({ label: data.value.section.title, to: `/section/${data.value.section.slug}` });
   }
@@ -329,6 +384,8 @@ watchEffect(async () => {
     sanitizedBody.value = raw.replace(/<script\b[\s\S]*?<\/script>/gi, '');
   }
 });
+
+const articleBodyParts = computed((): BodyPart[] => splitBodyForAds(sanitizedBody.value));
 
 function formatDateTime(iso: string) {
   const date = new Date(iso);

@@ -12,7 +12,19 @@ export function stripNullBytes(str) {
  */
 export function sanitizeNewsStrings(data) {
   const out = { ...data };
-  for (const key of ['title', 'summary', 'body', 'imageUrl', 'url', 'region', 'legalReviewNotes']) {
+  for (const key of [
+    'title',
+    'summary',
+    'body',
+    'imageUrl',
+    'url',
+    'region',
+    'legalReviewNotes',
+    'promoErid',
+    'promoAdvertiserName',
+    'promoAdvertiserInn',
+    'promoAdvertiserOgrn',
+  ]) {
     if (typeof out[key] === 'string') out[key] = stripNullBytes(out[key]);
   }
   return out;

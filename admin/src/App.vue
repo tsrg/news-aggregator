@@ -16,6 +16,7 @@
             <router-link v-if="hasPermission('sections')" to="/sections" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Разделы</router-link>
             <router-link v-if="hasPermission('menus')" to="/menus" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Меню</router-link>
             <router-link v-if="hasPermission('pages')" to="/pages" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Страницы</router-link>
+            <router-link v-if="hasPermission('ads')" to="/ads" class="px-3 py-2 text-sm font-medium text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" active-class="text-blue-600 bg-blue-50">Реклама</router-link>
             <router-link
               v-if="hasPermission('settings')"
               to="/settings/general"

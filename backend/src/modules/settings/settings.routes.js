@@ -12,6 +12,8 @@ import {
   STORAGE_SETTINGS_KEY,
   REGIONS_SETTINGS_KEY,
   AI_IMAGE_SETTINGS_KEY,
+  AD_MARKING_SETTINGS_KEY,
+  defaultAdMarkingSettings,
   defaultImageGenSettings,
 } from '../../services/settings.js';
 import { testAIConnection } from '../../services/ai.js';
@@ -423,6 +425,19 @@ export async function initializeSettings() {
         },
       });
       console.log('Default AI image settings created in database');
+    }
+
+    const existingAdMarking = await prisma.setting.findUnique({
+      where: { key: AD_MARKING_SETTINGS_KEY },
+    });
+    if (!existingAdMarking) {
+      await prisma.setting.create({
+        data: {
+          key: AD_MARKING_SETTINGS_KEY,
+          value: { ...defaultAdMarkingSettings },
+        },
+      });
+      console.log('Default ad marking settings created in database');
     }
   } catch (e) {
     console.error('Failed to initialize settings:', e.message);

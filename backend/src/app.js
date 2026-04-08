@@ -20,6 +20,8 @@ import rolesAdmin from './modules/roles/roles.admin.routes.js';
 import permissionsAdmin from './modules/roles/permissions.admin.routes.js';
 import usersAdmin from './modules/users/users.admin.routes.js';
 import regionsPublic from './modules/regions/regions.public.routes.js';
+import adsPublic from './modules/ads/ads.public.routes.js';
+import adsAdmin from './modules/ads/ads.admin.routes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -46,6 +48,7 @@ app.use('/api/sections', sectionsPublic);
 app.use('/api/menus', menuPublic);
 app.use('/api/pages', pagesPublic);
 app.use('/api/regions', regionsPublic);
+app.use('/api/ads', adsPublic);
 
 app.use('/api/admin/news', newsAiRoutes);
 app.use('/api/admin/news', newsAdmin);
@@ -58,6 +61,7 @@ app.use('/api/admin/settings', settingsRoutes);
 app.use('/api/admin/permissions', permissionsAdmin);
 app.use('/api/admin/roles', rolesAdmin);
 app.use('/api/admin/users', usersAdmin);
+app.use('/api/admin/ads', adsAdmin);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

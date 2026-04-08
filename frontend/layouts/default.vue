@@ -69,7 +69,7 @@
             <img
               src="/ivanovo-logo.png"
               alt="Иваново Онлайн"
-              class="h-8 w-auto object-contain opacity-80"
+              class="h-8 w-auto object-contain opacity-80 grayscale"
             />
           </div>
           <div class="flex flex-wrap justify-center gap-x-6 gap-y-3">
@@ -84,9 +84,7 @@
           </div>
         </div>
         <div class="mt-8 pt-8 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p class="text-sm text-gray-400">
-            © 2026 Regional News Aggregator. All rights reserved.
-          </p>
+          <p class="text-sm text-gray-400">© 2026 Иваново онлайн.</p>
         </div>
       </div>
     </footer>

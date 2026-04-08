@@ -21,7 +21,8 @@
       </div>
       <div class="flex flex-col justify-between flex-1 p-5 md:p-6 bg-white">
         <div>
-          <div class="flex items-center gap-2 text-xs font-medium text-blue-600 mb-3">
+          <div class="flex items-center gap-2 text-xs font-medium text-blue-600 mb-3 flex-wrap">
+            <span v-if="item.isPromotional" class="px-2.5 py-1 bg-amber-100 text-amber-900 rounded-full">Реклама</span>
             <span v-if="item.source?.name" class="px-2.5 py-1 bg-blue-50 rounded-full">{{ item.source.name }}</span>
             <ClientOnly>
               <span class="text-gray-400">{{ formatDate(displayDate) }}</span>
@@ -50,6 +51,7 @@ const props = defineProps<{
     publishedAt?: string | null;
     sourcePublishedAt?: string | null;
     source?: { name: string } | null;
+    isPromotional?: boolean;
   };
   featured?: boolean;
   imagePosition?: 'top' | 'left';

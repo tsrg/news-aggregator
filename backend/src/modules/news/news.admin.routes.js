@@ -9,6 +9,7 @@ import { normalizeTitleForIndex } from '../../services/titleNormalize.js';
 import { rewriteStorageUrlForBrowser } from '../../services/s3.js';
 import { runLegalComplianceChecks } from '../../services/legalCompliance.js';
 import { sanitizeNewsStrings } from '../../utils/newsInputSanitize.js';
+import { onPromotionalNewsChange } from '../../services/ord.js';
 
 const router = Router();
 
@@ -49,6 +50,11 @@ const createSchema = z.object({
       ])
       .optional(),
   ),
+  isPromotional: z.boolean().optional(),
+  promoErid: z.union([z.string(), z.null()]).optional(),
+  promoAdvertiserName: z.union([z.string(), z.null()]).optional(),
+  promoAdvertiserInn: z.union([z.string(), z.null()]).optional(),
+  promoAdvertiserOgrn: z.union([z.string(), z.null()]).optional(),
 });
 
 const updateSchema = createSchema.partial().merge(
@@ -192,6 +198,13 @@ router.post('/', async (req, res) => {
     await prisma.newsItemHistory.create({
       data: { newsItemId: item.id, userId: req.userId, snapshot: snapshot(item) },
     });
+    if (item.isPromotional) {
+      try {
+        await onPromotionalNewsChange(item, 'create');
+      } catch (e) {
+        console.warn('ORD stub (promo news):', e.message);
+      }
+    }
     return res.status(201).json(withPublicImageUrl(item));
   } catch (e) {
     if (e.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: e.errors });
@@ -239,6 +252,13 @@ router.put('/:id', async (req, res) => {
     await prisma.newsItemHistory.create({
       data: { newsItemId: item.id, userId: req.userId, snapshot: snapshot(item) },
     });
+    if (item.isPromotional) {
+      try {
+        await onPromotionalNewsChange(item, 'update');
+      } catch (e) {
+        console.warn('ORD stub (promo news):', e.message);
+      }
+    }
     if (item.status === 'PUBLISHED') {
       try {
         const { broadcastNewsUpdated } = await import('../../ws.js');

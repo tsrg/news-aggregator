@@ -27,6 +27,7 @@ const router = createRouter({
     { path: '/pages', name: 'Pages', component: () => import('../views/Pages.vue'), meta: { permission: 'pages' } },
     { path: '/pages/new', name: 'PageNew', component: () => import('../views/PageEdit.vue'), meta: { permission: 'pages' } },
     { path: '/pages/:id', name: 'PageEdit', component: () => import('../views/PageEdit.vue'), props: true, meta: { permission: 'pages' } },
+    { path: '/ads', name: 'Ads', component: () => import('../views/Ads.vue'), meta: { permission: 'ads' } },
     {
       path: '/settings',
       component: () => import('../views/SettingsLayout.vue'),

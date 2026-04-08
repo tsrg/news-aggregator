@@ -106,6 +106,32 @@
             </select>
           </div>
 
+          <div class="rounded-xl border border-amber-100 bg-amber-50/40 p-4 space-y-3">
+            <label class="flex items-center gap-2 cursor-pointer">
+              <input v-model="form.isPromotional" type="checkbox" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" />
+              <span class="text-sm font-medium text-gray-800">Рекламный материал (нативная реклама)</span>
+            </label>
+            <p class="text-xs text-gray-600">На сайте будет бейдж «Реклама» и поля маркировки для ФЗ «О рекламе». ERID указывается после регистрации креатива в ОРД.</p>
+            <div v-if="form.isPromotional" class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
+              <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-gray-700 mb-1">ERID</label>
+                <input v-model="form.promoErid" type="text" class="w-full bg-white border border-amber-200 rounded-lg p-2.5 text-sm font-mono" placeholder="Токен из кабинета ОРД" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">Наименование рекламодателя</label>
+                <input v-model="form.promoAdvertiserName" type="text" class="w-full bg-white border border-amber-200 rounded-lg p-2.5 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-medium text-gray-700 mb-1">ИНН</label>
+                <input v-model="form.promoAdvertiserInn" type="text" class="w-full bg-white border border-amber-200 rounded-lg p-2.5 text-sm" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-medium text-gray-700 mb-1">ОГРН</label>
+                <input v-model="form.promoAdvertiserOgrn" type="text" class="w-full bg-white border border-amber-200 rounded-lg p-2.5 text-sm" />
+              </div>
+            </div>
+          </div>
+
           <div v-if="id && legalReviewStatus" class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             <p><strong>Юридическая проверка:</strong> {{ legalReviewStatus }}</p>
             <p v-if="legalReviewNotes" class="mt-1">{{ legalReviewNotes }}</p>
@@ -410,6 +436,11 @@ const form = ref({
   /** Значение для input[type=datetime-local] (локальное время браузера) */
   sourcePublishedAtLocal: '' as string,
   contentClass: 'UNKNOWN' as 'NEWS' | 'REPORT' | 'ANALYSIS' | 'OPINION' | 'UNKNOWN',
+  isPromotional: false,
+  promoErid: '',
+  promoAdvertiserName: '',
+  promoAdvertiserInn: '',
+  promoAdvertiserOgrn: '',
 });
 
 const currentStatus = ref<'PENDING' | 'PUBLISHED' | 'REJECTED' | 'MERGED' | null>(null);
@@ -474,6 +505,16 @@ function sourcePublishedAtPayload(): Date | null {
   return d;
 }
 
+function promoPayload() {
+  return {
+    isPromotional: form.value.isPromotional,
+    promoErid: form.value.promoErid.trim() || null,
+    promoAdvertiserName: form.value.promoAdvertiserName.trim() || null,
+    promoAdvertiserInn: form.value.promoAdvertiserInn.trim() || null,
+    promoAdvertiserOgrn: form.value.promoAdvertiserOgrn.trim() || null,
+  };
+}
+
 onMounted(async () => {
   try {
     const s = await api().get<{ id: string; title: string }[]>('/api/admin/sections');
@@ -494,6 +535,11 @@ onMounted(async () => {
         contentClass?: 'NEWS' | 'REPORT' | 'ANALYSIS' | 'OPINION' | 'UNKNOWN';
         legalReviewStatus?: string | null;
         legalReviewNotes?: string | null;
+        isPromotional?: boolean;
+        promoErid?: string | null;
+        promoAdvertiserName?: string | null;
+        promoAdvertiserInn?: string | null;
+        promoAdvertiserOgrn?: string | null;
       }>(`/api/admin/news/${id.value}`);
       form.value = {
         title: item.title || '',
@@ -504,6 +550,11 @@ onMounted(async () => {
         region: item.region || '',
         sourcePublishedAtLocal: isoToDatetimeLocal(item.sourcePublishedAt),
         contentClass: item.contentClass || 'UNKNOWN',
+        isPromotional: item.isPromotional === true,
+        promoErid: item.promoErid || '',
+        promoAdvertiserName: item.promoAdvertiserName || '',
+        promoAdvertiserInn: item.promoAdvertiserInn || '',
+        promoAdvertiserOgrn: item.promoAdvertiserOgrn || '',
       };
       mergedIntoCanonicalId.value = item.mergedIntoId ?? null;
       legalReviewStatus.value = item.legalReviewStatus || null;
@@ -538,6 +589,7 @@ async function saveAsPending() {
       sectionId: form.value.sectionId,
       region: form.value.region,
       contentClass: form.value.contentClass,
+      ...promoPayload(),
     };
     const trimmedCover = form.value.imageUrl.trim();
     if (trimmedCover) body.imageUrl = trimmedCover;
@@ -564,6 +616,7 @@ async function save() {
       region: form.value.region,
       contentClass: form.value.contentClass,
       sourcePublishedAt: sourcePublishedAtPayload(),
+      ...promoPayload(),
       ...legalReviewPayload(),
     });
     router.push('/news');
@@ -589,6 +642,7 @@ async function publish() {
       region: form.value.region,
       contentClass: form.value.contentClass,
       sourcePublishedAt: sourcePublishedAtPayload(),
+      ...promoPayload(),
       ...legalReviewPayload(),
     });
     // Затем меняем статус на PUBLISHED
@@ -617,6 +671,7 @@ async function reject() {
       region: form.value.region,
       contentClass: form.value.contentClass,
       sourcePublishedAt: sourcePublishedAtPayload(),
+      ...promoPayload(),
       ...legalReviewPayload(),
     });
     // Затем меняем статус на REJECTED

@@ -3,5 +3,9 @@
   "private": true,
   "description": "News aggregator monorepo",
   "license": "CC-BY-NC-4.0",
-  "workspaces": ["backend", "frontend", "admin"]
+  "workspaces": ["backend", "frontend", "admin"],
+  "scripts": {
+    "postinstall": "cd backend && npx prisma generate && node ../scripts/sync-prisma-client.mjs",
+    "db:generate": "cd backend && npx prisma generate && node ../scripts/sync-prisma-client.mjs"
+  }
 }

@@ -46,6 +46,17 @@ export const STORAGE_SETTINGS_KEY = 'storage_config';
 export const REGIONS_SETTINGS_KEY = 'regions_config';
 /** Настройки OpenAI Images API для генерации обложек новостей */
 export const AI_IMAGE_SETTINGS_KEY = 'ai_image_config';
+/** Дефолтные реквизиты маркировки рекламы (ФЗ «О рекламе») */
+export const AD_MARKING_SETTINGS_KEY = 'ad_marking_defaults';
+
+export const defaultAdMarkingSettings = {
+  /** Наименование рекламораспространителя / оператора */
+  advertiserName: '',
+  advertiserInn: '',
+  advertiserOgrn: '',
+  /** Пояснение к маркировке (опционально) */
+  distributorNote: '',
+};
 
 const defaultGeneralSettings = {
   autoDeleteStaleUnpublishedNews: false,
@@ -152,6 +163,17 @@ export const defaultImageGenSettings = {
  * Настройки генерации изображений (обложек): отдельный API-ключ и endpoint.
  * Fallback из env: OPENAI_IMAGE_API_KEY, OPENAI_IMAGE_BASE_URL.
  */
+/**
+ * Глобальные значения для подписи «Реклама» и реквизитов (если не заданы в креативе).
+ */
+export async function getAdMarkingDefaults() {
+  const db = await getSettings(AD_MARKING_SETTINGS_KEY);
+  if (db && typeof db === 'object') {
+    return { ...defaultAdMarkingSettings, ...db };
+  }
+  return { ...defaultAdMarkingSettings };
+}
+
 export async function getImageGenSettings() {
   const envProvider = (process.env.AI_IMAGE_PROVIDER || '').trim().toLowerCase();
   const defaults = {

@@ -23,7 +23,11 @@ export default defineNuxtPlugin(() => {
     provide: {
       /** Async sanitization; use in components so DOMPurify loads only when needed. */
       sanitize: (html: string): Promise<string> =>
-        getDOMPurify().then((DOMPurify) => DOMPurify.sanitize(html)),
+        getDOMPurify().then((DOMPurify) =>
+          DOMPurify.sanitize(html, {
+            ALLOW_DATA_ATTR: true,
+          }),
+        ),
     },
   };
 });

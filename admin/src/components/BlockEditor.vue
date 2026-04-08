@@ -84,8 +84,10 @@ import {
   RiSeparator,
   RiCodeBoxLine,
   RiText,
+  RiLayoutGridLine,
 } from '@remixicon/vue';
 import { api } from '../api';
+import { AdPlacement } from '../tiptap/adPlacementExtension';
 
 const props = defineProps<{ modelValue: string }>();
 const emit = defineEmits<{ (e: 'update:modelValue', value: string): void }>();
@@ -132,6 +134,8 @@ const slashCommands = computed<SlashCommand[]>(() => {
     { name: 'code-block', title: 'Блок кода', description: 'Фрагмент кода', icon: RiCodeBoxLine, keywords: ['code', 'codeblock', 'код'], action: () => ed.chain().focus().toggleCodeBlock().run() },
     { name: 'image', title: 'Изображение', description: 'Загрузить картинку', icon: RiImageAddLine, keywords: ['image', 'img', 'photo', 'изображение', 'картинка', 'фото'], action: () => triggerImageUpload() },
     { name: 'divider', title: 'Разделитель', description: 'Горизонтальная линия', icon: RiSeparator, keywords: ['hr', 'divider', 'separator', 'разделитель', 'линия'], action: () => ed.chain().focus().setHorizontalRule().run() },
+    { name: 'ad1', title: 'Рекламный блок — вставка 1', description: 'Слот article_inline_1', icon: RiLayoutGridLine, keywords: ['ad', 'реклама', 'баннер', 'рся'], action: () => ed.chain().focus().insertAdPlacement('article_inline_1').run() },
+    { name: 'ad2', title: 'Рекламный блок — вставка 2', description: 'Слот article_inline_2', icon: RiLayoutGridLine, keywords: ['ad', 'реклама', 'баннер', 'рся', '2'], action: () => ed.chain().focus().insertAdPlacement('article_inline_2').run() },
   ];
 });
 
@@ -284,6 +288,7 @@ onMounted(() => {
       StarterKit,
       TiptapImage.configure({ inline: false, allowBase64: true }),
       Link.configure({ openOnClick: false }),
+      AdPlacement,
       Extension.create({
         name: 'placeholder',
         addProseMirrorPlugins() {
@@ -445,6 +450,21 @@ watch(() => props.modelValue, (newVal) => {
   height: auto;
   border-radius: 0.5rem;
   margin: 0.75rem 0;
+}
+.block-editor .ProseMirror .ad-embed-placeholder {
+  border: 2px dashed #cbd5e1;
+  border-radius: 0.5rem;
+  padding: 1rem 1.25rem;
+  margin: 0.75rem 0;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.875rem;
+  min-height: 3rem;
+}
+.block-editor .ProseMirror .ad-embed-placeholder::before {
+  content: 'Рекламный блок · ' attr(data-ad-placement);
+  font-weight: 600;
+  color: #475569;
 }
 
 /* ---- Bubble menu (inline formatting) ---- */

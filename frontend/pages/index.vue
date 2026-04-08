@@ -41,6 +41,8 @@
       </Transition>
     </section>
 
+    <AdSlot placement-code="home_below_top_block" />
+
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
       <!-- Left Column: Region News -->
       <section v-if="region" class="lg:col-span-8">

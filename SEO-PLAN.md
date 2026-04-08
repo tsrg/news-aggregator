@@ -9,30 +9,35 @@
 
 ## 📊 Текущее состояние
 
-| Метрика | Значение | Цель |
-|---------|----------|------|
-| SEO Health Score | 52/100 | 85/100 |
-| Индексация | Неизвестно | 100% страниц |
-| Органический трафик | Базовый | +200% за 6 месяцев |
-| AI-цитируемость | 0% | 30% |
+
+| Метрика             | Значение   | Цель               |
+| ------------------- | ---------- | ------------------ |
+| SEO Health Score    | 52/100     | 85/100             |
+| Индексация          | Неизвестно | 100% страниц       |
+| Органический трафик | Базовый    | +200% за 6 месяцев |
+| AI-цитируемость     | 0%         | 30%                |
+
 
 ---
 
 ## 🎯 Стратегические цели
 
 ### Q2 2026 (Апрель — Июнь)
+
 1. Исправить все критические технические проблемы
 2. Достичь SEO Health Score 70/100
 3. Получить индексацию всех разделов в Google
 
 ### Q3 2026 (Июль — Сентябрь)
-4. Достичь SEO Health Score 85/100
-5. Начать получать трафик из AI-поисковых систем
-6. Запустить оригинальный контент
+
+1. Достичь SEO Health Score 85/100
+2. Начать получать трафик из AI-поисковых систем
+3. Запустить оригинальный контент
 
 ### Q4 2026 (Октябрь — Декабрь)
-7. Выстроить E-E-A-T сигналы
-8. Достичь стабильного органического трафика
+
+1. Выстроить E-E-A-T сигналы
+2. Достичь стабильного органического трафика
 
 ---
 
@@ -41,12 +46,14 @@
 ### 1.1 Техническая инфраструктура
 
 #### Задача 1.1.1: Создать robots.txt
+
 **Приоритет:** Critical  
 **Срок:** День 1  
 **Сложность:** Низкая  
 **Ответственный:** DevOps / Backend
 
 **Требования:**
+
 ```
 User-agent: *
 Allow: /
@@ -79,6 +86,7 @@ Disallow: /
 ```
 
 **Проверка:**
+
 ```bash
 curl https://ivanovo.online/robots.txt
 ```
@@ -86,6 +94,7 @@ curl https://ivanovo.online/robots.txt
 ---
 
 #### Задача 1.1.2: Создать XML Sitemap
+
 **Приоритет:** Critical  
 **Срок:** День 2-3  
 **Сложность:** Средняя  
@@ -108,6 +117,7 @@ curl https://ivanovo.online/robots.txt
 ```
 
 **Код (Nuxt/Nitro):**
+
 ```typescript
 // server/routes/sitemap.xml.ts
 import { SitemapStream, streamToPromise } from 'sitemap'
@@ -154,12 +164,14 @@ export default defineEventHandler(async (event) => {
 ---
 
 #### Задача 1.1.3: Security Headers
+
 **Приоритет:** Critical  
 **Срок:** День 2  
 **Сложность:** Низкая  
 **Ответственный:** DevOps
 
 **Nginx конфигурация:**
+
 ```nginx
 server {
     listen 443 ssl http2;
@@ -194,12 +206,14 @@ server {
 ### 1.2 On-Page SEO
 
 #### Задача 1.2.1: SSR Meta Tags
+
 **Приоритет:** Critical  
 **Срок:** День 3-5  
 **Сложность:** Средняя  
 **Ответственный:** Frontend
 
 **Главная страница:**
+
 ```vue
 <script setup>
 useHead({
@@ -234,6 +248,7 @@ useHead({
 ```
 
 **Страница новости:**
+
 ```vue
 <script setup>
 const { id } = useRoute().params
@@ -269,6 +284,7 @@ useHead(() => ({
 ### 2.1 JSON-LD Schema Markup
 
 #### Задача 2.1.1: Organization Schema
+
 **Приоритет:** High  
 **Срок:** Неделя 3
 
@@ -310,6 +326,7 @@ useHead({
 ---
 
 #### Задача 2.1.2: NewsArticle Schema
+
 **Приоритет:** High  
 **Срок:** Неделя 3-4
 
@@ -357,6 +374,7 @@ export function useNewsSchema(news: NewsItem) {
 ---
 
 #### Задача 2.1.3: BreadcrumbList Schema
+
 **Приоритет:** Medium  
 **Срок:** Неделя 4
 
@@ -389,6 +407,7 @@ useHead({
 ---
 
 #### Задача 2.1.4: WebSite Schema + Search
+
 **Приоритет:** Medium  
 **Срок:** Неделя 4
 
@@ -410,8 +429,9 @@ useHead({
 ```
 
 **Валидация:**
-- https://search.google.com/test/rich-results
-- https://validator.schema.org/
+
+- [https://search.google.com/test/rich-results](https://search.google.com/test/rich-results)
+- [https://validator.schema.org/](https://validator.schema.org/)
 
 ---
 
@@ -420,10 +440,12 @@ useHead({
 ### 3.1 Авторы и атрибуция
 
 #### Задача 3.1.1: Добавить авторов к новостям
+
 **Приоритет:** High  
 **Срок:** Неделя 5
 
 **Миграция БД:**
+
 ```sql
 CREATE TABLE "Author" (
     "id" TEXT PRIMARY KEY,
@@ -441,6 +463,7 @@ ALTER TABLE "NewsItem" ADD COLUMN "authorId" TEXT REFERENCES "Author"("id");
 ```
 
 **Страница автора:**
+
 ```vue
 <script setup>
 useHead({
@@ -476,6 +499,7 @@ useHead({
 ---
 
 #### Задача 3.1.2: Даты публикации
+
 **Приоритет:** High  
 **Срок:** Неделя 5
 
@@ -497,10 +521,12 @@ useHead({
 ### 3.2 Статические страницы
 
 #### Задача 3.2.1: Страница "О проекте"
+
 **Приоритет:** High  
 **Срок:** Неделя 6
 
 **Обязательные элементы:**
+
 - История издания
 - Миссия и ценности
 - Команда редакции (фото + био)
@@ -516,6 +542,7 @@ useHead({
 ### 4.1 llms.txt
 
 #### Задача 4.1.1: Создать /llms.txt
+
 **Приоритет:** High  
 **Срок:** Неделя 7
 
@@ -559,15 +586,18 @@ useHead({
 ### 4.2 AI-читаемый контент
 
 #### Задача 4.2.1: Оптимизировать структуру статей
+
 **Приоритет:** Medium  
 **Срок:** Неделя 8-10
 
 **Структура идеальной статьи:**
+
 1. Вопрос-ответ в начале (40-60 слов)
 2. Основной пассаж (134-167 слов) с ключевыми фактами
 3. Детали и контекст (остаток статьи)
 
 **Пример:**
+
 ```markdown
 ## Что произошло?
 
@@ -581,6 +611,7 @@ useHead({
 ```
 
 **Требования:**
+
 - Заголовки H2/H3 в формате вопросов
 - Короткие абзацы (2-4 предложения)
 - Списки для перечислений
@@ -594,10 +625,12 @@ useHead({
 ### 5.1 Google News
 
 #### Задача 5.1.1: Подготовка к Google News
+
 **Приоритет:** Medium  
 **Срок:** Месяц 3
 
 **Требования:**
+
 - Уникальные URL статей
 - Постоянные URL
 - Правильные даты
@@ -605,6 +638,7 @@ useHead({
 - Контактная информация
 
 **Google News Sitemap:**
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
@@ -629,10 +663,12 @@ useHead({
 ### 5.2 Core Web Vitals
 
 #### Задача 5.2.1: Оптимизация LCP
+
 **Приоритет:** Medium  
 **Срок:** Месяц 3-4
 
 **Действия:**
+
 - Preload критических изображений
 - Оптимизация hero-изображений
 - Уменьшение TTFB
@@ -644,10 +680,12 @@ useHead({
 ---
 
 #### Задача 5.2.2: Оптимизация CLS
+
 **Приоритет:** Medium  
 **Срок:** Месяц 3
 
 **Действия:**
+
 - Фиксированные размеры для изображений
 - Асинхронные шрифты с font-display: swap
 - Резервирование места для динамического контента
@@ -657,10 +695,12 @@ useHead({
 ### 5.3 Внутренняя перелинковка
 
 #### Задача 5.3.1: Стратегия internal linking
+
 **Приоритет:** Medium  
 **Срок:** Месяц 4
 
 **Правила:**
+
 - 3-5 внутренних ссылок на статью
 - Связанные новости в конце
 - Теги как навигация
@@ -671,45 +711,52 @@ useHead({
 ## 🎯 Контрольные точки
 
 ### Неделя 2
-- [ ] robots.txt работает
-- [ ] sitemap.xml доступен
-- [ ] Security headers настроены
-- [ ] SSR meta tags работают
-- [ ] Canonical URLs на всех страницах
+
+- robots.txt работает
+- sitemap.xml доступен
+- Security headers настроены
+- SSR meta tags работают
+- Canonical URLs на всех страницах
 
 ### Месяц 1
-- [ ] Schema.org разметка на всех типах страниц
-- [ ] Авторы добавлены к новостям
-- [ ] Даты отображаются корректно
-- [ ] Страница "О проекте" запущена
-- [ ] llms.txt создан
+
+- Schema.org разметка на всех типах страниц
+- Авторы добавлены к новостям
+- Даты отображаются корректно
+- Страница "О проекте" запущена
+- llms.txt создан
 
 ### Месяц 2
-- [ ] E-E-A-T сигналы улучшены
-- [ ] AI-оптимизированный контент
-- [ ] Google Search Console настроен
-- [ ] Core Web Vitals в зелёной зоне
+
+- E-E-A-T сигналы улучшены
+- AI-оптимизированный контент
+- Google Search Console настроен
+- Core Web Vitals в зелёной зоне
 
 ### Месяц 3
-- [ ] Подача в Google News
-- [ ] Бэклинк-профиль начат
-- [ ] Социальные сигналы активны
+
+- Подача в Google News
+- Бэклинк-профиль начат
+- Социальные сигналы активны
 
 ---
 
 ## 🛠 Инструменты для проверки
 
 ### Ежедневно
+
 ```bash
 seo audit https://ivanovo.online
 ```
 
 ### Еженедельно
+
 - Google Search Console
-- PageSpeed Insights: https://pagespeed.web.dev/
-- Schema Validator: https://validator.schema.org/
+- PageSpeed Insights: [https://pagespeed.web.dev/](https://pagespeed.web.dev/)
+- Schema Validator: [https://validator.schema.org/](https://validator.schema.org/)
 
 ### Ежемесячно
+
 - Ahrefs / SEMrush для бэклинков
 - Проверка позиций
 - Анализ конкурентов
@@ -719,15 +766,17 @@ seo audit https://ivanovo.online
 ## 📞 Контакты и ресурсы
 
 ### Документация
-- Nuxt SEO: https://nuxtseo.com/
-- Google Search Central: https://developers.google.com/search
-- Schema.org: https://schema.org/
+
+- Nuxt SEO: [https://nuxtseo.com/](https://nuxtseo.com/)
+- Google Search Central: [https://developers.google.com/search](https://developers.google.com/search)
+- Schema.org: [https://schema.org/](https://schema.org/)
 
 ### Полезные сервисы
-- https://search.google.com/search-console
-- https://pagespeed.web.dev/
-- https://validator.schema.org/
-- https://securityheaders.com/
+
+- [https://search.google.com/search-console](https://search.google.com/search-console)
+- [https://pagespeed.web.dev/](https://pagespeed.web.dev/)
+- [https://validator.schema.org/](https://validator.schema.org/)
+- [https://securityheaders.com/](https://securityheaders.com/)
 
 ---
 

@@ -93,6 +93,14 @@ model NewsItem {
   /// Причина/комментарий юридической проверки (если есть)
   legalReviewNotes String? @map("legal_review_notes") @db.Text
 
+  /// Рекламный / промо-материал (нативная реклама в ленте)
+  isPromotional     Boolean @default(false) @map("is_promotional")
+  /// Токен ERID для маркировки (из ОРД)
+  promoErid         String? @map("promo_erid")
+  promoAdvertiserName String? @map("promo_advertiser_name") @db.Text
+  promoAdvertiserInn  String? @map("promo_advertiser_inn")
+  promoAdvertiserOgrn String? @map("promo_advertiser_ogrn")
+
   history     NewsItemHistory[]
   factChecks  NewsItemFactCheck[]
 
@@ -277,4 +285,53 @@ model Setting {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("settings")
+}
+
+/// Слот размещения рекламы (главная, статья, inline)
+model AdPlacement {
+  id          String       @id @default(cuid())
+  code        String       @unique
+  title       String
+  description String?      @db.Text
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  creatives AdCreative[]
+
+  @@map("ad_placements")
+}
+
+enum AdCreativeType {
+  BANNER
+  YANDEX_RTB
+}
+
+model AdCreative {
+  id           String         @id @default(cuid())
+  placementId  String         @map("placement_id")
+  placement    AdPlacement    @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  sortOrder    Int            @default(0) @map("sort_order")
+  type         AdCreativeType
+  isActive     Boolean        @default(true) @map("is_active")
+  validFrom    DateTime?      @map("valid_from")
+  validTo      DateTime?      @map("valid_to")
+  /// Баннер
+  imageUrl     String?        @map("image_url") @db.Text
+  targetUrl    String?        @map("target_url") @db.Text
+  openInNewTab Boolean        @default(true) @map("open_in_new_tab")
+  altText      String?        @map("alt_text")
+  /// Яндекс РТБ / РСЯ — параметры блока
+  yandexConfig Json?         @map("yandex_config")
+  /// Маркировка ФЗ «О рекламе»
+  erid             String?
+  advertiserName   String?   @map("advertiser_name") @db.Text
+  advertiserInn    String?   @map("advertiser_inn")
+  advertiserOgrn   String?   @map("advertiser_ogrn")
+  /// Внутренний учётный ID для связи с ОРД (автогенерация)
+  internalRegistryId String   @unique @default(cuid()) @map("internal_registry_id")
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  @@index([placementId, sortOrder])
+  @@map("ad_creatives")
 }

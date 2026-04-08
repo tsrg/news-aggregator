@@ -15,7 +15,8 @@ services:
       REDIS_URL: redis://redis:6379
       JWT_SECRET: dev-secret-change-in-production
       CORS_ORIGINS: ""
-    command: node --watch src/server.js
+    # migrate — схема БД; prisma generate — клиент под смонтированный prisma/ (иначе undefined findMany на новых моделях)
+    command: sh -c "npx prisma migrate deploy && npx prisma generate && node --watch src/server.js"
     ports:
       - "3002:3000"
 
