@@ -250,31 +250,6 @@ export async function normalizeNewsTitleIfNeeded(title) {
   if (!t) return t;
   if (!looksLikeLatinTransliteratedRussianTitle(t)) return t;
 
-  const settings = await getAISettings();
-  if (settings.apiKey) {
-    try {
-      const prompt = `Ниже заголовок новости, записанный латиницей (транслитерация русского текста). Преобразуй его в нормальный русский заголовок на кириллице. Не добавляй фактов и не меняй смысл. Ответь только текстом заголовка одной строкой, без кавычек и пояснений.
-
-${t.slice(0, 500)}`;
-
-      const raw = await callAI(prompt, {
-        max_tokens: 220,
-        temperature: 0.2,
-        timeout: 20000,
-      });
-      const line = raw
-        .trim()
-        .replace(/^["«]|["»]$/g, '')
-        .split('\n')[0]
-        .trim();
-      if (line && /[а-яёА-ЯЁ]/.test(line)) {
-        return line.slice(0, 500);
-      }
-    } catch (e) {
-      console.warn('normalizeNewsTitleIfNeeded AI:', e.message);
-    }
-  }
-
   return reverseTransliterateLatinToCyrillic(t);
 }
 

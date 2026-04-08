@@ -39,18 +39,20 @@
       </div>
     </header>
     
-    <div v-if="menuOpen" class="md:hidden bg-white border-b border-gray-200 fixed top-16 left-0 right-0 z-40 px-4 py-4 flex flex-col gap-2 shadow-lg rounded-b-2xl">
-      <NuxtLink
-        v-for="item in menuItems"
-        :key="item.id"
-        :to="item.url || (item.sectionId ? `/section/${sectionsMap.get(item.sectionId)?.slug}` : '/')"
-        class="text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-4 py-3 rounded-xl transition-colors"
-        active-class="text-blue-600 bg-blue-50"
-        @click="menuOpen = false"
-      >
-        {{ item.label }}
-      </NuxtLink>
-    </div>
+    <Transition name="menu-slide">
+      <div v-if="menuOpen" class="md:hidden bg-white border-b border-gray-200 fixed top-16 left-0 right-0 z-40 px-4 py-4 flex flex-col gap-2 shadow-lg rounded-b-2xl">
+        <NuxtLink
+          v-for="item in menuItems"
+          :key="item.id"
+          :to="item.url || (item.sectionId ? `/section/${sectionsMap.get(item.sectionId)?.slug}` : '/')"
+          class="text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 px-4 py-3 rounded-xl transition-colors"
+          active-class="text-blue-600 bg-blue-50"
+          @click="menuOpen = false"
+        >
+          {{ item.label }}
+        </NuxtLink>
+      </div>
+    </Transition>
 
     <main class="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
       <slot />
@@ -158,3 +160,42 @@ useNewsLive();
 useOrganizationSchema();
 useWebsiteSchema();
 </script>
+
+<style scoped>
+/* ── Mobile menu slide-down ────────────────────────────────────────────────
+   Enter: fade + slide down from -8px (origin: top of panel)
+   Exit:  faster fade + slide back up — subtler exit per Jakub
+──────────────────────────────────────────────────────────────────────── */
+.menu-slide-enter-active {
+  transition:
+    opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top center;
+}
+.menu-slide-leave-active {
+  transition:
+    opacity 0.15s cubic-bezier(0.4, 0, 1, 1),
+    transform 0.15s cubic-bezier(0.4, 0, 1, 1);
+  transform-origin: top center;
+}
+.menu-slide-enter-from {
+  opacity: 0;
+  transform: translateY(-8px) scaleY(0.97);
+}
+.menu-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-4px) scaleY(0.98);
+}
+
+/* ── Respect reduced-motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .menu-slide-enter-active,
+  .menu-slide-leave-active {
+    transition-duration: 0.01ms !important;
+  }
+  .menu-slide-enter-from,
+  .menu-slide-leave-to {
+    transform: none !important;
+  }
+}
+</style>

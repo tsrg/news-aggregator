@@ -12,7 +12,7 @@
         <img
           :src="item.imageUrl"
           :alt="item.title || ''"
-          class="w-full h-full object-cover transform-gpu group-hover:scale-105 transition-transform duration-700 ease-out will-change-transform"
+          class="w-full h-full object-cover transform-gpu group-hover:scale-105 transition-transform duration-500 ease-out will-change-transform"
           :loading="priority ? undefined : 'lazy'"
           :fetchpriority="priority ? 'high' : undefined"
           :decoding="priority ? 'async' : undefined"

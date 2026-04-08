@@ -7,49 +7,51 @@
       <div class="mt-4 w-16 h-1.5 bg-blue-600 rounded-full mx-auto"></div>
     </div>
 
-    <div v-if="sectionNotFound" class="bg-gray-50 text-gray-500 p-12 rounded-3xl text-center border border-gray-100">
-      <p class="font-medium text-lg">Раздел не найден.</p>
-    </div>
-    <div v-else-if="pending && !data?.items?.length" class="space-y-6">
-      <div v-for="i in 5" :key="i" class="h-40 bg-white border border-gray-100 rounded-2xl animate-pulse"></div>
-    </div>
-    <div v-else-if="error" class="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-100 text-center">
-      <p>{{ error.message }}</p>
-    </div>
-    <div v-else class="flex flex-col gap-6">
-      <TransitionGroup name="news-list" tag="div" class="flex flex-col gap-6">
-        <NewsCard
-          v-for="item in data?.items"
-          :key="item.id"
-          :item="item"
-          imagePosition="left"
-        />
-      </TransitionGroup>
-      
-      <div v-if="data?.items?.length === 0" class="bg-white text-gray-500 p-12 rounded-3xl text-center border border-gray-100">
-        <p class="font-medium text-lg">В этом разделе пока нет новостей.</p>
+    <Transition name="fade" mode="out-in">
+      <div v-if="sectionNotFound" key="not-found" class="bg-gray-50 text-gray-500 p-12 rounded-3xl text-center border border-gray-100">
+        <p class="font-medium text-lg">Раздел не найден.</p>
       </div>
-      
-      <div v-else-if="data && data.total > data.items.length" class="mt-12 flex items-center justify-center gap-4 border-t border-gray-200 pt-8">
-        <button 
-          :disabled="page <= 1" 
-          @click="page = Math.max(1, page - 1)"
-          class="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          &larr; Назад
-        </button>
-        <span class="text-sm font-medium text-gray-500 bg-gray-100 px-4 py-2 rounded-lg">
-          Страница {{ page }} из {{ totalPages }}
-        </span>
-        <button 
-          :disabled="page >= totalPages" 
-          @click="page = Math.min(totalPages, page + 1)"
-          class="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          Вперёд &rarr;
-        </button>
+      <div v-else-if="pending && !data?.items?.length" key="skeleton" class="space-y-6">
+        <div v-for="i in 5" :key="i" class="h-40 bg-white border border-gray-100 rounded-2xl animate-pulse"></div>
       </div>
-    </div>
+      <div v-else-if="error" key="error" class="bg-red-50 text-red-600 p-6 rounded-2xl border border-red-100 text-center">
+        <p>{{ error.message }}</p>
+      </div>
+      <div v-else key="content" class="flex flex-col gap-6">
+        <TransitionGroup name="news-list" tag="div" class="flex flex-col gap-6">
+          <NewsCard
+            v-for="item in data?.items"
+            :key="item.id"
+            :item="item"
+            imagePosition="left"
+          />
+        </TransitionGroup>
+
+        <div v-if="data?.items?.length === 0" class="bg-white text-gray-500 p-12 rounded-3xl text-center border border-gray-100">
+          <p class="font-medium text-lg">В этом разделе пока нет новостей.</p>
+        </div>
+
+        <div v-else-if="data && data.total > data.items.length" class="mt-12 flex items-center justify-center gap-4 border-t border-gray-200 pt-8">
+          <button
+            :disabled="page <= 1"
+            @click="page = Math.max(1, page - 1)"
+            class="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:scale-95"
+          >
+            &larr; Назад
+          </button>
+          <span class="text-sm font-medium text-gray-500 bg-gray-100 px-4 py-2 rounded-lg">
+            Страница {{ page }} из {{ totalPages }}
+          </span>
+          <button
+            :disabled="page >= totalPages"
+            @click="page = Math.min(totalPages, page + 1)"
+            class="px-6 py-3 bg-white border border-gray-200 text-gray-700 font-medium rounded-xl hover:bg-gray-50 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors active:scale-95"
+          >
+            Вперёд &rarr;
+          </button>
+        </div>
+      </div>
+    </Transition>
   </div>
 </template>
 
@@ -154,19 +156,64 @@ const breadcrumbItems = computed(() => [
 </script>
 
 <style scoped>
-.news-list-enter-active,
+/* ── News list item transitions ─────────────────────────────────────────── */
+.news-list-enter-active {
+  transition:
+    opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
 .news-list-leave-active {
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.18s cubic-bezier(0.4, 0, 1, 1),
+    transform 0.18s cubic-bezier(0.4, 0, 1, 1),
+    filter 0.18s cubic-bezier(0.4, 0, 1, 1);
+  position: absolute;
+  width: 100%;
 }
 .news-list-enter-from {
   opacity: 0;
-  transform: translateY(-8px);
+  transform: translateY(8px);
+  filter: blur(4px);
 }
 .news-list-leave-to {
   opacity: 0;
-  transform: translateY(4px);
+  transform: translateY(-6px);
+  filter: blur(3px);
 }
 .news-list-move {
-  transition: transform 0.25s ease;
+  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── Skeleton → content fade ────────────────────────────────────────────── */
+.fade-enter-active {
+  transition:
+    opacity 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.fade-leave-active {
+  transition: opacity 0.15s cubic-bezier(0.4, 0, 1, 1);
+}
+.fade-enter-from {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.fade-leave-to { opacity: 0; }
+
+/* ── Respect reduced-motion preference ──────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .news-list-enter-active,
+  .news-list-leave-active,
+  .news-list-move,
+  .fade-enter-active,
+  .fade-leave-active {
+    transition-duration: 0.01ms !important;
+  }
+  .news-list-enter-from,
+  .news-list-leave-to,
+  .fade-enter-from {
+    transform: none !important;
+    filter: none !important;
+  }
 }
 </style>
