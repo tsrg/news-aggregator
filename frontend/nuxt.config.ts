@@ -12,7 +12,7 @@ export default defineNuxtConfig({
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'description', content: 'Свежие новости Иванова и Ивановской области. Политика, общество, спорт, культура, экономика.' },
+        { name: 'description', content: 'Свежие новости Иванова и Ивановской области сегодня — политика, общество, спорт, культура, экономика. Читайте последние события региона на Иваново Онлайн.' },
         { name: 'keywords', content: 'новости Иваново, Ивановская область, региональные новости, последние новости' },
         { name: 'robots', content: 'index, follow' },
         { name: 'author', content: 'Иваново Онлайн' },
@@ -41,7 +41,7 @@ export default defineNuxtConfig({
   runtimeConfig: {
     apiBaseServer: process.env.NUXT_API_BASE_SERVER || '',
     public: {
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3000',
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3002',
       region: process.env.NUXT_PUBLIC_REGION || 'Иваново',
     },
   },

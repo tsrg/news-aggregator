@@ -4,6 +4,8 @@
 
     <!-- Top Stories -->
     <section>
+      <!-- H1 для SEO: заголовок страницы с ключевыми словами, визуально интегрирован в блок -->
+      <h1 class="sr-only">Новости Иванова и Ивановской области</h1>
       <div class="flex items-center justify-between mb-8">
         <h2 class="font-bold text-2xl md:text-3xl text-gray-900 tracking-tight flex items-center gap-3">
           <span class="w-1.5 h-6 bg-blue-600 rounded-full"></span>
@@ -40,6 +42,8 @@
         <p v-else key="top-empty" class="text-gray-500 bg-white p-8 rounded-2xl text-center border border-gray-100">Нет новостей для отображения.</p>
       </Transition>
     </section>
+
+    <AdSlot placement-code="home_below_top_block" />
 
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
       <!-- Left Column: Region News -->
@@ -179,12 +183,12 @@ const region = useRegion();
 useHead({
   title: 'Главные новости Ивановской области',
   meta: [
-    { 
-      name: 'description', 
-      content: 'Свежие новости Иванова и Ивановской области. Политика, общество, спорт, культура, экономика. Последние новости региона.' 
+    {
+      name: 'description',
+      content: 'Свежие новости Иванова и Ивановской области сегодня — политика, общество, спорт, культура, экономика. Читайте последние события региона на Иваново Онлайн.'
     },
-    { property: 'og:title', content: 'Главные новости Ивановской области' },
-    { property: 'og:description', content: 'Свежие новости Иванова и Ивановской области' },
+    { property: 'og:title', content: 'Главные новости Ивановской области | Иваново Онлайн' },
+    { property: 'og:description', content: 'Свежие новости Иванова и Ивановской области — политика, общество, спорт, культура, экономика. Последние события региона.' },
     { property: 'og:type', content: 'website' },
     { property: 'og:url', content: 'https://ivanovo.online/' },
   ],

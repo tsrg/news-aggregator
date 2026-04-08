@@ -69,20 +69,29 @@ const section = computed(() => sections.value?.find((s) => s.slug === slug));
 const sectionNotFound = computed(() => !sectionsPending.value && slug !== 'region' && slug !== 'general' && section.value === undefined);
 
 // SEO
+const pageTitles: Record<string, string> = {
+  'region': 'Новости Ивановской области',
+  'politics': 'Политика Ивановской области',
+  'society': 'Общество Ивановской области',
+  'sport': 'Спорт Иванова и Ивановской области',
+  'culture': 'Культура Ивановской области',
+  'economy': 'Экономика Ивановской области',
+  'general': 'Общие новости',
+};
+
 const pageTitle = computed(() => {
-  if (slug === 'region') return 'Новости региона';
-  if (slug === 'general') return 'Общие новости';
+  if (pageTitles[slug]) return pageTitles[slug];
   return section.value?.title || slug;
 });
 
 const sectionDescriptions: Record<string, string> = {
-  'region': 'Новости Ивановской области: события в Иванове и регионе',
-  'politics': 'Политические новости Ивановской области',
-  'society': 'Общественные события и социальные темы в Ивановской области',
-  'sport': 'Спортивные новости Иванова и Ивановской области',
-  'culture': 'Культурная жизнь Ивановской области: события, выставки, концерты',
-  'economy': 'Экономика и бизнес Ивановской области',
-  'general': 'Общие новости России и мира'
+  'region': 'Актуальные новости Ивановской области сегодня — главные события Иванова и региона. Оперативная информация о жизни Ивановской области на Иваново Онлайн.',
+  'politics': 'Политические новости Ивановской области: власть, выборы, решения администрации, депутаты и региональная политика. Актуальная повестка на Иваново Онлайн.',
+  'society': 'Общественные события и социальные темы Ивановской области: образование, медицина, коммуналка, происшествия и жизнь региона сегодня.',
+  'sport': 'Спортивные новости Иванова и Ивановской области: местные соревнования, результаты, спортсмены и достижения региона на Иваново Онлайн.',
+  'culture': 'Культурная жизнь Ивановской области: выставки, концерты, театры, фестивали и культурные события Иванова — актуальная афиша и новости.',
+  'economy': 'Экономика и бизнес Ивановской области: предприятия, инвестиции, рынок труда, строительство и экономические новости региона.',
+  'general': 'Общие новости России и мира: федеральные события, важные новости страны и международная повестка на Иваново Онлайн.',
 };
 
 const description = computed(() => {
@@ -93,7 +102,7 @@ useHead(() => ({
   title: pageTitle.value,
   meta: [
     { name: 'description', content: description.value },
-    { property: 'og:title', content: pageTitle.value },
+    { property: 'og:title', content: `${pageTitle.value} | Иваново Онлайн` },
     { property: 'og:description', content: description.value },
     { property: 'og:type', content: 'website' },
     { property: 'og:url', content: `https://ivanovo.online/section/${slug}` },

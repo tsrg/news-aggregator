@@ -2,8 +2,11 @@ import { defineEventHandler, setResponseHeader } from 'h3';
 
 interface NewsItem {
   id: string;
+  title: string;
   updatedAt?: string;
   createdAt: string;
+  publishedAt?: string;
+  sourcePublishedAt?: string | null;
 }
 
 interface Section {
@@ -40,13 +43,17 @@ function escapeXml(str: string): string {
 }
 
 export default defineEventHandler(async (event) => {
-  const apiBase = process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:3000';
+  // На сервере используем приватный apiBaseServer (например, http://backend:3002 в Docker
+  // или http://localhost:3002 при прямом запуске). Если он не задан — берём публичный URL.
+  const config = useRuntimeConfig(event);
+  const apiBase = (config.apiBaseServer as string) || (config.public.apiBase as string) || 'http://localhost:3002';
   const hostname = 'https://ivanovo.online';
   
   const today = new Date().toISOString().split('T')[0];
   
   let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-  xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+  xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n';
+  xml += '        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">\n';
   
   // Главная страница
   xml += `  <url>\n`;
@@ -76,24 +83,41 @@ export default defineEventHandler(async (event) => {
     xml += `  </url>\n`;
   }
   
-  // Новости (последние 500)
+  // Новости (последние 1000) — включаем <news:news> для Google News
   try {
-    const newsResponse = await $fetch<{ items: NewsItem[] }>(`${apiBase}/api/news?limit=500`);
+    const newsResponse = await $fetch<{ items: NewsItem[] }>(`${apiBase}/api/news?limit=1000`);
     if (newsResponse?.items) {
+      // Граница для Google News: только статьи за последние 2 дня
+      const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+
       for (const item of newsResponse.items) {
-        const lastmod = item.updatedAt || item.createdAt || today;
+        const lastmod = item.updatedAt || item.publishedAt || item.createdAt || today;
         const date = new Date(lastmod).toISOString().split('T')[0];
-        
+        const pubDate = item.sourcePublishedAt || item.publishedAt || item.createdAt;
+        const isRecent = pubDate && new Date(pubDate) >= twoDaysAgo;
+
         xml += `  <url>\n`;
         xml += `    <loc>${hostname}/news/${escapeXml(item.id)}</loc>\n`;
         xml += `    <lastmod>${date}</lastmod>\n`;
         xml += `    <changefreq>never</changefreq>\n`;
         xml += `    <priority>0.9</priority>\n`;
+        // Добавляем news:news только для свежих статей (требование Google News Sitemap)
+        if (isRecent && item.title) {
+          const pubIso = new Date(pubDate!).toISOString();
+          xml += `    <news:news>\n`;
+          xml += `      <news:publication>\n`;
+          xml += `        <news:name>Иваново Онлайн</news:name>\n`;
+          xml += `        <news:language>ru</news:language>\n`;
+          xml += `      </news:publication>\n`;
+          xml += `      <news:publication_date>${pubIso}</news:publication_date>\n`;
+          xml += `      <news:title>${escapeXml(item.title)}</news:title>\n`;
+          xml += `    </news:news>\n`;
+        }
         xml += `  </url>\n`;
       }
     }
-  } catch (error) {
-    console.error('Failed to fetch news for sitemap:', error);
+  } catch (err) {
+    console.error('Failed to fetch news for sitemap:', err);
   }
   
   xml += '</urlset>';
