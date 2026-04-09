@@ -152,7 +152,8 @@ router.post('/:id/cover', coverUpload.single('image'), async (req, res) => {
     const provider = await resolveStorageProvider();
     let url;
 
-    if (provider === 'minio' || provider === 'cdn') {
+    // 'minio' | 's3' | 'cdn' — все удалённые провайдеры
+    if (provider === 'minio' || provider === 's3' || provider === 'cdn') {
       url = await uploadFileBySettings(req.file);
     } else {
       await mkdir('uploads', { recursive: true });

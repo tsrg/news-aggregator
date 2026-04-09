@@ -54,8 +54,21 @@ const defaultGeneralSettings = {
 };
 
 const defaultStorageSettings = {
+  // 'minio' | 's3' | 'cdn'
   provider: 'minio',
+  /** @deprecated используется для обратной совместимости; вместо этого смотри provider */
   minioEnabled: true,
+
+  // --- S3-совместимое хранилище (Beget CDN, Yandex Cloud, AWS, etc.) ---
+  s3Endpoint: '',
+  s3Region: 'us-east-1',
+  s3Bucket: '',
+  s3AccessKeyId: '',
+  s3SecretAccessKey: '',
+  s3PublicBaseUrl: '',
+  s3ForcePathStyle: true,
+
+  // --- Произвольный HTTP CDN API ---
   baseUrl: '',
   uploadEndpoint: '',
   httpMethod: 'POST',
@@ -81,13 +94,16 @@ export async function getGeneralSettings() {
 }
 
 /**
- * Настройки хранилища файлов (MinIO/CDN).
+ * Настройки хранилища файлов (MinIO / S3-совместимый / CDN).
  * Если запись в БД отсутствует — используем env как fallback.
  */
 export async function getStorageSettings() {
   const db = await getSettings(STORAGE_SETTINGS_KEY);
   if (db && typeof db === 'object') {
-    return { ...defaultStorageSettings, ...db };
+    const merged = { ...defaultStorageSettings, ...db };
+    // Синхронизируем minioEnabled с provider для обратной совместимости
+    merged.minioEnabled = merged.provider === 'minio';
+    return merged;
   }
 
   const hasS3Endpoint = Boolean(process.env.S3_ENDPOINT);
@@ -184,15 +200,17 @@ export function clearSettingsCache() {
  */
 export async function updateSettings(key, value) {
   const prisma = await getPrisma();
-  
+
   await prisma.setting.upsert({
     where: { key },
     update: { value },
     create: { key, value },
   });
 
-  // Сбрасываем кэш
-  settingsCache.delete(key);
+  // Сбрасываем кэш полностью — cacheExpiry тоже, чтобы другие ключи
+  // перечитались из БД, а не отдали устаревшие данные
+  settingsCache.clear();
+  cacheExpiry = 0;
   
   // Обновляем env переменные для совместимости
   if (key === 'ai_config') {

@@ -172,3 +172,97 @@ export async function uploadBuffer(key, buffer, contentType) {
   if (!base) return key;
   return rewriteStorageUrlForBrowser(`${base}/${key}`);
 }
+
+/**
+ * Upload a buffer to any S3-compatible storage using dynamic credentials.
+ * Used for external S3-compatible providers (Beget CDN, Yandex Cloud Object Storage, etc.)
+ * configured through the admin UI rather than environment variables.
+ *
+ * @param {object} s3Config - S3 connection settings
+ * @param {string} s3Config.s3Endpoint    - S3 endpoint URL (e.g. "https://s3.beget.com")
+ * @param {string} s3Config.s3Region      - Region (e.g. "ru-1")
+ * @param {string} s3Config.s3Bucket      - Bucket name
+ * @param {string} s3Config.s3AccessKeyId - Access key ID
+ * @param {string} s3Config.s3SecretAccessKey - Secret access key
+ * @param {string} [s3Config.s3PublicBaseUrl] - Public URL prefix (optional; fallback: endpoint/bucket)
+ * @param {boolean} [s3Config.s3ForcePathStyle] - Force path-style URLs (default: true for non-AWS)
+ * @param {string} key         - Object key
+ * @param {Buffer} buffer      - File content
+ * @param {string} contentType - MIME type
+ * @returns {Promise<string>} Public URL of the uploaded file
+ */
+export async function uploadBufferDynamic(s3Config, key, buffer, contentType) {
+  const {
+    s3Endpoint,
+    s3Region = 'us-east-1',
+    s3Bucket,
+    s3AccessKeyId,
+    s3SecretAccessKey,
+    s3PublicBaseUrl,
+    s3ForcePathStyle = true,
+  } = s3Config;
+
+  if (!s3Bucket) throw new Error('S3 bucket is not configured');
+  if (!s3AccessKeyId || !s3SecretAccessKey) throw new Error('S3 credentials are not configured');
+
+  const dynamicClient = new S3Client({
+    region: s3Region,
+    ...(s3Endpoint && {
+      endpoint: s3Endpoint,
+      forcePathStyle: s3ForcePathStyle,
+    }),
+    credentials: {
+      accessKeyId: s3AccessKeyId,
+      secretAccessKey: s3SecretAccessKey,
+    },
+  });
+
+  // Ensure bucket exists (create if missing)
+  try {
+    await dynamicClient.send(new HeadBucketCommand({ Bucket: s3Bucket }));
+  } catch (err) {
+    if (err.name === 'NotFound' || err.$metadata?.httpStatusCode === 404) {
+      await dynamicClient.send(new CreateBucketCommand({ Bucket: s3Bucket }));
+    } else {
+      throw err;
+    }
+  }
+
+  // Set public read policy so files are publicly accessible
+  try {
+    const policy = {
+      Version: '2012-10-17',
+      Statement: [
+        {
+          Effect: 'Allow',
+          Principal: { AWS: ['*'] },
+          Action: ['s3:GetObject'],
+          Resource: [`arn:aws:s3:::${s3Bucket}/*`],
+        },
+      ],
+    };
+    await dynamicClient.send(
+      new PutBucketPolicyCommand({ Bucket: s3Bucket, Policy: JSON.stringify(policy) })
+    );
+  } catch (e) {
+    console.warn('[s3-dynamic] bucket public read policy:', e.message || e);
+  }
+
+  await dynamicClient.send(
+    new PutObjectCommand({
+      Bucket: s3Bucket,
+      Key: key,
+      Body: buffer,
+      ContentType: contentType,
+    })
+  );
+
+  const base = s3PublicBaseUrl
+    ? s3PublicBaseUrl.trim().replace(/\/$/, '')
+    : s3Endpoint
+      ? `${s3Endpoint.replace(/\/$/, '')}/${s3Bucket}`
+      : null;
+
+  if (!base) return key;
+  return `${base}/${key}`;
+}

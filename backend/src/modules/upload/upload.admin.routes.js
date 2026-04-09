@@ -21,7 +21,8 @@ router.post('/', requireAuth, requirePermission('settings'), upload.single('imag
 
     const provider = await resolveStorageProvider();
 
-    if (provider === 'minio' || provider === 'cdn') {
+    // 'minio' | 's3' | 'cdn' — все удалённые провайдеры
+    if (provider === 'minio' || provider === 's3' || provider === 'cdn') {
       const url = await uploadFileBySettings(req.file);
       return res.json({ url });
     }

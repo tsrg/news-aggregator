@@ -28,15 +28,25 @@ const generalPutSchema = z.object({
 });
 
 const storagePutSchema = z.object({
-  provider: z.enum(['minio', 'cdn']).optional(),
-  minioEnabled: z.boolean(),
-  baseUrl: z.string(),
-  uploadEndpoint: z.string(),
-  httpMethod: z.enum(['POST', 'PUT']),
-  fileFieldName: z.string(),
-  pathFieldName: z.string(),
-  responseUrlPath: z.string(),
-  responsePathPath: z.string(),
+  provider: z.enum(['minio', 's3', 'cdn']),
+
+  // S3-совместимые поля (Beget CDN, Yandex Cloud, AWS, etc.)
+  s3Endpoint: z.string().optional().default(''),
+  s3Region: z.string().optional().default('us-east-1'),
+  s3Bucket: z.string().optional().default(''),
+  s3AccessKeyId: z.string().optional().default(''),
+  s3SecretAccessKey: z.string().optional().default(''),
+  s3PublicBaseUrl: z.string().optional().default(''),
+  s3ForcePathStyle: z.boolean().optional().default(true),
+
+  // HTTP CDN API поля
+  baseUrl: z.string().optional().default(''),
+  uploadEndpoint: z.string().optional().default(''),
+  httpMethod: z.enum(['POST', 'PUT']).optional().default('POST'),
+  fileFieldName: z.string().optional().default('file'),
+  pathFieldName: z.string().optional().default(''),
+  responseUrlPath: z.string().optional().default('url'),
+  responsePathPath: z.string().optional().default(''),
 });
 
 // Дефолтные настройки
@@ -71,10 +81,20 @@ function buildDefaultStorageSettings() {
       process.env.S3_BUCKET
   );
   const minioEnabled = hasS3Endpoint || hasAwsCredentials;
+  const provider = minioEnabled ? 'minio' : 'cdn';
 
   return {
-    provider: minioEnabled ? 'minio' : 'cdn',
+    provider,
     minioEnabled,
+    // S3-совместимые поля
+    s3Endpoint: '',
+    s3Region: 'us-east-1',
+    s3Bucket: '',
+    s3AccessKeyId: '',
+    s3SecretAccessKey: '',
+    s3PublicBaseUrl: '',
+    s3ForcePathStyle: true,
+    // HTTP CDN API поля
     baseUrl: '',
     uploadEndpoint: '',
     httpMethod: 'POST',
@@ -114,7 +134,13 @@ router.put('/general', async (req, res) => {
 router.get('/storage', async (req, res) => {
   try {
     const settings = await getStorageSettings();
-    return res.json(settings);
+    // Маскируем секретный ключ S3
+    return res.json({
+      ...settings,
+      s3SecretAccessKey: settings.s3SecretAccessKey
+        ? '••••••••' + String(settings.s3SecretAccessKey).slice(-4)
+        : '',
+    });
   } catch (e) {
     console.error(e);
     return res.status(500).json({ error: 'Internal server error' });
@@ -125,10 +151,29 @@ router.put('/storage', async (req, res) => {
   try {
     const parsed = storagePutSchema.parse(req.body);
     const current = await getStorageSettings();
-    const provider = parsed.minioEnabled ? 'minio' : 'cdn';
-    const updated = { ...current, ...parsed, provider };
+
+    // Не перезаписываем секрет если пришла маска
+    const secretUpdate =
+      parsed.s3SecretAccessKey && !String(parsed.s3SecretAccessKey).startsWith('••••')
+        ? { s3SecretAccessKey: parsed.s3SecretAccessKey }
+        : {};
+
+    const updated = {
+      ...current,
+      ...parsed,
+      ...secretUpdate,
+      // minioEnabled сохраняем синхронно с provider
+      minioEnabled: parsed.provider === 'minio',
+    };
+
     await updateSettings(STORAGE_SETTINGS_KEY, updated);
-    return res.json(updated);
+
+    return res.json({
+      ...updated,
+      s3SecretAccessKey: updated.s3SecretAccessKey
+        ? '••••••••' + String(updated.s3SecretAccessKey).slice(-4)
+        : '',
+    });
   } catch (e) {
     if (e.name === 'ZodError') {
       return res.status(400).json({ error: 'Validation error', details: e.issues ?? e.errors });
