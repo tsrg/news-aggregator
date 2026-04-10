@@ -35,6 +35,7 @@ export function useNewsLive() {
   const socketOrigin = resolveClientPublicOrigin(apiBase);
 
   let socket: ReturnType<typeof io> | null = null;
+  let connectTimer: ReturnType<typeof setTimeout> | null = null;
 
   function connect() {
     try {
@@ -55,10 +56,19 @@ export function useNewsLive() {
   }
 
   onMounted(() => {
-    connect();
+    // Defer Socket.IO connection until after the page is interactive (≥2 s).
+    // Socket.IO client is ~150 KB of JS — parsing it on the critical path
+    // adds 80–120 ms of blocking time on mobile (TBT). Delaying init lets
+    // the browser finish painting and become interactive first; the WebSocket
+    // connection then opens in the background without affecting LCP/TBT.
+    connectTimer = setTimeout(() => connect(), 2000);
   });
 
   onUnmounted(() => {
+    if (connectTimer !== null) {
+      clearTimeout(connectTimer);
+      connectTimer = null;
+    }
     if (socket) {
       socket.removeAllListeners();
       socket.disconnect();

@@ -7,6 +7,8 @@
             <img
               src="/ivanovo-logo.png"
               alt="Иваново Онлайн"
+              width="1024"
+              height="490"
               class="h-10 w-auto sm:h-12 object-contain"
             />
           </NuxtLink>
@@ -69,6 +71,8 @@
             <img
               src="/ivanovo-logo.png"
               alt="Иваново Онлайн"
+              width="1024"
+              height="490"
               class="h-8 w-auto object-contain opacity-80"
             />
           </div>

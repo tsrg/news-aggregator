@@ -28,9 +28,12 @@ export default defineNuxtConfig({
         { name: 'twitter:image', content: 'https://ivanovo.online/og-image.jpg' },
       ],
       link: [
-        // Preconnect only; font stylesheet loaded asynchronously in plugin to avoid blocking FCP
-        { rel: 'preconnect', href: 'https://fonts.googleapis.com' },
-        { rel: 'preconnect', href: 'https://fonts.gstatic.com', crossorigin: 'anonymous' },
+        // Inter font — loaded non-blocking via fonts.client plugin (media="print" trick).
+        // font-display:optional in /fonts/inter.css means browser uses system fallback
+        // on first (uncached) visit and Inter on all subsequent visits.
+        // Preloads for woff2 files deliberately omitted: at 48–85 KB each they consume
+        // mobile bandwidth and push back FCP/Speed Index without visual benefit on
+        // first load (font-display:optional never swaps after paint anyway).
         // Preconnect to API origin for faster first request when front and API are on different hosts
         ...(getApiOriginLink()),
         { rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },

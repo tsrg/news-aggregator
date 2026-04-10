@@ -2,13 +2,21 @@
 
 ## Установка на сервер
 
-1. Скопировать конфиг:
+1. Создать каталог для proxy_cache (указан в конфиге):
+   ```bash
+   sudo mkdir -p /var/cache/nginx/nuxt_static
+   sudo chown -R www-data:www-data /var/cache/nginx/nuxt_static
+   ```
+
+2. Убедиться, что в `/etc/nginx/nginx.conf` внутри блока `http { ... }` НЕ задан `gzip off;` — иначе директивы gzip из конфига сайта не будут работать. Если `gzip on;` уже есть в `nginx.conf`, строки gzip в этом файле можно удалить (дублирование не страшно, но лишнее).
+
+3. Скопировать конфиг:
    ```bash
    sudo cp ivanovo.online.conf /etc/nginx/sites-available/
    sudo ln -s /etc/nginx/sites-available/ivanovo.online.conf /etc/nginx/sites-enabled/
    ```
 
-2. Проверить и перезагрузить:
+4. Проверить и перезагрузить:
    ```bash
    sudo nginx -t && sudo systemctl reload nginx
    ```

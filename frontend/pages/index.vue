@@ -238,6 +238,7 @@ const topQuery = computed(() => {
 });
 const { data: topData, pending: topPending } = await useFetch<NewsResponse>(() => topQuery.value, { key: 'index-top' });
 
+
 // Region block
 const regionQuery = computed(() => (region ? `${apiBase}/api/news?region=${encodeURIComponent(region)}&limit=6` : ''));
 const { data: regionData, pending: regionPending } = await useFetch<NewsResponse>(() => regionQuery.value, {

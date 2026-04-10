@@ -9,14 +9,42 @@
           featured ? 'aspect-video md:aspect-video' : 'aspect-[4/3] md:aspect-[4/3]'
         ]"
       >
-        <img
-          :src="item.imageUrl"
-          :alt="item.title || ''"
-          class="w-full h-full object-cover transform-gpu group-hover:scale-105 transition-transform duration-500 ease-out will-change-transform"
-          :loading="priority ? undefined : 'lazy'"
-          :fetchpriority="priority ? 'high' : undefined"
-          :decoding="priority ? 'async' : undefined"
-        />
+        <!--
+          <picture> with AVIF → WebP → JPEG fallback.
+          AVIF and WebP sources are derived from the imageUrl only when it ends
+          with ".jpg" — the convention used by our upload pipeline (imageOptimize.js).
+          External RSS images or legacy uploads keep the original URL in <img src>.
+        -->
+        <picture>
+          <!--
+            srcset with width descriptors lets the browser pick the right size.
+            420w  → mobile  version (uuid-sm.avif / uuid-sm.webp / uuid-sm.jpg)
+            1200w → desktop version (uuid.avif    / uuid.webp    / uuid.jpg)
+            sizes: on screens ≤ 640 px serve the 420 px variant; otherwise desktop.
+          -->
+          <source
+            v-if="avifSrc"
+            :srcset="`${avifSmSrc} 420w, ${avifSrc} 1200w`"
+            sizes="(max-width: 640px) 420px, 1200px"
+            type="image/avif"
+          />
+          <source
+            v-if="webpSrc"
+            :srcset="`${webpSmSrc} 420w, ${webpSrc} 1200w`"
+            sizes="(max-width: 640px) 420px, 1200px"
+            type="image/webp"
+          />
+          <img
+            :src="item.imageUrl"
+            :srcset="jpegSmSrc ? `${jpegSmSrc} 420w, ${item.imageUrl} 1200w` : undefined"
+            :sizes="jpegSmSrc ? '(max-width: 640px) 420px, 1200px' : undefined"
+            :alt="item.title || ''"
+            class="w-full h-full object-cover transform-gpu group-hover:scale-105 transition-transform duration-500 ease-out will-change-transform"
+            :loading="priority ? undefined : 'lazy'"
+            :fetchpriority="priority ? 'high' : undefined"
+            :decoding="priority ? 'async' : undefined"
+          />
+        </picture>
         <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
       </div>
       <div class="flex flex-col justify-between flex-1 p-5 md:p-6 bg-white">
@@ -58,6 +86,45 @@ const props = defineProps<{
 }>();
 
 const displayDate = computed(() => props.item.sourcePublishedAt || props.item.publishedAt);
+
+/**
+ * Derive modern-format source URLs from the stored JPEG imageUrl.
+ *
+ * Our upload pipeline saves six variants under the same UUID:
+ *   uploads/2026/<uuid>.jpg       ← imageUrl in DB (desktop JPEG)
+ *   uploads/2026/<uuid>.webp      desktop WebP
+ *   uploads/2026/<uuid>.avif      desktop AVIF
+ *   uploads/2026/<uuid>-sm.jpg    mobile JPEG  (420 px)
+ *   uploads/2026/<uuid>-sm.webp   mobile WebP  (420 px)
+ *   uploads/2026/<uuid>-sm.avif   mobile AVIF  (420 px)
+ *
+ * We only derive when the URL ends with ".jpg" — the convention used by our
+ * imageOptimize.js pipeline. External RSS images or legacy uploads keep the
+ * original URL in <img src> and get no srcset.
+ */
+const isOurImage = computed(() => {
+  const url = props.item.imageUrl;
+  return Boolean(url && /\.jpg$/i.test(url));
+});
+
+// Desktop variants (1200 px)
+const avifSrc = computed(() =>
+  isOurImage.value ? props.item.imageUrl!.replace(/\.jpg$/i, '.avif') : null
+);
+const webpSrc = computed(() =>
+  isOurImage.value ? props.item.imageUrl!.replace(/\.jpg$/i, '.webp') : null
+);
+
+// Mobile variants (420 px) — insert "-sm" before the extension
+const avifSmSrc = computed(() =>
+  isOurImage.value ? props.item.imageUrl!.replace(/\.jpg$/i, '-sm.avif') : null
+);
+const webpSmSrc = computed(() =>
+  isOurImage.value ? props.item.imageUrl!.replace(/\.jpg$/i, '-sm.webp') : null
+);
+const jpegSmSrc = computed(() =>
+  isOurImage.value ? props.item.imageUrl!.replace(/\.jpg$/i, '-sm.jpg') : null
+);
 
 function formatDate(d: string | undefined | null): string {
   if (!d) return '';
