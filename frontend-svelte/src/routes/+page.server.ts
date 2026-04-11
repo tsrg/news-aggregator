@@ -9,10 +9,10 @@ type NewsItem = {
 type NewsResponse = { items: NewsItem[]; total: number };
 type Section = { id: string; slug: string; title: string };
 
-export const load: PageServerLoad = async ({ fetch, depends, parent }) => {
+export const load: PageServerLoad = async ({ depends, parent }) => {
   depends('app:news');
 
-  const serverBase = env.API_BASE_SERVER || env.PUBLIC_API_BASE || 'http://localhost:3002';
+  const serverBase = env.API_BASE_SERVER || env.PUBLIC_API_BASE || 'http://backend:3000';
   const region = env.PUBLIC_REGION || '';
 
   // Get sections from parent layout (already fetched)
@@ -26,14 +26,14 @@ export const load: PageServerLoad = async ({ fetch, depends, parent }) => {
   const regionParam = region ? `&region=${encodeURIComponent(region)}` : '';
 
   const [topRes, regionRes, generalRes, sectionNewsRes] = await Promise.allSettled([
-    fetch(`${serverBase}/api/news?limit=4${regionParam}`).then((r) => r.json() as Promise<NewsResponse>),
+    globalThis.fetch(`${serverBase}/api/news?limit=4${regionParam}`).then((r) => r.json() as Promise<NewsResponse>),
     region
-      ? fetch(`${serverBase}/api/news?region=${encodeURIComponent(region)}&limit=6`).then((r) => r.json() as Promise<NewsResponse>)
+      ? globalThis.fetch(`${serverBase}/api/news?region=${encodeURIComponent(region)}&limit=6`).then((r) => r.json() as Promise<NewsResponse>)
       : Promise.resolve(null),
-    fetch(`${serverBase}/api/news?noRegion=1&limit=5`).then((r) => r.json() as Promise<NewsResponse>),
+    globalThis.fetch(`${serverBase}/api/news?noRegion=1&limit=5`).then((r) => r.json() as Promise<NewsResponse>),
     Promise.all(
       sectionSlugs.map((sec) =>
-        fetch(`${serverBase}/api/news?section=${sec.id}&limit=3`)
+        globalThis.fetch(`${serverBase}/api/news?section=${sec.id}&limit=3`)
           .then((r) => r.json() as Promise<NewsResponse>)
           .then((res) => ({ id: sec.id, items: res.items ?? [] }))
           .catch(() => ({ id: sec.id, items: [] }))
