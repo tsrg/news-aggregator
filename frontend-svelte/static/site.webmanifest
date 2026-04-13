@@ -1,0 +1,13 @@
+{
+  "name": "Иваново Онлайн",
+  "short_name": "Иваново Онлайн",
+  "description": "Свежие новости Иванова и Ивановской области",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2563EB",
+  "orientation": "portrait",
+  "scope": "/",
+  "lang": "ru-RU",
+  "icons": []
+}

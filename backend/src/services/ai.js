@@ -85,7 +85,7 @@ async function callZAI(prompt, options = {}) {
   // Z.ai использует OpenAI-совместимый формат
   const baseUrl = settings.baseUrl || 'https://api.z.ai/api/paas/v4';
   const url = `${baseUrl.replace(/\/$/, '')}/chat/completions`;
-  
+
   // Некоторые модели Z.ai не поддерживают system role
   const body = {
     model: options.model || settings.model || 'glm-5',
@@ -95,7 +95,10 @@ async function callZAI(prompt, options = {}) {
     max_tokens: options.max_tokens || settings.maxTokens || 2000,
     temperature: settings.temperature ?? 0.7,
   };
-  
+  if (options.responseFormatJson) {
+    body.response_format = { type: 'json_object' };
+  }
+
   return callOpenAICompatible(url, key, body, options);
 }
 
@@ -320,6 +323,7 @@ ${jsonIn.slice(0, 100000)}
     max_tokens: Math.min(8000, (settings.maxTokens || 2000) * 4),
     temperature: 0.48,
     timeout: 120000,
+    responseFormatJson: true,
   });
 
   let parsed;
@@ -426,6 +430,43 @@ function extractFirstBalancedJsonObject(s) {
  * @param {string} raw
  * @returns {object}
  */
+/**
+ * Заменяет литеральные управляющие символы внутри JSON-строк на escape-последовательности.
+ * Это исправляет ответы ИИ, который вставляет настоящие переносы строк в HTML-поля body.
+ * @param {string} text
+ * @returns {string}
+ */
+function repairJsonControlChars(text) {
+  let result = '';
+  let inString = false;
+  let escape = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (escape) {
+      escape = false;
+      result += c;
+      continue;
+    }
+    if (c === '\\' && inString) {
+      escape = true;
+      result += c;
+      continue;
+    }
+    if (c === '"') {
+      inString = !inString;
+      result += c;
+      continue;
+    }
+    if (inString) {
+      if (c === '\n') { result += '\\n'; continue; }
+      if (c === '\r') { result += '\\r'; continue; }
+      if (c === '\t') { result += '\\t'; continue; }
+    }
+    result += c;
+  }
+  return result;
+}
+
 function parseJsonObjectFromAiText(raw) {
   const text = String(raw || '').trim();
   if (!text) {
@@ -442,8 +483,17 @@ function parseJsonObjectFromAiText(raw) {
 
   for (const chunk of candidates) {
     if (!chunk) continue;
+    // Попытка 1: как есть
     try {
       const parsed = JSON.parse(chunk);
+      const obj = unwrapJsonObject(parsed);
+      if (obj) return obj;
+    } catch {
+      /* next */
+    }
+    // Попытка 2: после починки управляющих символов в строках
+    try {
+      const parsed = JSON.parse(repairJsonControlChars(chunk));
       const obj = unwrapJsonObject(parsed);
       if (obj) return obj;
     } catch {
@@ -453,8 +503,17 @@ function parseJsonObjectFromAiText(raw) {
 
   const balanced = extractFirstBalancedJsonObject(text);
   if (balanced) {
+    // Попытка 3: сбалансированный объект как есть
     try {
       const parsed = JSON.parse(balanced);
+      const obj = unwrapJsonObject(parsed);
+      if (obj) return obj;
+    } catch {
+      /* next */
+    }
+    // Попытка 4: сбалансированный объект после починки
+    try {
+      const parsed = JSON.parse(repairJsonControlChars(balanced));
       const obj = unwrapJsonObject(parsed);
       if (obj) return obj;
     } catch {
@@ -462,6 +521,7 @@ function parseJsonObjectFromAiText(raw) {
     }
   }
 
+  console.error('[parseJsonObjectFromAiText] Не удалось распарсить JSON. Сырой ответ (первые 500 символов):', text.slice(0, 500));
   throw new Error('ИИ вернул неверный формат ответа');
 }
 
