@@ -20,6 +20,7 @@ import rolesAdmin from './modules/roles/roles.admin.routes.js';
 import permissionsAdmin from './modules/roles/permissions.admin.routes.js';
 import usersAdmin from './modules/users/users.admin.routes.js';
 import regionsPublic from './modules/regions/regions.public.routes.js';
+import digestAdmin, { digestPublicRouter } from './modules/digest/digest.admin.routes.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -37,7 +38,10 @@ app.use(express.json({ limit: '5mb' }));
 app.use(cookieParser());
 
 // Serve uploads folder as static
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/uploads', express.static(path.join(__dirname, '../uploads'), {
+  maxAge: '365d',
+  immutable: true,
+}));
 
 app.use('/api/auth', authRoutes);
 
@@ -58,6 +62,9 @@ app.use('/api/admin/settings', settingsRoutes);
 app.use('/api/admin/permissions', permissionsAdmin);
 app.use('/api/admin/roles', rolesAdmin);
 app.use('/api/admin/users', usersAdmin);
+app.use('/api/admin/digest', digestAdmin);
+
+app.use('/api/digest', digestPublicRouter);
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 

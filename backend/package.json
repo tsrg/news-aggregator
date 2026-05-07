@@ -12,7 +12,9 @@
     "db:seed": "node prisma/seed.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "cache:fix": "node scripts/set-cache-control.js",
+    "cache:fix:dry": "node scripts/set-cache-control.js --dry-run"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1007.0",

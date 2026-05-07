@@ -2,8 +2,18 @@
 <html lang="ru">
   <head>
     <meta charset="utf-8" />
+    <!-- Preconnect к CDN с изображениями — браузер устанавливает соединение заранее -->
+    <link rel="preconnect" href="https://cdn.ivanovo.online" crossorigin />
+    <link rel="dns-prefetch" href="https://cdn.ivanovo.online" />
     <link rel="icon" type="image/svg+xml" href="%sveltekit.assets%/favicon.svg" />
-    <link rel="manifest" href="%sveltekit.assets%/site.webmanifest" />
+    <script>
+      // Манифест загружается после рендера — не попадает на критический путь
+      addEventListener('load', function() {
+        var l = document.createElement('link');
+        l.rel = 'manifest'; l.href = '/site.webmanifest';
+        document.head.appendChild(l);
+      });
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#2563EB" />
     %sveltekit.head%

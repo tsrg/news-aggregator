@@ -23,8 +23,8 @@ router.post('/', requireAuth, requirePermission('settings'), upload.single('imag
 
     // 'minio' | 's3' | 'cdn' — все удалённые провайдеры
     if (provider === 'minio' || provider === 's3' || provider === 'cdn') {
-      const url = await uploadFileBySettings(req.file);
-      return res.json({ url });
+      const { url, placeholder } = await uploadFileBySettings(req.file);
+      return res.json({ url, placeholder });
     }
 
     await mkdir('uploads', { recursive: true });

@@ -64,8 +64,10 @@ model NewsItem {
   summary     String?      @db.Text
   body        String?      @db.Text
   url         String?      @db.Text
-  imageUrl    String?      @map("image_url") @db.Text
-  region      String?
+  imageUrl         String?  @map("image_url") @db.Text
+  /// Доминирующий цвет изображения в формате #rrggbb — заглушка до загрузки картинки
+  imagePlaceholder String?  @map("image_placeholder") @db.VarChar(7)
+  region           String?
   /// Дата/время публикации в оригинальном источнике (RSS pubDate, sitemap lastmod, meta на странице)
   sourcePublishedAt DateTime? @map("source_published_at")
   publishedAt DateTime?   @map("published_at")
@@ -277,4 +279,54 @@ model Setting {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("settings")
+}
+
+enum DigestStatus {
+  PENDING
+  GENERATING
+  READY
+  FAILED
+}
+
+model DailyDigest {
+  id          String       @id @default(cuid())
+  /// Дата дайджеста (без времени), уникальный ключ — один дайджест на день
+  date        DateTime     @unique @db.Date
+  status      DigestStatus @default(PENDING)
+
+  /// ID новостей, вошедших в дайджест
+  newsItemIds String[]     @map("news_item_ids")
+  newsCount   Int          @default(0) @map("news_count")
+  /// Группировка новостей по рубрикам: [{ sectionId, sectionTitle, items: [{id, title}] }]
+  sections    Json?
+
+  /// Статья-дайджест
+  articleTitle   String?  @map("article_title")
+  articleBody    String?  @map("article_body") @db.Text
+  articleSummary String?  @map("article_summary") @db.Text
+
+  /// Материалы для подкаста
+  /// Готовый промт для TTS/AI-сервиса (ElevenLabs, NotebookLM и др.)
+  podcastPrompt    String?  @map("podcast_prompt") @db.Text
+  /// Сценарий в виде JSON-массива реплик: [{speaker: "A"|"B", text: "..."}]
+  podcastScript    Json?    @map("podcast_script")
+  /// Темы подкаста: [{title, talkingPoints[], estimatedSeconds}]
+  podcastTopics    Json?    @map("podcast_topics")
+  /// Расчётная длительность подкаста в секундах
+  podcastDuration  Int?     @map("podcast_duration")
+  /// Описание стиля голоса/тона для TTS
+  podcastVoiceStyle String? @map("podcast_voice_style") @db.Text
+  /// Промт для фоновой музыки/саундскейпа
+  podcastSoundscapePrompt String? @map("podcast_soundscape_prompt") @db.Text
+
+  /// Сообщение об ошибке при статусе FAILED
+  errorMessage String?  @map("error_message") @db.Text
+
+  aiProvider  String?  @map("ai_provider")
+  generatedAt DateTime? @map("generated_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([date])
+  @@map("daily_digests")
 }

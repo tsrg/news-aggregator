@@ -162,6 +162,7 @@ export async function uploadBuffer(key, buffer, contentType) {
       Key: key,
       Body: buffer,
       ContentType: contentType,
+      CacheControl: 'public, max-age=31536000, immutable',
     })
   );
   const base = config.s3.publicBaseUrl
@@ -254,6 +255,7 @@ export async function uploadBufferDynamic(s3Config, key, buffer, contentType) {
       Key: key,
       Body: buffer,
       ContentType: contentType,
+      CacheControl: 'public, max-age=31536000, immutable',
     })
   );
 

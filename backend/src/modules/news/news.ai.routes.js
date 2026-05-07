@@ -150,24 +150,23 @@ router.post('/:id/cover', coverUpload.single('image'), async (req, res) => {
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
     const provider = await resolveStorageProvider();
-    let url;
+    let publicUrl;
+    let placeholder = null;
 
     // 'minio' | 's3' | 'cdn' — все удалённые провайдеры
     if (provider === 'minio' || provider === 's3' || provider === 'cdn') {
-      url = await uploadFileBySettings(req.file);
+      ({ url: publicUrl, placeholder } = await uploadFileBySettings(req.file));
     } else {
       await mkdir('uploads', { recursive: true });
       const ext = path.extname(req.file.originalname) || '.png';
       const filename = `${randomUUID()}${ext}`;
       await writeFile(path.join('uploads', filename), req.file.buffer);
-      url = `/uploads/${filename}`;
+      publicUrl = rewriteStorageUrlForBrowser(`/uploads/${filename}`);
     }
-
-    const publicUrl = rewriteStorageUrlForBrowser(url);
 
     const item = await prisma.newsItem.update({
       where: { id: req.params.id },
-      data: { imageUrl: publicUrl },
+      data: { imageUrl: publicUrl, ...(placeholder && { imagePlaceholder: placeholder }) },
       include: { section: true, source: true },
     });
 

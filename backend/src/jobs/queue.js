@@ -4,10 +4,12 @@ import { prisma } from '../config/prisma.js';
 import { fetchAllSources } from './fetchRss.js';
 import { enrichNewsItem } from '../services/articleParser.js';
 import { purgeStaleUnpublishedNews } from './cleanupStaleNews.js';
+import { generateDailyDigest } from './digestGenerator.js';
 
 let queue = null;
 let articleQueue = null;
 let cleanupQueue = null;
+let digestQueue = null;
 
 export function getQueue() {
   if (!queue && config.redis?.url) {
@@ -73,6 +75,32 @@ export function getCleanupQueue() {
   return cleanupQueue;
 }
 
+export function getDigestQueue() {
+  if (!digestQueue && config.redis?.url) {
+    digestQueue = new Bull('daily-digest', config.redis.url, {
+      defaultJobOptions: { removeOnComplete: 30, removeOnFail: 10 },
+    });
+
+    digestQueue.process(async (job) => {
+      const { targetDate, force } = job.data || {};
+      return generateDailyDigest(targetDate || null, { force: !!force });
+    });
+
+    digestQueue.on('completed', (job, result) => {
+      if (result?.skipped) {
+        console.log(`[DigestQueue] Пропущено: ${result.reason}`);
+      } else {
+        console.log(`[DigestQueue] Дайджест готов: id=${result?.digestId}, новостей=${result?.newsCount}`);
+      }
+    });
+
+    digestQueue.on('failed', (job, err) => {
+      console.error('[DigestQueue] Ошибка генерации дайджеста:', err.message);
+    });
+  }
+  return digestQueue;
+}
+
 // Экспортируем articleQueue для использования в других модулях
 export { articleQueue };
 
@@ -89,5 +117,11 @@ export function startScheduler() {
   if (cq) {
     cq.add({}, { repeat: { cron: '0 * * * *' } }); // every hour
     console.log('Stale news cleanup scheduler started (every hour)');
+  }
+
+  const dq = getDigestQueue();
+  if (dq) {
+    dq.add({}, { repeat: { cron: '0 5 * * *' } }); // every day at 05:00
+    console.log('Daily digest scheduler started (every day at 05:00)');
   }
 }

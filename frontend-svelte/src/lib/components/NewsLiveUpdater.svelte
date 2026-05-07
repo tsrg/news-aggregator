@@ -22,28 +22,27 @@
     refreshTrigger.update((n) => n + 1);
   }
 
-  onMount(() => {
-    connectTimer = setTimeout(async () => {
-      try {
-        const { io } = await import('socket.io-client');
-        const origin = resolveClientPublicOrigin(apiBase);
-        socket = io(origin, {
-          path: '/socket.io',
-          transports: ['websocket', 'polling'],
-          reconnection: true,
-          reconnectionAttempts: 10,
-          reconnectionDelay: 1000,
-          timeout: 20000,
-        });
-        socket.on('news:published', handleNewsEvent);
-        socket.on('news:updated', handleNewsEvent);
-      } catch (e) {
-        console.warn('[NewsLiveUpdater]', e);
-      }
-    }, 2000);
-  });
+  async function connect() {
+    if (socket?.connected) return;
+    try {
+      const { io } = await import('socket.io-client');
+      const origin = resolveClientPublicOrigin(apiBase);
+      socket = io(origin, {
+        path: '/socket.io',
+        transports: ['websocket', 'polling'],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        timeout: 20000,
+      });
+      socket.on('news:published', handleNewsEvent);
+      socket.on('news:updated', handleNewsEvent);
+    } catch (e) {
+      console.warn('[NewsLiveUpdater]', e);
+    }
+  }
 
-  onDestroy(() => {
+  function disconnect() {
     if (connectTimer !== null) {
       clearTimeout(connectTimer);
       connectTimer = null;
@@ -53,5 +52,25 @@
       socket.disconnect();
       socket = null;
     }
+  }
+
+  onMount(() => {
+    // Отложенное подключение чтобы не блокировать LCP/TBT
+    connectTimer = setTimeout(connect, 2000);
+
+    // pagehide — страница уходит в bfcache: закрываем WebSocket
+    // pageshow  — страница восстановлена из bfcache: переподключаемся
+    const onHide = () => disconnect();
+    const onShow = (e: PageTransitionEvent) => { if (e.persisted) connect(); };
+
+    window.addEventListener('pagehide', onHide);
+    window.addEventListener('pageshow', onShow);
+
+    return () => {
+      window.removeEventListener('pagehide', onHide);
+      window.removeEventListener('pageshow', onShow);
+    };
   });
+
+  onDestroy(() => disconnect());
 </script>

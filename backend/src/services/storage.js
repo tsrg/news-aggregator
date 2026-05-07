@@ -3,7 +3,7 @@ import { randomUUID } from 'crypto';
 import { uploadBuffer as s3UploadBuffer, uploadBufferDynamic, rewriteStorageUrlForBrowser } from './s3.js';
 import { getStorageSettings } from './settings.js';
 import { uploadToCdn } from './cdn-upload.js';
-import { optimizeImage } from './imageOptimize.js';
+import { optimizeImage, extractDominantColor } from './imageOptimize.js';
 
 /**
  * Build an object-storage key for a single file.
@@ -85,6 +85,9 @@ export async function uploadFileBySettings(file) {
     const { avif, webp, jpeg, avifSm, webpSm, jpegSm } = optimized;
     const key = makeBaseKeyFactory();
 
+    // Доминирующий цвет извлекаем из оригинального буфера (до ресайза)
+    const placeholder = await extractDominantColor(file.buffer);
+
     if (settings.provider === 'minio' || settings.minioEnabled || settings.provider === 's3') {
       // Parallel upload of all six formats (desktop + mobile) — minimises total upload time.
       // Mobile variants use "-sm" suffix before the extension, e.g. uuid-sm.avif
@@ -96,21 +99,21 @@ export async function uploadFileBySettings(file) {
         uploadOne(settings, key('-sm.webp'),  webpSm, 'image/webp',  file),
         uploadOne(settings, key('-sm.avif'),  avifSm, 'image/avif',  file),
       ]);
-      return rewriteStorageUrlForBrowser(jpegUrl);
+      return { url: rewriteStorageUrlForBrowser(jpegUrl), placeholder };
     }
 
     // CDN provider: single-format upload only (CDN API usually takes one file)
     if (settings.provider === 'cdn') {
       const url = await uploadOne(settings, key('.jpg'), jpeg, 'image/jpeg', file);
-      return rewriteStorageUrlForBrowser(url);
+      return { url: rewriteStorageUrlForBrowser(url), placeholder };
     }
   }
 
   // ── Fallback: non-image file or sharp failure — upload original ──────────
   if (settings.provider === 'minio' || settings.minioEnabled || settings.provider === 's3' || settings.provider === 'cdn') {
     const rawKey = buildKey(file.originalname);
-    const url = await uploadOne(settings, rawKey, file.buffer, file.mimetype || 'application/octet-stream', file);
-    return rewriteStorageUrlForBrowser(url);
+    const rawUrl = await uploadOne(settings, rawKey, file.buffer, file.mimetype || 'application/octet-stream', file);
+    return { url: rewriteStorageUrlForBrowser(rawUrl), placeholder: null };
   }
 
   throw new Error('No remote storage provider is configured');

@@ -1,6 +1,26 @@
 import sharp from 'sharp';
 
 /**
+ * Извлекает доминирующий цвет изображения в формате #rrggbb.
+ * Сжимаем до 1×1 пикселя — sharp усредняет все цвета, это и есть «доминанта».
+ * @param {Buffer} buffer
+ * @returns {Promise<string|null>} e.g. "#a3b4c5" или null при ошибке
+ */
+export async function extractDominantColor(buffer) {
+  try {
+    const pixel = await sharp(buffer)
+      .resize(1, 1, { fit: 'cover' })
+      .removeAlpha()
+      .raw()
+      .toBuffer();
+    const hex = (n) => n.toString(16).padStart(2, '0');
+    return `#${hex(pixel[0])}${hex(pixel[1])}${hex(pixel[2])}`;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * MIME types that we process through sharp.
  * GIF is excluded — animated GIFs would lose animation.
  */

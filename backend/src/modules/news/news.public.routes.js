@@ -8,6 +8,7 @@ function withPublicImageUrl(item) {
   if (!item || typeof item !== 'object') return item;
   const o = { ...item };
   if (o.imageUrl) o.imageUrl = rewriteStorageUrlForBrowser(o.imageUrl);
+  // imagePlaceholder передаётся как есть — это просто hex-цвет (#rrggbb)
   return o;
 }
 

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { Router } from 'express';
 import { requireAuth, requirePermission } from '../auth/auth.middleware.js';
 import {
+  getSettings,
   getAISettings,
   getGeneralSettings,
   getStorageSettings,
@@ -330,6 +331,61 @@ router.put('/ai-image', async (req, res) => {
   }
 });
 
+// ─── Digest settings ─────────────────────────────────────────────────────────
+
+const DIGEST_SETTINGS_KEY = 'digest_config';
+
+const defaultDigestSettings = {
+  enabled: true,
+  cronTime: '0 5 * * *',
+  minNewsCount: 3,
+  lookbackHours: 24,
+  includeSections: [],
+  excludeSections: [],
+  podcastHostAName: 'Алексей',
+  podcastHostBName: 'Марина',
+  podcastTargetMinutes: 7,
+  podcastLanguage: 'ru',
+};
+
+const digestPutSchema = z.object({
+  enabled: z.boolean().optional(),
+  minNewsCount: z.number().int().min(1).max(100).optional(),
+  lookbackHours: z.number().int().min(1).max(168).optional(),
+  includeSections: z.array(z.string()).optional(),
+  excludeSections: z.array(z.string()).optional(),
+  podcastHostAName: z.string().min(1).max(50).optional(),
+  podcastHostBName: z.string().min(1).max(50).optional(),
+  podcastTargetMinutes: z.number().int().min(1).max(60).optional(),
+  podcastLanguage: z.string().min(2).max(10).optional(),
+});
+
+router.get('/digest', async (req, res) => {
+  try {
+    const db = await getSettings(DIGEST_SETTINGS_KEY);
+    return res.json({ ...defaultDigestSettings, ...(db || {}) });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/digest', async (req, res) => {
+  try {
+    const parsed = digestPutSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Validation error', details: parsed.error.flatten() });
+    }
+    const current = (await getSettings(DIGEST_SETTINGS_KEY)) || defaultDigestSettings;
+    const updated = { ...defaultDigestSettings, ...current, ...parsed.data };
+    await updateSettings(DIGEST_SETTINGS_KEY, updated);
+    return res.json(updated);
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Тест соединения с AI API
 router.post('/ai/test', async (req, res) => {
   try {
@@ -468,6 +524,20 @@ export async function initializeSettings() {
         },
       });
       console.log('Default AI image settings created in database');
+    }
+
+    const existingDigest = await prisma.setting.findUnique({
+      where: { key: DIGEST_SETTINGS_KEY },
+    });
+
+    if (!existingDigest) {
+      await prisma.setting.create({
+        data: {
+          key: DIGEST_SETTINGS_KEY,
+          value: { ...defaultDigestSettings },
+        },
+      });
+      console.log('Default digest settings created in database');
     }
   } catch (e) {
     console.error('Failed to initialize settings:', e.message);

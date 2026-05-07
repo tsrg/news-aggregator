@@ -4,6 +4,7 @@
     title: string;
     summary?: string | null;
     imageUrl?: string | null;
+    imagePlaceholder?: string | null;
     sourcePublishedAt?: string | null;
     publishedAt?: string | null;
     source?: { name: string } | null;
@@ -56,10 +57,11 @@
     {#if item.imageUrl}
       <div
         class={[
-          'overflow-hidden w-full relative bg-gray-100',
+          'overflow-hidden w-full relative',
           imagePosition === 'left' ? 'md:w-2/5 shrink-0' : '',
           featured ? 'aspect-video' : 'aspect-[4/3]',
         ].join(' ')}
+        style={item.imagePlaceholder ? `background-color:${item.imagePlaceholder}` : 'background-color:#e5e7eb'}
       >
         <!--
           <picture> with AVIF → WebP → JPEG fallback.

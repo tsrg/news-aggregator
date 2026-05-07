@@ -1117,6 +1117,184 @@ ${context}`;
 }
 
 /**
+ * Генерирует статью-дайджест за день из массива опубликованных новостей.
+ * @param {Array<{id: string, title: string, summary: string, body: string, sectionTitle: string}>} newsItems
+ * @param {string} dateLabel — читаемая дата, например "15 апреля 2026"
+ * @returns {{ title: string, body: string, summary: string, highlights: string[] }}
+ */
+export async function generateDailyDigestArticle(newsItems, dateLabel) {
+  const settings = await getAISettings();
+  if (!settings.apiKey) throw new Error('API Key not configured');
+
+  const newsJson = JSON.stringify(
+    newsItems.map((n, i) => ({
+      num: i + 1,
+      section: n.sectionTitle || 'Без рубрики',
+      title: n.title,
+      summary: n.summary || '',
+      body: (n.body || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 600),
+    })),
+    null,
+    0
+  );
+
+  const prompt = `Ты главный редактор регионального новостного портала. Напиши дайджест за ${dateLabel}.
+
+На входе JSON-массив новостей за день (поля: num, section — рубрика, title, summary, body).
+
+Требования к статье:
+- Живой, читаемый текст, без сухих перечислений.
+- Структура body — HTML (только теги: h2, p, strong, em, ul, li).
+- Начни с вводного абзаца <p> — обзор дня в 2–3 предложениях.
+- Затем блоки по рубрикам: <h2>Название рубрики</h2>, под каждой рубрикой 2–4 абзаца <p> с кратким пересказом ключевых новостей. Упоминай заголовки через <strong>.
+- Заверши коротким абзацем «Итог дня» (1–2 предложения).
+- Заголовок статьи — информативный, без кликбейта.
+- Поле summary — лид 2–4 предложения для социальных сетей (без HTML).
+- Поле highlights — 3–5 ключевых тезисов дня (строки, без HTML), каждый до 120 символов.
+
+Входные данные:
+${newsJson.slice(0, 80000)}
+
+Ответь ТОЛЬКО одним JSON-объектом без пояснений и без обёртки markdown:
+{"title":"...","body":"...","summary":"...","highlights":["..."]}`;
+
+  const raw = await callAI(prompt, {
+    max_tokens: Math.min(6000, (settings.maxTokens || 2000) * 3),
+    temperature: 0.5,
+    timeout: 180000,
+    responseFormatJson: true,
+  });
+
+  let parsed;
+  try {
+    parsed = parseJsonObjectFromAiText(raw);
+  } catch (e) {
+    throw new Error(e?.message || 'Не удалось разобрать JSON ответа ИИ (дайджест)');
+  }
+
+  const title = typeof parsed.title === 'string' ? parsed.title.trim() : '';
+  const body = typeof parsed.body === 'string' ? parsed.body.trim() : '';
+  const summary = typeof parsed.summary === 'string' ? parsed.summary.trim() : '';
+  const highlights = Array.isArray(parsed.highlights)
+    ? parsed.highlights.filter((x) => typeof x === 'string').map((x) => x.trim()).filter(Boolean).slice(0, 5)
+    : [];
+
+  if (!title || !body) throw new Error('ИИ вернул неполные поля title/body (дайджест)');
+  return { title, body, summary, highlights };
+}
+
+/**
+ * Генерирует материалы для аудио подкаста на основе дайджеста.
+ * @param {{ title: string, summary: string, highlights: string[] }} digestArticle
+ * @param {Array<{title: string, summary: string, sectionTitle: string}>} newsItems
+ * @param {{ hostAName?: string, hostBName?: string, targetMinutes?: number, language?: string }} options
+ * @returns {{
+ *   podcastPrompt: string,
+ *   script: Array<{speaker: 'A'|'B', text: string}>,
+ *   topics: Array<{title: string, talkingPoints: string[], estimatedSeconds: number}>,
+ *   totalDuration: number,
+ *   voiceStyle: string,
+ *   soundscapePrompt: string
+ * }}
+ */
+export async function generatePodcastMaterials(digestArticle, newsItems, options = {}) {
+  const settings = await getAISettings();
+  if (!settings.apiKey) throw new Error('API Key not configured');
+
+  const hostA = options.hostAName || 'Алексей';
+  const hostB = options.hostBName || 'Марина';
+  const targetMinutes = options.targetMinutes || 7;
+  const language = options.language || 'ru';
+
+  const topicsInput = JSON.stringify(
+    newsItems.slice(0, 12).map((n) => ({
+      section: n.sectionTitle || 'Без рубрики',
+      title: n.title,
+      summary: n.summary || '',
+    })),
+    null,
+    0
+  );
+
+  const prompt = `Ты продюсер новостного подкаста. Создай материалы для аудио подкаста на основе дайджеста дня.
+
+Формат подкаста — живой диалог двух ведущих:
+- ${hostA} (ведущий A): нейтральный новостной якорь, зачитывает факты, задаёт вопросы.
+- ${hostB} (ведущий B): аналитик, даёт контекст, объясняет причины и последствия.
+
+Целевая длительность: ~${targetMinutes} минут (≈${targetMinutes * 130} слов в сценарии).
+Язык: ${language === 'ru' ? 'русский' : language}.
+
+Заголовок дайджеста: ${digestArticle.title}
+Краткое содержание: ${digestArticle.summary}
+Ключевые тезисы: ${(digestArticle.highlights || []).join(' | ')}
+
+Новости дня (JSON):
+${topicsInput.slice(0, 40000)}
+
+Создай JSON-объект со следующими полями:
+
+1. "podcastPrompt" (строка) — готовый промт для TTS-сервиса (ElevenLabs, NotebookLM и т.п.).
+   Включи: жанр, тон, имена ведущих, стиль речи, темп, целевую аудиторию.
+   На русском языке, 150–300 слов.
+
+2. "script" (массив объектов [{speaker: "A" или "B", text: "..."}]) — полный сценарий подкаста.
+   - Начни с приветствия от ${hostA}.
+   - Чередуй реплики A и B, каждая реплика 1–4 предложения.
+   - Охвати 4–6 главных тем дня.
+   - Заверши прощанием.
+   - Итого 30–50 реплик.
+
+3. "topics" (массив объектов) — темы подкаста:
+   [{
+     "title": "...",
+     "talkingPoints": ["...", "..."],
+     "estimatedSeconds": число
+   }]
+   4–6 тем, talkingPoints по 2–4 пункта каждая.
+
+4. "totalDuration" (число) — суммарная расчётная длительность в секундах.
+
+5. "voiceStyle" (строка) — описание желаемого тона и стиля голосов для TTS, 50–100 слов.
+
+6. "soundscapePrompt" (строка) — промт для генерации фоновой музыки/звука (50–80 слов, на английском).
+
+Ответь ТОЛЬКО одним JSON-объектом без пояснений и без обёртки markdown.`;
+
+  const raw = await callAI(prompt, {
+    max_tokens: Math.min(8000, (settings.maxTokens || 2000) * 4),
+    temperature: 0.65,
+    timeout: 240000,
+    responseFormatJson: true,
+  });
+
+  let parsed;
+  try {
+    parsed = parseJsonObjectFromAiText(raw);
+  } catch (e) {
+    throw new Error(e?.message || 'Не удалось разобрать JSON ответа ИИ (подкаст)');
+  }
+
+  const podcastPrompt = typeof parsed.podcastPrompt === 'string' ? parsed.podcastPrompt.trim() : '';
+  const script = Array.isArray(parsed.script)
+    ? parsed.script.filter((r) => r && (r.speaker === 'A' || r.speaker === 'B') && typeof r.text === 'string').map((r) => ({ speaker: r.speaker, text: r.text.trim() }))
+    : [];
+  const topics = Array.isArray(parsed.topics)
+    ? parsed.topics.filter((t) => t && typeof t.title === 'string').map((t) => ({
+        title: t.title.trim(),
+        talkingPoints: Array.isArray(t.talkingPoints) ? t.talkingPoints.filter((p) => typeof p === 'string').map((p) => p.trim()) : [],
+        estimatedSeconds: typeof t.estimatedSeconds === 'number' ? t.estimatedSeconds : 60,
+      }))
+    : [];
+  const totalDuration = typeof parsed.totalDuration === 'number' ? parsed.totalDuration : topics.reduce((s, t) => s + t.estimatedSeconds, 0) || targetMinutes * 60;
+  const voiceStyle = typeof parsed.voiceStyle === 'string' ? parsed.voiceStyle.trim() : '';
+  const soundscapePrompt = typeof parsed.soundscapePrompt === 'string' ? parsed.soundscapePrompt.trim() : '';
+
+  if (!podcastPrompt || script.length === 0) throw new Error('ИИ вернул неполные данные подкаста');
+  return { podcastPrompt, script, topics, totalDuration, voiceStyle, soundscapePrompt };
+}
+
+/**
  * Тестирует соединение с AI API
  */
 export async function testAIConnection() {
