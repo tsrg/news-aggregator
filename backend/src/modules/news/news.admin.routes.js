@@ -90,11 +90,12 @@ function snapshot(item) {
 
 router.get('/', async (req, res) => {
   try {
-    const { status, sectionId, region, contentClass, legalReviewStatus, page = '1', limit = '20', sort } = req.query;
+    const { status, sectionId, sourceId, region, contentClass, legalReviewStatus, page = '1', limit = '20', sort } = req.query;
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const where = { mergedIntoId: null };
     if (status) where.status = status;
     if (sectionId) where.sectionId = sectionId;
+    if (sourceId) where.sourceId = sourceId;
     if (region) where.region = region;
     if (contentClass) where.contentClass = contentClass;
     if (legalReviewStatus) where.legalReviewStatus = legalReviewStatus;

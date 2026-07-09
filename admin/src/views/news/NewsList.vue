@@ -39,6 +39,10 @@
           <option value="Иваново">Иваново</option>
           <option value="Другой">Другой</option>
         </select>
+        <select v-model="sourceFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-3 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-0 flex-1 sm:flex-none sm:min-w-[180px]">
+          <option value="">Все источники</option>
+          <option v-for="s in sources" :key="s.id" :value="s.id">{{ s.name }}</option>
+        </select>
         <select v-model="contentClassFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-3 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-0 flex-1 sm:flex-none sm:min-w-[180px]">
           <option value="">Все типы материалов</option>
           <option value="NEWS">Новость</option>
@@ -358,8 +362,10 @@ function legalReviewIconClass(s?: string | null): string {
 
 const statusFilter = ref('');
 const regionFilter = ref('');
+const sourceFilter = ref('');
 const contentClassFilter = ref('');
 const legalReviewFilter = ref('');
+const sources = ref<{ id: string; name: string }[]>([]);
 /** По умолчанию — по дате публикации в источнике */
 const sortBy = ref<'sourcePublishedAt' | 'createdAt'>('sourcePublishedAt');
 const page = ref(1);
@@ -481,6 +487,7 @@ async function load() {
     const params = new URLSearchParams();
     if (statusFilter.value) params.set('status', statusFilter.value);
     if (regionFilter.value) params.set('region', regionFilter.value);
+    if (sourceFilter.value) params.set('sourceId', sourceFilter.value);
     if (contentClassFilter.value) params.set('contentClass', contentClassFilter.value);
     if (legalReviewFilter.value) params.set('legalReviewStatus', legalReviewFilter.value);
     params.set('sort', sortBy.value);
@@ -497,8 +504,19 @@ async function load() {
   }
 }
 
-watch([statusFilter, regionFilter, contentClassFilter, legalReviewFilter, sortBy], () => { page.value = 1; });
-watch([statusFilter, regionFilter, contentClassFilter, legalReviewFilter, sortBy, page], load);
+watch([statusFilter, regionFilter, sourceFilter, contentClassFilter, legalReviewFilter, sortBy], () => { page.value = 1; });
+watch([statusFilter, regionFilter, sourceFilter, contentClassFilter, legalReviewFilter, sortBy, page], load);
+
+async function loadSources() {
+  try {
+    const list = await api().get<{ id: string; name: string }[]>('/api/admin/sources');
+    sources.value = (list || []).map((s) => ({ id: s.id, name: s.name }));
+  } catch {
+    sources.value = [];
+  }
+}
+
+loadSources();
 load();
 
 async function onStatusChange(item: { id: string; status: string }, e: Event) {
