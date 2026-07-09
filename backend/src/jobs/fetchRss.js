@@ -1,4 +1,5 @@
 import Parser from 'rss-parser';
+import iconv from 'iconv-lite';
 import { prisma } from '../config/prisma.js';
 import { collectUrlsFromSitemap } from '../services/sitemapFetcher.js';
 import { enrichNewsItem, parseArticleTitle } from '../services/articleParser.js';
@@ -192,8 +193,49 @@ function normalizeArticleUrl(rawUrl) {
   }
 }
 
+function detectRssEncoding(contentType, buffer) {
+  const ct = String(contentType || '').toLowerCase();
+  const ctMatch = ct.match(/charset=([\w-]+)/);
+  if (ctMatch) return ctMatch[1].toLowerCase();
+
+  // Peek at XML declaration in the first bytes (assume ASCII-compatible header).
+  const head = buffer.slice(0, 200).toString('ascii');
+  const xmlMatch = head.match(/<\?xml[^?>]*encoding=["']([\w-]+)["']/i);
+  if (xmlMatch) return xmlMatch[1].toLowerCase();
+
+  return 'utf-8';
+}
+
+async function fetchRssFeedText(url) {
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; NewsAggregator/1.0; +https://kstati.news/)',
+      Accept: 'application/rss+xml, application/xml, text/xml, */*',
+    },
+  });
+  if (!res.ok) {
+    throw new Error(`RSS fetch failed ${res.status} ${res.statusText}`);
+  }
+  const buffer = Buffer.from(await res.arrayBuffer());
+  const encoding = detectRssEncoding(res.headers.get('content-type'), buffer);
+
+  let text;
+  if (encoding === 'utf-8' || encoding === 'utf8') {
+    text = buffer.toString('utf8');
+  } else if (iconv.encodingExists(encoding)) {
+    text = iconv.decode(buffer, encoding);
+  } else {
+    console.warn(`Unknown RSS encoding "${encoding}" for ${url}, falling back to utf-8`);
+    text = buffer.toString('utf8');
+  }
+
+  // Normalize XML declaration so downstream parsers don't try to re-decode.
+  return text.replace(/(<\?xml[^?>]*encoding=["'])([\w-]+)(["'])/i, '$1utf-8$3');
+}
+
 async function fetchRssSource(source) {
-  const feed = await parser.parseURL(source.url);
+  const xml = await fetchRssFeedText(source.url);
+  const feed = await parser.parseString(xml);
   const params = (source.params && typeof source.params === 'object') ? source.params : {};
   const region = params.region || null;
   let created = 0;
