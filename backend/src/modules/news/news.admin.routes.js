@@ -49,6 +49,18 @@ const createSchema = z.object({
       ])
       .optional(),
   ),
+  /** Дата/время запланированной публикации (ISO-строка или null для сброса) */
+  scheduledPublishAt: z.preprocess(
+    (v) => (v === '' ? null : v),
+    z
+      .union([
+        z.null(),
+        z.coerce.date().refine((d) => !Number.isNaN(d.getTime()), {
+          message: 'Некорректная дата запланированной публикации',
+        }),
+      ])
+      .optional(),
+  ),
 });
 
 const updateSchema = createSchema.partial().merge(
@@ -72,6 +84,7 @@ function snapshot(item) {
     body: item.body,
     status: item.status,
     sectionId: item.sectionId,
+    scheduledPublishAt: item.scheduledPublishAt,
   };
 }
 
@@ -269,9 +282,22 @@ router.put('/:id', async (req, res) => {
 
 router.patch('/:id/status', async (req, res) => {
   try {
-    const { status } = req.body;
-    if (!['PENDING', 'PUBLISHED', 'REJECTED'].includes(status)) {
+    const { status, scheduledPublishAt } = req.body;
+    if (!['PENDING', 'PUBLISHED', 'REJECTED', 'SCHEDULED'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
+    }
+    let scheduledDate = null;
+    if (status === 'SCHEDULED') {
+      if (!scheduledPublishAt) {
+        return res.status(400).json({ error: 'Не указана дата запланированной публикации' });
+      }
+      scheduledDate = new Date(scheduledPublishAt);
+      if (Number.isNaN(scheduledDate.getTime())) {
+        return res.status(400).json({ error: 'Некорректная дата запланированной публикации' });
+      }
+      if (scheduledDate.getTime() <= Date.now()) {
+        return res.status(400).json({ error: 'Дата запланированной публикации должна быть в будущем' });
+      }
     }
     const existing = await prisma.newsItem.findUnique({
       where: { id: req.params.id },
@@ -329,8 +355,9 @@ router.patch('/:id/status', async (req, res) => {
       where: { id: req.params.id },
       data: {
         status,
-        ...(status === 'PUBLISHED' ? { publishedAt: new Date() } : {}),
-        ...(status === 'PUBLISHED' ? { legalReviewStatus: 'APPROVED' } : {}),
+        ...(status === 'PUBLISHED' ? { publishedAt: new Date(), legalReviewStatus: 'APPROVED' } : {}),
+        ...(status === 'SCHEDULED' ? { scheduledPublishAt: scheduledDate } : {}),
+        ...(status !== 'SCHEDULED' && status !== 'PUBLISHED' ? { scheduledPublishAt: null } : {}),
       },
       include: { section: true, source: true },
     });

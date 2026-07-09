@@ -47,7 +47,7 @@
   {:else}
     <div class="flex flex-col gap-6">
       {#each data.news.items as item (item.id)}
-        <div animate:flip={{ duration: 280 }} in:fly={{ y: 8, duration: 250 }} out:fly={{ y: -6, duration: 180 }}>
+        <div animate:flip={{ duration: 280 }}>
           <NewsCard {item} imagePosition="left" />
         </div>
       {/each}

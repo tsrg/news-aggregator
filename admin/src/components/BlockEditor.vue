@@ -3,7 +3,7 @@
     <!-- Inline formatting bubble menu -->
     <bubble-menu
       :editor="editor"
-      :tippy-options="{ duration: 150, placement: 'top' }"
+      :options="{ placement: 'top' }"
       v-if="editor"
       class="bubble-toolbar"
     >
@@ -62,9 +62,20 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick, type Component } from 'vue';
 import { Editor, EditorContent } from '@tiptap/vue-3';
 import { BubbleMenu } from '@tiptap/vue-3/menus';
+import { BubbleMenu as BubbleMenuExtension } from '@tiptap/extension-bubble-menu';
 import StarterKit from '@tiptap/starter-kit';
 import TiptapImage from '@tiptap/extension-image';
 import Link from '@tiptap/extension-link';
+import { Table } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table-row';
+import { TableCell } from '@tiptap/extension-table-cell';
+import { TableHeader } from '@tiptap/extension-table-header';
+import { TaskList } from '@tiptap/extension-task-list';
+import { TaskItem } from '@tiptap/extension-task-item';
+import { Highlight } from '@tiptap/extension-highlight';
+import { Underline } from '@tiptap/extension-underline';
+import { TextAlign } from '@tiptap/extension-text-align';
+import { Callout } from './Callout';
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
@@ -84,6 +95,16 @@ import {
   RiSeparator,
   RiCodeBoxLine,
   RiText,
+  RiTable2,
+  RiCheckboxLine,
+  RiInformationLine,
+  RiAlertLine,
+  RiCheckLine,
+  RiUnderline,
+  RiMarkPenLine,
+  RiAlignLeft,
+  RiAlignCenter,
+  RiAlignRight,
 } from '@remixicon/vue';
 import { api } from '../api';
 
@@ -102,9 +123,14 @@ const inlineItems = computed(() => {
   return [
     { name: 'bold', title: 'Жирный', icon: RiBold, isActive: () => ed.isActive('bold'), action: () => ed.chain().focus().toggleBold().run() },
     { name: 'italic', title: 'Курсив', icon: RiItalic, isActive: () => ed.isActive('italic'), action: () => ed.chain().focus().toggleItalic().run() },
+    { name: 'underline', title: 'Подчёркнутый', icon: RiUnderline, isActive: () => ed.isActive('underline'), action: () => ed.chain().focus().toggleUnderline().run() },
     { name: 'strike', title: 'Зачеркнутый', icon: RiStrikethrough, isActive: () => ed.isActive('strike'), action: () => ed.chain().focus().toggleStrike().run() },
+    { name: 'highlight', title: 'Подсветка', icon: RiMarkPenLine, isActive: () => ed.isActive('highlight'), action: () => ed.chain().focus().toggleHighlight().run() },
     { name: 'code', title: 'Код', icon: RiCodeLine, isActive: () => ed.isActive('code'), action: () => ed.chain().focus().toggleCode().run() },
     { name: 'link', title: 'Ссылка', icon: RiLinkM, isActive: () => ed.isActive('link'), action: () => setLink() },
+    { name: 'align-left', title: 'По левому краю', icon: RiAlignLeft, isActive: () => ed.isActive({ textAlign: 'left' }), action: () => ed.chain().focus().setTextAlign('left').run() },
+    { name: 'align-center', title: 'По центру', icon: RiAlignCenter, isActive: () => ed.isActive({ textAlign: 'center' }), action: () => ed.chain().focus().setTextAlign('center').run() },
+    { name: 'align-right', title: 'По правому краю', icon: RiAlignRight, isActive: () => ed.isActive({ textAlign: 'right' }), action: () => ed.chain().focus().setTextAlign('right').run() },
   ];
 });
 
@@ -132,6 +158,11 @@ const slashCommands = computed<SlashCommand[]>(() => {
     { name: 'code-block', title: 'Блок кода', description: 'Фрагмент кода', icon: RiCodeBoxLine, keywords: ['code', 'codeblock', 'код'], action: () => ed.chain().focus().toggleCodeBlock().run() },
     { name: 'image', title: 'Изображение', description: 'Загрузить картинку', icon: RiImageAddLine, keywords: ['image', 'img', 'photo', 'изображение', 'картинка', 'фото'], action: () => triggerImageUpload() },
     { name: 'divider', title: 'Разделитель', description: 'Горизонтальная линия', icon: RiSeparator, keywords: ['hr', 'divider', 'separator', 'разделитель', 'линия'], action: () => ed.chain().focus().setHorizontalRule().run() },
+    { name: 'table', title: 'Таблица', description: 'Таблица 3×3 с заголовком', icon: RiTable2, keywords: ['table', 'таблица', 'грид'], action: () => ed.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run() },
+    { name: 'task', title: 'Чек-лист', description: 'Список задач с галочками', icon: RiCheckboxLine, keywords: ['task', 'todo', 'check', 'чек', 'задачи', 'список'], action: () => ed.chain().focus().toggleTaskList().run() },
+    { name: 'callout-info', title: 'Заметка', description: 'Информационный блок', icon: RiInformationLine, keywords: ['callout', 'info', 'note', 'заметка', 'информация'], action: () => ed.chain().focus().setCallout('info').run() },
+    { name: 'callout-warning', title: 'Предупреждение', description: 'Жёлтый блок-предупреждение', icon: RiAlertLine, keywords: ['callout', 'warning', 'warn', 'предупреждение', 'внимание'], action: () => ed.chain().focus().setCallout('warning').run() },
+    { name: 'callout-success', title: 'Успех', description: 'Зелёный блок с подтверждением', icon: RiCheckLine, keywords: ['callout', 'success', 'ok', 'успех', 'готово'], action: () => ed.chain().focus().setCallout('success').run() },
   ];
 });
 
@@ -281,7 +312,18 @@ onMounted(() => {
   editor.value = new Editor({
     content: props.modelValue,
     extensions: [
-      StarterKit,
+      StarterKit.configure({ link: false, underline: false }),
+      BubbleMenuExtension,
+      Underline,
+      Highlight.configure({ multicolor: false }),
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Table.configure({ resizable: true }),
+      TableRow,
+      TableHeader,
+      TableCell,
+      TaskList,
+      TaskItem.configure({ nested: true }),
+      Callout,
       TiptapImage.configure({ inline: false, allowBase64: true }),
       Link.configure({ openOnClick: false }),
       Extension.create({
@@ -549,5 +591,97 @@ watch(() => props.modelValue, (newVal) => {
   text-align: center;
   font-size: 0.8rem;
   color: #94a3b8;
+}
+
+/* ---- Tables ---- */
+.block-editor .ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1rem 0;
+  overflow: hidden;
+}
+.block-editor .ProseMirror table td,
+.block-editor .ProseMirror table th {
+  min-width: 1em;
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+  position: relative;
+}
+.block-editor .ProseMirror table th {
+  background: #f3f4f6;
+  font-weight: 600;
+  text-align: left;
+}
+.block-editor .ProseMirror table .selectedCell::after {
+  position: absolute;
+  inset: 0;
+  background: rgba(59, 130, 246, 0.12);
+  pointer-events: none;
+  content: '';
+}
+.block-editor .ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: #3b82f6;
+  pointer-events: none;
+}
+
+/* ---- Task lists ---- */
+.block-editor .ProseMirror ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0;
+}
+.block-editor .ProseMirror ul[data-type='taskList'] li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.block-editor .ProseMirror ul[data-type='taskList'] li > label {
+  margin-top: 0.35rem;
+  user-select: none;
+}
+.block-editor .ProseMirror ul[data-type='taskList'] li > div {
+  flex: 1;
+}
+.block-editor .ProseMirror ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+
+/* ---- Highlight ---- */
+.block-editor .ProseMirror mark {
+  background: #fef08a;
+  padding: 0 0.15em;
+  border-radius: 0.2em;
+}
+
+/* ---- Callouts ---- */
+.block-editor .ProseMirror .callout {
+  border-radius: 0.5rem;
+  border-left: 4px solid;
+  padding: 0.75rem 1rem;
+  margin: 1rem 0;
+}
+.block-editor .ProseMirror .callout > :first-child { margin-top: 0; }
+.block-editor .ProseMirror .callout > :last-child { margin-bottom: 0; }
+.block-editor .ProseMirror .callout-info {
+  background: #eff6ff;
+  border-color: #3b82f6;
+  color: #1e40af;
+}
+.block-editor .ProseMirror .callout-warning {
+  background: #fffbeb;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+.block-editor .ProseMirror .callout-success {
+  background: #ecfdf5;
+  border-color: #10b981;
+  color: #065f46;
 }
 </style>

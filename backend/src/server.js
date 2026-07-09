@@ -20,7 +20,16 @@ httpServer.listen(config.port, async () => {
   // Запускаем планировщик
   try {
     const { getQueue, startScheduler } = await import('./jobs/queue.js');
-    if (getQueue()) startScheduler();
+    if (getQueue()) {
+      startScheduler();
+    } else {
+      // Без Redis — фоллбэк-цикл для запланированной публикации
+      const { publishDueScheduledNews } = await import('./jobs/publishScheduledNews.js');
+      setInterval(() => {
+        publishDueScheduledNews().catch((e) => console.warn('Scheduled publish tick failed:', e.message));
+      }, 60_000);
+      console.log('Scheduled news publisher started (interval fallback, every minute)');
+    }
   } catch (e) {
     console.warn('Scheduler not started:', e.message);
   }

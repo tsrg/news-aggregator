@@ -69,6 +69,8 @@ model NewsItem {
   /// Дата/время публикации в оригинальном источнике (RSS pubDate, sitemap lastmod, meta на странице)
   sourcePublishedAt DateTime? @map("source_published_at")
   publishedAt DateTime?   @map("published_at")
+  /// Запланированная дата/время автоматической публикации (используется со статусом SCHEDULED)
+  scheduledPublishAt DateTime? @map("scheduled_publish_at")
   status      NewsStatus   @default(PENDING)
   sectionId   String?      @map("section_id")
   section     Section?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
@@ -107,6 +109,8 @@ enum NewsStatus {
   REJECTED
   /// Поглощённая запись при объединении дубликатов (mergedIntoId задан)
   MERGED
+  /// Запланирована к автоматической публикации (см. scheduledPublishAt)
+  SCHEDULED
 }
 
 enum ContentClass {

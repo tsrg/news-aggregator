@@ -4,10 +4,12 @@ import { prisma } from '../config/prisma.js';
 import { fetchAllSources } from './fetchRss.js';
 import { enrichNewsItem } from '../services/articleParser.js';
 import { purgeStaleUnpublishedNews } from './cleanupStaleNews.js';
+import { publishDueScheduledNews } from './publishScheduledNews.js';
 
 let queue = null;
 let articleQueue = null;
 let cleanupQueue = null;
+let scheduledPublishQueue = null;
 
 export function getQueue() {
   if (!queue && config.redis?.url) {
@@ -76,6 +78,19 @@ export function getCleanupQueue() {
 // Экспортируем articleQueue для использования в других модулях
 export { articleQueue };
 
+export function getScheduledPublishQueue() {
+  if (!scheduledPublishQueue && config.redis?.url) {
+    scheduledPublishQueue = new Bull('news-scheduled-publish', config.redis.url, {
+      defaultJobOptions: { removeOnComplete: 50, removeOnFail: 20 },
+    });
+    scheduledPublishQueue.process(async () => publishDueScheduledNews());
+    scheduledPublishQueue.on('failed', (job, err) => {
+      console.error('Scheduled publish job failed:', err.message);
+    });
+  }
+  return scheduledPublishQueue;
+}
+
 export function startScheduler() {
   const q = getQueue();
   if (!q) return;
@@ -89,5 +104,11 @@ export function startScheduler() {
   if (cq) {
     cq.add({}, { repeat: { cron: '0 * * * *' } }); // every hour
     console.log('Stale news cleanup scheduler started (every hour)');
+  }
+
+  const sq = getScheduledPublishQueue();
+  if (sq) {
+    sq.add({}, { repeat: { cron: '* * * * *' } }); // every minute
+    console.log('Scheduled news publisher started (every minute)');
   }
 }

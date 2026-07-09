@@ -15,6 +15,7 @@ export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null as User | null,
     initialized: false,
+    fetchMePromise: null as Promise<void> | null,
   }),
   getters: {
     isAuthenticated: (s) => !!s.user,
@@ -47,18 +48,24 @@ export const useAuthStore = defineStore('auth', {
     },
     async fetchMe(): Promise<void> {
       if (this.initialized) return;
-      this.initialized = true;
-      try {
-        const r = await fetch(apiUrl('/api/auth/me'), { credentials: 'include' });
-        if (r.ok) {
-          const user = await r.json();
-          this.user = user;
-        } else {
+      if (this.fetchMePromise) return this.fetchMePromise;
+      this.fetchMePromise = (async () => {
+        try {
+          const r = await fetch(apiUrl('/api/auth/me'), { credentials: 'include' });
+          if (r.ok) {
+            const user = await r.json();
+            this.user = user;
+          } else {
+            this.user = null;
+          }
+        } catch {
           this.user = null;
+        } finally {
+          this.initialized = true;
+          this.fetchMePromise = null;
         }
-      } catch {
-        this.user = null;
-      }
+      })();
+      return this.fetchMePromise;
     },
   },
 });

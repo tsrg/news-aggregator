@@ -22,72 +22,96 @@
   font-style: italic; color: #4B5563; margin-bottom: 1.5em;
   background: #F9FAFB; border-radius: 0 1rem 1rem 0;
 }
-.prose img { border-radius: 1rem; margin-top: 2em; margin-bottom: 2em; }
-
-/* ── Page transitions (View Transitions API) ───────────────────────────────── */
-@keyframes page-fade-out {
-  to { opacity: 0; transform: translateY(-5px); }
-}
-@keyframes page-fade-in {
-  from { opacity: 0; transform: translateY(5px); }
-}
-@keyframes page-slide-out-left {
-  to { opacity: 0; transform: translateX(-56px); }
-}
-@keyframes page-slide-in-right {
-  from { opacity: 0; transform: translateX(56px); }
-}
-@keyframes page-slide-out-right {
-  to { opacity: 0; transform: translateX(56px); }
-}
-@keyframes page-slide-in-left {
-  from { opacity: 0; transform: translateX(-56px); }
+.prose img {
+  border-radius: 1rem;
+  margin-top: 2em;
+  margin-bottom: 2em;
+  /* Серый фон под картинкой, пока она грузится. Виден сквозь прозрачные пиксели */
+  background-color: #f3f4f6;
+  min-height: 200px;
 }
 
-/* Header/footer stay fixed — only <main> animates */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
+/* ── Page transitions ──────────────────────────────────────────────────────
+ * Переходы между страницами реализованы через Svelte transitions
+ * на реальном DOM (см. +layout.svelte → fly + {#key}).
+ *
+ * Здесь только глобальные хелперы и доступность.
+ */
+
+/*
+ * Wrapper для page transition. Цели:
+ * 1. contain: paint — паинты дочерних элементов (декодинг картинок,
+ *    layout shifts при загрузке шрифтов) не выходят за границу,
+ *    composite-слой wrapper'а пересчитывается атомарно.
+ * 2. translate3d(0,0,0) — promote в отдельный composited layer заранее,
+ *    Svelte fly будет менять transform на УЖЕ существующем GPU-слое.
+ * 3. will-change задан явно: только composited свойства.
+ */
+/*
+ * Grid-stack: и старый, и новый wrapper'ы лежат в ОДНОЙ grid-ячейке
+ * (grid-area 1/1). Во время `{#key}`-перехода оба сосуществуют в DOM
+ * и визуально перекрываются — старый исчезает поверх уже видимого нового.
+ * Это убирает моргание, которое было при последовательном out→in.
+ */
+.page-stack > * {
+  grid-area: 1 / 1;
+  min-width: 0;
 }
 
-/* Snap group size instantly — prevents jerky height animation between pages */
-::view-transition-group(page-content) {
-  animation-duration: 0s;
+.page-anim {
+  will-change: opacity, transform, filter;
+  transform: translate3d(0, 0, 0);
+  contain: layout paint;
+  backface-visibility: hidden;
 }
-
-/* Fix blend mode — prevents brightness flash during crossfade */
-::view-transition-old(page-content),
-::view-transition-new(page-content) {
-  mix-blend-mode: normal;
-}
-
-/* Default: pure crossfade, no translate (translate causes jank at high speed) */
-::view-transition-old(page-content) {
-  animation: page-fade-out 0.15s ease-out both;
-}
-::view-transition-new(page-content) {
-  animation: page-fade-in 0.15s ease-out both;
-}
-
-/* Directional slide for news prev/next navigation */
-html[data-nav-dir="next"]::view-transition-old(page-content) {
-  animation: page-slide-out-left 0.2s cubic-bezier(0.4, 0, 1, 1) both;
-}
-html[data-nav-dir="next"]::view-transition-new(page-content) {
-  animation: page-slide-in-right 0.2s cubic-bezier(0, 0, 0.2, 1) both;
-}
-html[data-nav-dir="prev"]::view-transition-old(page-content) {
-  animation: page-slide-out-right 0.2s cubic-bezier(0.4, 0, 1, 1) both;
-}
-html[data-nav-dir="prev"]::view-transition-new(page-content) {
-  animation: page-slide-in-left 0.2s cubic-bezier(0, 0, 0.2, 1) both;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(page-content),
-  ::view-transition-new(page-content) {
-    animation: none;
+  /* Svelte transition уважает duration: 0 в самом коде; здесь подстраховка
+     для CSS-анимаций, если они проскользнут через children */
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
   }
+}
+
+/* ── Image skeleton (shimmer) ─────────────────────────────────────────────── */
+.img-skeleton {
+  background-color: #f3f4f6;
+  background-image: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0)   30%,
+    rgba(255, 255, 255, 0.6) 50%,
+    rgba(255, 255, 255, 0)   70%
+  );
+  background-size: 200% 100%;
+  background-repeat: no-repeat;
+  animation: img-shimmer 1.4s linear infinite;
+}
+@keyframes img-shimmer {
+  0%   { background-position: 150% 0; }
+  100% { background-position: -50% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .img-skeleton { animation: none; }
+}
+
+/* Плавное появление картинки после загрузки */
+.img-fade-in {
+  opacity: 0;
+  transition: opacity 320ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.img-fade-in.is-loaded { opacity: 1; }
+
+/*
+ * Длинное тело статьи: пропускаем рендер всего, что вне вьюпорта.
+ * Главный выигрыш — на View Transitions snapshot Chrome не будет растеризовать
+ * картинки/текст, не видимые пользователю. Это делает фрейм-снимок дешёвым.
+ */
+.article-overview {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 1000px;
 }
 
 /* Article overview (multi-source) */
@@ -98,3 +122,56 @@ html[data-nav-dir="prev"]::view-transition-new(page-content) {
 }
 .article-overview.prose ul { margin-top: 0.5em; margin-bottom: 1.35em; }
 .article-overview.prose li { margin-bottom: 0.65em; line-height: 1.7; }
+
+/* ---- Block editor output ---- */
+.prose table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1.25rem 0;
+}
+.prose table td,
+.prose table th {
+  border: 1px solid #d1d5db;
+  padding: 0.5rem 0.75rem;
+  vertical-align: top;
+}
+.prose table th {
+  background: #f3f4f6;
+  font-weight: 600;
+  text-align: left;
+}
+.prose ul[data-type='taskList'] {
+  list-style: none;
+  padding-left: 0;
+}
+.prose ul[data-type='taskList'] li {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.prose ul[data-type='taskList'] li > label {
+  margin-top: 0.35rem;
+  user-select: none;
+}
+.prose ul[data-type='taskList'] li > div { flex: 1; }
+.prose ul[data-type='taskList'] li[data-checked='true'] > div {
+  color: #9ca3af;
+  text-decoration: line-through;
+}
+.prose mark {
+  background: #fef08a;
+  padding: 0 0.15em;
+  border-radius: 0.2em;
+}
+.prose .callout {
+  border-radius: 0.5rem;
+  border-left: 4px solid;
+  padding: 0.85rem 1.1rem;
+  margin: 1.25rem 0;
+}
+.prose .callout > :first-child { margin-top: 0; }
+.prose .callout > :last-child { margin-bottom: 0; }
+.prose .callout-info    { background: #eff6ff; border-color: #3b82f6; color: #1e40af; }
+.prose .callout-warning { background: #fffbeb; border-color: #f59e0b; color: #92400e; }
+.prose .callout-success { background: #ecfdf5; border-color: #10b981; color: #065f46; }

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { browser } from '$app/environment';
   import AppBreadcrumbs from '$lib/components/AppBreadcrumbs.svelte';
+  import SmartImage from '$lib/components/SmartImage.svelte';
   import { newsArticleSchema, breadcrumbSchema } from '$lib/utils/schemaOrg.js';
   import { jsonLd } from '$lib/utils/jsonld.js';
 
@@ -96,8 +97,8 @@
             {#if article.prev.summary}<p class="text-base text-gray-500 leading-relaxed font-medium line-clamp-4">{article.prev.summary}</p>{/if}
           </div>
           {#if article.prev.imageUrl}
-            <div class="rounded-2xl overflow-hidden shadow-sm aspect-video bg-gray-100">
-              <img src={article.prev.imageUrl} alt={article.prev.title} class="w-full h-full object-cover" loading="lazy" decoding="async" />
+            <div class="relative rounded-2xl overflow-hidden shadow-sm aspect-video bg-gray-100">
+              <SmartImage src={article.prev.imageUrl} alt={article.prev.title} imgClass="w-full h-full object-cover" loading="lazy" decoding="async" />
             </div>
           {/if}
         </a>
@@ -141,8 +142,8 @@
         </div>
 
         {#if article.imageUrl}
-          <div class="mb-10 rounded-2xl overflow-hidden shadow-sm aspect-video bg-gray-100">
-            <img src={article.imageUrl} alt={article.title} class="w-full h-full object-cover" fetchpriority="high" decoding="async" />
+          <div class="relative mb-10 rounded-2xl overflow-hidden shadow-sm aspect-video bg-gray-100">
+            <SmartImage src={article.imageUrl} alt={article.title} imgClass="w-full h-full object-cover" fetchpriority="high" decoding="async" />
           </div>
         {/if}
 
@@ -177,7 +178,7 @@
           {#if article.prev}
             <a href="/news/{article.prev.id}" onclick={() => { document.documentElement.dataset.navDir = 'prev'; }} class="group relative h-40 rounded-2xl overflow-hidden border border-gray-200 bg-gray-100">
               {#if article.prev.imageUrl}
-                <img src={article.prev.imageUrl} alt={article.prev.title} class="w-full h-full object-cover blur-[2px] scale-105 transition-transform duration-300 group-hover:scale-110" loading="lazy" decoding="async" />
+                <SmartImage src={article.prev.imageUrl} alt={article.prev.title} imgClass="absolute inset-0 w-full h-full object-cover blur-[2px] scale-105 transition-transform duration-300 group-hover:scale-110" loading="lazy" decoding="async" />
               {:else}
                 <div class="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300"></div>
               {/if}
@@ -197,7 +198,7 @@
           {#if article.next}
             <a href="/news/{article.next.id}" onclick={() => { document.documentElement.dataset.navDir = 'next'; }} class="group relative h-40 rounded-2xl overflow-hidden border border-gray-200 bg-gray-100">
               {#if article.next.imageUrl}
-                <img src={article.next.imageUrl} alt={article.next.title} class="w-full h-full object-cover blur-[2px] scale-105 transition-transform duration-300 group-hover:scale-110" loading="lazy" decoding="async" />
+                <SmartImage src={article.next.imageUrl} alt={article.next.title} imgClass="absolute inset-0 w-full h-full object-cover blur-[2px] scale-105 transition-transform duration-300 group-hover:scale-110" loading="lazy" decoding="async" />
               {:else}
                 <div class="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300"></div>
               {/if}
@@ -228,8 +229,8 @@
             {#if article.next.summary}<p class="text-base text-gray-500 leading-relaxed font-medium line-clamp-4 text-right">{article.next.summary}</p>{/if}
           </div>
           {#if article.next.imageUrl}
-            <div class="rounded-2xl overflow-hidden shadow-sm aspect-video bg-gray-100">
-              <img src={article.next.imageUrl} alt={article.next.title} class="w-full h-full object-cover" loading="lazy" decoding="async" />
+            <div class="relative rounded-2xl overflow-hidden shadow-sm aspect-video bg-gray-100">
+              <SmartImage src={article.next.imageUrl} alt={article.next.title} imgClass="w-full h-full object-cover" loading="lazy" decoding="async" />
             </div>
           {/if}
         </a>

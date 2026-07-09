@@ -2,11 +2,12 @@
   import '../app.css';
   import { page } from '$app/stores';
   import { slide } from 'svelte/transition';
+  import { cubicOut } from 'svelte/easing';
   import NewsLiveUpdater from '$lib/components/NewsLiveUpdater.svelte';
   import { organizationSchema, websiteSchema } from '$lib/utils/schemaOrg.js';
   import { jsonLd } from '$lib/utils/jsonld.js';
   import { onMount } from 'svelte';
-  import { onNavigate } from '$app/navigation';
+  import { afterNavigate } from '$app/navigation';
 
   let { data, children } = $props();
 
@@ -50,21 +51,73 @@
         }))
   );
 
-  // Page transitions via View Transitions API — fade+lift for all routes,
-  // directional slide for news-to-news (direction set via data-nav-dir on <html>)
-  onNavigate((navigation) => {
-    if (!document.startViewTransition) return;
-
-    return new Promise((resolve) => {
-      const transition = document.startViewTransition(async () => {
-        resolve();
-        await navigation.complete;
-      });
-      transition.finished.finally(() => {
-        delete document.documentElement.dataset.navDir;
-      });
-    });
+  // ── Page transitions ─────────────────────────────────────────────────────
+  // Анимация на РЕАЛЬНОМ DOM через Svelte fly + {#key}.
+  // Преимущество перед View Transitions API: нет дорогого snapshot всего <main>
+  // (Chrome из-за этого дроп-фреймил на длинных статьях). Анимируется один
+  // wrapper-div через transform: translate3d + opacity — всё на GPU.
+  let isFirstRender = $state(true);
+  $effect(() => {
+    void $page.url.pathname; // подписка
+    if (isFirstRender) isFirstRender = false;
   });
+
+  // Очищаем data-nav-dir после завершения навигации (с задержкой,
+  // чтобы успел доиграть `in:` транзишн)
+  afterNavigate(() => {
+    setTimeout(() => {
+      if (typeof document !== 'undefined') {
+        delete document.documentElement.dataset.navDir;
+      }
+    }, 600);
+  });
+
+  function navDir(): 'next' | 'prev' | null {
+    if (typeof document === 'undefined') return null;
+    const d = document.documentElement.dataset.navDir;
+    return d === 'next' || d === 'prev' ? d : null;
+  }
+
+  /**
+   * Единая transition-функция для page-обёртки.
+   * - News ↔ news (data-nav-dir): чистый horizontal slide на 100% без opacity
+   *   и без blur. Старый и новый элементы всё время непрозрачны и просто
+   *   едут в одну сторону — настоящая карусель, нет момента моргания.
+   * - Остальные переходы: только `out:` (fade + lift + blur), `in:` мгновенный.
+   */
+  function pageTransition(
+    _node: Element,
+    p: { isOut: boolean },
+  ) {
+    if (isFirstRender) return { duration: 0 };
+    const dir = navDir();
+
+    // News ↔ news: чистый slide, оба слоя всегда opacity 1
+    if (dir === 'next' || dir === 'prev') {
+      const distance = dir === 'next' ? -100 : 100; // куда уходит OUT
+      return {
+        duration: 380,
+        easing: cubicOut,
+        css: (_t: number, u: number) => {
+          const pct = p.isOut ? u * distance : u * -distance;
+          return `transform: translate3d(${pct}%, 0, 0);`;
+        },
+      };
+    }
+
+    // Default: только out, in мгновенный
+    if (p.isOut) {
+      return {
+        duration: 220,
+        easing: cubicOut,
+        css: (t: number, u: number) =>
+          `opacity: ${t};` +
+          `transform: translate3d(0, ${u * -8}px, 0);` +
+          `filter: blur(${(u * 3).toFixed(2)}px);`,
+      };
+    }
+    return { duration: 0 };
+  }
 
   // Load Inter font non-blocking (same technique as Nuxt version)
   onMount(() => {
@@ -158,12 +211,15 @@
 
   <!-- Main content -->
   <main
-    style="view-transition-name: page-content"
-    class="flex-1 w-full mx-auto py-8 md:py-12 {isNewsPage
+    class="flex-1 w-full mx-auto py-8 md:py-12 overflow-x-hidden grid grid-cols-1 page-stack {isNewsPage
       ? 'max-w-full'
       : 'max-w-7xl px-4 sm:px-6 lg:px-8'}"
   >
-    {@render children()}
+    {#key $page.url.pathname}
+      <div in:pageTransition={{ isOut: false }} out:pageTransition={{ isOut: true }} class="page-anim">
+        {@render children()}
+      </div>
+    {/key}
   </main>
 
   <!-- Footer -->

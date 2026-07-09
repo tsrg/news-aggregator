@@ -112,6 +112,27 @@
           </div>
 
           <div>
+            <label class="block text-sm font-medium text-gray-700 mb-2">Запланированная публикация</label>
+            <p class="text-xs text-gray-500 mb-2">Дата и время автоматической публикации. Поле используется при нажатии «Запланировать публикацию».</p>
+            <input
+              v-model="form.scheduledPublishAtLocal"
+              type="datetime-local"
+              class="w-full max-w-md bg-gray-50 border border-gray-200 rounded-xl p-3.5 text-gray-900 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all"
+            />
+            <div v-if="currentStatus === 'SCHEDULED' && form.scheduledPublishAtLocal" class="mt-2 text-sm text-blue-700">
+              Будет опубликовано: {{ formatScheduled(form.scheduledPublishAtLocal) }}
+            </div>
+            <button
+              v-if="id && form.scheduledPublishAtLocal"
+              type="button"
+              class="mt-2 text-sm text-gray-500 hover:text-gray-800 underline underline-offset-2"
+              @click="form.scheduledPublishAtLocal = ''"
+            >
+              Сбросить дату
+            </button>
+          </div>
+
+          <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Публикация в источнике</label>
             <p class="text-xs text-gray-500 mb-2">Дата и время материала у первоисточника (RSS, sitemap, страница). Можно уточнить вручную.</p>
             <input
@@ -136,13 +157,15 @@
                 'bg-yellow-50 text-yellow-700 border border-yellow-200': currentStatus === 'PENDING',
                 'bg-green-50 text-green-700 border border-green-200': currentStatus === 'PUBLISHED',
                 'bg-red-50 text-red-700 border border-red-200': currentStatus === 'REJECTED',
-                'bg-violet-50 text-violet-800 border border-violet-200': currentStatus === 'MERGED'
+                'bg-violet-50 text-violet-800 border border-violet-200': currentStatus === 'MERGED',
+                'bg-blue-50 text-blue-700 border border-blue-200': currentStatus === 'SCHEDULED'
               }"
             >
               <span v-if="currentStatus === 'PENDING'">📝 На модерации</span>
               <span v-else-if="currentStatus === 'PUBLISHED'">✅ Опубликовано</span>
               <span v-else-if="currentStatus === 'REJECTED'">❌ Отклонено</span>
               <span v-else-if="currentStatus === 'MERGED'">🔗 Объединена в другую новость</span>
+              <span v-else-if="currentStatus === 'SCHEDULED'">⏰ Запланировано</span>
             </div>
             <p v-if="currentStatus === 'MERGED' && mergedIntoCanonicalId" class="text-sm text-violet-700 mt-1">
               <router-link :to="`/news/${mergedIntoCanonicalId}`" class="underline underline-offset-2">Открыть итоговую новость</router-link>
@@ -180,9 +203,20 @@
                 {{ publishLoading ? 'Публикация...' : 'Опубликовать' }}
               </button>
               
-              <button 
+              <button
+                v-if="currentStatus !== 'PUBLISHED' && currentStatus !== 'MERGED'"
+                class="px-6 py-3 bg-indigo-600 text-white font-medium rounded-xl hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-100 focus:outline-none transition-all shadow-sm shadow-indigo-200 inline-flex items-center gap-2 disabled:opacity-50"
+                :disabled="scheduleLoading || !form.scheduledPublishAtLocal"
+                @click="schedulePublish"
+              >
+                <svg v-if="scheduleLoading" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd" /></svg>
+                {{ scheduleLoading ? 'Планирование...' : (currentStatus === 'SCHEDULED' ? 'Обновить расписание' : 'Запланировать публикацию') }}
+              </button>
+
+              <button
                 v-if="currentStatus !== 'REJECTED' && currentStatus !== 'MERGED'"
-                class="px-6 py-3 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all shadow-sm shadow-red-200 inline-flex items-center gap-2" 
+                class="px-6 py-3 bg-red-600 text-white font-medium rounded-xl hover:bg-red-700 focus:ring-4 focus:ring-red-100 focus:outline-none transition-all shadow-sm shadow-red-200 inline-flex items-center gap-2"
                 :disabled="rejectLoading"
                 @click="reject"
               >
@@ -409,10 +443,12 @@ const form = ref({
   region: '' as string,
   /** Значение для input[type=datetime-local] (локальное время браузера) */
   sourcePublishedAtLocal: '' as string,
+  /** Запланированное время публикации (локальное время браузера) */
+  scheduledPublishAtLocal: '' as string,
   contentClass: 'UNKNOWN' as 'NEWS' | 'REPORT' | 'ANALYSIS' | 'OPINION' | 'UNKNOWN',
 });
 
-const currentStatus = ref<'PENDING' | 'PUBLISHED' | 'REJECTED' | 'MERGED' | null>(null);
+const currentStatus = ref<'PENDING' | 'PUBLISHED' | 'REJECTED' | 'MERGED' | 'SCHEDULED' | null>(null);
 const mergedIntoCanonicalId = ref<string | null>(null);
 const legalReviewStatus = ref<string | null>(null);
 const legalReviewNotes = ref<string>('');
@@ -438,6 +474,7 @@ const parseResult = ref<{ success: boolean; message: string } | null>(null);
 const saveLoading = ref(false);
 const publishLoading = ref(false);
 const rejectLoading = ref(false);
+const scheduleLoading = ref(false);
 
 const coverGenLoading = ref(false);
 const coverSaveLoading = ref(false);
@@ -474,6 +511,27 @@ function sourcePublishedAtPayload(): Date | null {
   return d;
 }
 
+function scheduledPublishAtPayload(): Date | null {
+  const local = form.value.scheduledPublishAtLocal;
+  if (!local) return null;
+  const d = new Date(local);
+  if (Number.isNaN(d.getTime())) return null;
+  return d;
+}
+
+function formatScheduled(local: string): string {
+  if (!local) return '';
+  const d = new Date(local);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString('ru-RU', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 onMounted(async () => {
   try {
     const s = await api().get<{ id: string; title: string }[]>('/api/admin/sections');
@@ -491,6 +549,7 @@ onMounted(async () => {
         status?: string;
         mergedIntoId?: string | null;
         sourcePublishedAt?: string | null;
+        scheduledPublishAt?: string | null;
         contentClass?: 'NEWS' | 'REPORT' | 'ANALYSIS' | 'OPINION' | 'UNKNOWN';
         legalReviewStatus?: string | null;
         legalReviewNotes?: string | null;
@@ -503,13 +562,19 @@ onMounted(async () => {
         sectionId: item.sectionId || '',
         region: item.region || '',
         sourcePublishedAtLocal: isoToDatetimeLocal(item.sourcePublishedAt),
+        scheduledPublishAtLocal: isoToDatetimeLocal(item.scheduledPublishAt),
         contentClass: item.contentClass || 'UNKNOWN',
       };
       mergedIntoCanonicalId.value = item.mergedIntoId ?? null;
       legalReviewStatus.value = item.legalReviewStatus || null;
       legalReviewNotes.value = item.legalReviewNotes || '';
-      if (item.status === 'PUBLISHED' || item.status === 'REJECTED' || item.status === 'MERGED') {
-        currentStatus.value = item.status as 'PUBLISHED' | 'REJECTED' | 'MERGED';
+      if (
+        item.status === 'PUBLISHED' ||
+        item.status === 'REJECTED' ||
+        item.status === 'MERGED' ||
+        item.status === 'SCHEDULED'
+      ) {
+        currentStatus.value = item.status as 'PUBLISHED' | 'REJECTED' | 'MERGED' | 'SCHEDULED';
       } else {
         currentStatus.value = 'PENDING';
       }
@@ -543,6 +608,8 @@ async function saveAsPending() {
     if (trimmedCover) body.imageUrl = trimmedCover;
     const sp = sourcePublishedAtPayload();
     if (sp !== null) body.sourcePublishedAt = sp;
+    const schedule = scheduledPublishAtPayload();
+    if (schedule !== null) body.scheduledPublishAt = schedule;
     await api().post('/api/admin/news', body);
     router.push('/news');
   } catch (e) {
@@ -564,6 +631,7 @@ async function save() {
       region: form.value.region,
       contentClass: form.value.contentClass,
       sourcePublishedAt: sourcePublishedAtPayload(),
+      scheduledPublishAt: scheduledPublishAtPayload(),
       ...legalReviewPayload(),
     });
     router.push('/news');
@@ -589,6 +657,7 @@ async function publish() {
       region: form.value.region,
       contentClass: form.value.contentClass,
       sourcePublishedAt: sourcePublishedAtPayload(),
+      scheduledPublishAt: scheduledPublishAtPayload(),
       ...legalReviewPayload(),
     });
     // Затем меняем статус на PUBLISHED
@@ -599,6 +668,45 @@ async function publish() {
     alert(e instanceof Error ? e.message : 'Ошибка публикации');
   } finally {
     publishLoading.value = false;
+  }
+}
+
+// Запланировать автоматическую публикацию
+async function schedulePublish() {
+  if (!id.value) return;
+  const schedule = scheduledPublishAtPayload();
+  if (!schedule) {
+    alert('Укажите дату и время запланированной публикации');
+    return;
+  }
+  if (schedule.getTime() <= Date.now()) {
+    alert('Дата публикации должна быть в будущем');
+    return;
+  }
+  scheduleLoading.value = true;
+  try {
+    await api().put(`/api/admin/news/${id.value}`, {
+      title: form.value.title,
+      summary: form.value.summary,
+      body: form.value.body,
+      imageUrl: form.value.imageUrl.trim(),
+      sectionId: form.value.sectionId,
+      region: form.value.region,
+      contentClass: form.value.contentClass,
+      sourcePublishedAt: sourcePublishedAtPayload(),
+      scheduledPublishAt: schedule,
+      ...legalReviewPayload(),
+    });
+    await api().patch(`/api/admin/news/${id.value}/status`, {
+      status: 'SCHEDULED',
+      scheduledPublishAt: schedule,
+    });
+    currentStatus.value = 'SCHEDULED';
+    router.push('/news');
+  } catch (e) {
+    alert(e instanceof Error ? e.message : 'Ошибка планирования публикации');
+  } finally {
+    scheduleLoading.value = false;
   }
 }
 
@@ -617,6 +725,7 @@ async function reject() {
       region: form.value.region,
       contentClass: form.value.contentClass,
       sourcePublishedAt: sourcePublishedAtPayload(),
+      scheduledPublishAt: scheduledPublishAtPayload(),
       ...legalReviewPayload(),
     });
     // Затем меняем статус на REJECTED

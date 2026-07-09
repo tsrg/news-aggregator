@@ -46,17 +46,27 @@
   }
 
   const displayDate = $derived(item.sourcePublishedAt || item.publishedAt);
+
+  let imgEl = $state<HTMLImageElement | null>(null);
+  let imgLoaded = $state(false);
+  // Если картинка пришла из кэша, событие load не сработает — проверим вручную
+  $effect(() => {
+    if (imgEl && imgEl.complete && imgEl.naturalWidth > 0) {
+      imgLoaded = true;
+    }
+  });
 </script>
 
 <a
   href="/news/{item.id}"
-  class="group block bg-white rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-[transform,box-shadow] duration-300 border border-gray-100 h-full flex flex-col will-change-transform"
+  class="group block bg-white rounded-2xl overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-[transform,box-shadow] duration-300 border border-gray-100 h-full flex flex-col"
 >
   <div class={['flex flex-col gap-0 h-full', imagePosition === 'left' ? 'md:flex-row' : ''].join(' ')}>
     {#if item.imageUrl}
       <div
         class={[
-          'overflow-hidden w-full relative bg-gray-100',
+          'overflow-hidden w-full relative',
+          imgLoaded ? 'bg-gray-100' : 'img-skeleton',
           imagePosition === 'left' ? 'md:w-2/5 shrink-0' : '',
           featured ? 'aspect-video' : 'aspect-[4/3]',
         ].join(' ')}
@@ -81,14 +91,17 @@
             />
           {/if}
           <img
+            bind:this={imgEl}
             src={item.imageUrl}
             srcset={jpegSmSrc ? `${jpegSmSrc} 420w, ${item.imageUrl} 1200w` : undefined}
             sizes={jpegSmSrc ? '(max-width: 640px) 420px, 1200px' : undefined}
             alt={item.title || ''}
-            class="w-full h-full object-cover transform-gpu group-hover:scale-105 transition-transform duration-500 ease-out will-change-transform"
+            class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out img-fade-in {imgLoaded ? 'is-loaded' : ''}"
             loading={priority ? undefined : 'lazy'}
             fetchpriority={priority ? 'high' : undefined}
             decoding={priority ? 'async' : undefined}
+            onload={() => (imgLoaded = true)}
+            onerror={() => (imgLoaded = true)}
           />
         </picture>
         <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>

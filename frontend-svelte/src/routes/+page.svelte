@@ -42,7 +42,7 @@
         </div>
         <div class="lg:col-span-4 flex flex-col gap-6">
           {#each data.top.items.slice(1, 3) as item (item.id)}
-            <div animate:flip={{ duration: 280 }} in:fly={{ y: 8, duration: 250 }} out:fly={{ y: -6, duration: 180 }}>
+            <div animate:flip={{ duration: 280 }}>
               <NewsCard {item} imagePosition="top" />
             </div>
           {/each}
@@ -65,14 +65,14 @@
           {#if data.regionSectionId}
             <a href="/section/region" class="text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors flex items-center gap-1 group">
               Все новости
-              <span class="transform-gpu group-hover:translate-x-1 transition-transform">→</span>
+              <span class="group-hover:translate-x-1 transition-transform">→</span>
             </a>
           {/if}
         </div>
         {#if data.regionData.items.length}
           <div class="flex flex-col gap-6">
             {#each data.regionData.items as item (item.id)}
-              <div animate:flip={{ duration: 280 }} in:fly={{ y: 8, duration: 250 }} out:fly={{ y: -6, duration: 180 }}>
+              <div animate:flip={{ duration: 280 }}>
                 <NewsCard {item} imagePosition="left" />
               </div>
             {/each}
@@ -90,7 +90,7 @@
         {#if data.general.items.length}
           <div class="flex flex-col gap-6">
             {#each data.general.items as item (item.id)}
-              <a href="/news/{item.id}" class="group block relative" in:fly={{ y: 8, duration: 250 }}>
+              <a href="/news/{item.id}" class="group block relative">
                 <div class="flex items-start gap-4">
                   <div class="w-10 h-10 shrink-0 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center font-bold text-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
                     {formatDateShort(item.sourcePublishedAt || item.publishedAt)}
@@ -126,7 +126,6 @@
         {#each data.sectionSlugs as sec (sec.id)}
           <div
             class="bg-white p-6 md:p-8 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow flex flex-col h-full"
-            in:fade={{ duration: 220 }}
           >
             <div class="mb-6 flex justify-between items-center">
               <a href="/section/{sec.slug}" class="font-bold text-xl text-gray-900 hover:text-blue-600 transition-colors flex items-center gap-2">
@@ -151,7 +150,7 @@
 
             <a href="/section/{sec.slug}" class="mt-6 inline-flex items-center text-sm font-medium text-blue-600 hover:text-blue-700 transition-colors group">
               Перейти в раздел
-              <span class="ml-1 transform-gpu group-hover:translate-x-1 transition-transform">→</span>
+              <span class="ml-1 group-hover:translate-x-1 transition-transform">→</span>
             </a>
           </div>
         {/each}

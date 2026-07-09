@@ -31,6 +31,7 @@
           <option value="">Все статусы</option>
           <option value="PENDING">На модерации</option>
           <option value="PUBLISHED">Опубликовано</option>
+          <option value="SCHEDULED">Запланировано</option>
           <option value="REJECTED">Отклонено</option>
         </select>
         <select v-model="regionFilter" class="bg-gray-50 border border-gray-200 text-gray-700 text-sm rounded-xl px-3 py-2.5 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 focus:outline-none transition-all min-w-0 flex-1 sm:flex-none sm:min-w-[140px]">
@@ -106,6 +107,7 @@
               >
                 <option value="PENDING">На модерации</option>
                 <option value="PUBLISHED">Опубликовано</option>
+                <option value="SCHEDULED" :disabled="item.status !== 'SCHEDULED'">Запланировано</option>
                 <option value="REJECTED">Отклонено</option>
               </select>
             </td>
